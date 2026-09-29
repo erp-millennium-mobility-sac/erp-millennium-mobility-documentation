@@ -150,7 +150,36 @@ Cada bloque pertenece a un contexto delimitado, que es la unidad de código: `lo
 | 11 | Bitácora general de cambios | 6 | **Cerrado** |
 | 12 | Ventas y contratos | 6, 11 | Fuera del alcance actual |
 
-La columna *Estado* se refiere al diseño. Del código existe hoy el bloque 2, en parte: lo que falta está en §5.13.
+La columna *Estado* se refiere al diseño, no al código.
+
+**Orden de implementación**
+
+El código se construye en este orden. Respeta las dependencias del cuadro anterior, con cuatro ajustes que se explican debajo.
+
+| Paso | Bloque | Contexto | Qué incluye | Datos que hacen falta | Código |
+|---|---|---|---|---|---|
+| 0 | 2 · Seguridad, en parte, y el núcleo común | `shared`, `iam` | Cuentas, roles, sesiones y asignaciones reducidas | — | Construido; lo que falta está en §5.13 |
+| 1 | 1 · Geografía | `location` | Monedas, países, niveles y divisiones territoriales, direcciones | Archivo oficial de divisiones territoriales (ubigeo del INEI) | Pendiente |
+| 2 | 3 · Empresas | `organization` | Documentos tributarios, empresas, marcas comerciales, sedes y ubicaciones; `roles.company_id` | Razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales | Pendiente |
+| 3 | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | Colaboradores; asignaciones por empresa, sede y marca; bloqueos de cuenta; permisos; dar acceso; registro público con perfil | Colaboradores reales y la matriz de permisos por rol | Pendiente |
+| 4 | 4 · Catálogos de flota | `vehiclecatalog` | Tipos de vehículo, marcas y modelos, colores, equipamiento y a qué tipos aplica | Modelos reales, conciliados entre los dos catálogos que advierte §7.3 | Pendiente |
+| 5 | 6 · Vehículo y estados | `fleet` | Estados, caminos y motivos, vehículos, historial de estados, kilometraje | — | Pendiente |
+| 6 | 11 · Bitácora de cambios | `shared` | `change_log` | — | Pendiente |
+| 7 | 7 · Compras, que incluye el 5 | `procurement` | Proveedores, tipos y plantillas de orden, órdenes, facturas y notas de crédito | Proveedores | Pendiente |
+| 8 | 8 · Pagos | `procurement` | Pagos, a qué se aplican y qué unidades cubren, saldo a favor | — | Pendiente |
+| 9 | 9 · Habilitación | `fleet`, `shared` | Documentos y sus tipos, equipamiento instalado, llaves, impuesto vehicular, cargas de archivos | — | Pendiente |
+| 10 | 10 · Fondos | `fleet` | Fondos y cesiones | — | Pendiente |
+| 11 | Reportes | Modelo de lectura | Indicadores calculados (§10.5) y el exportable de stock | — | Pendiente |
+| — | 12 · Ventas y contratos | — | Contratos y asesoras | — | Fuera del alcance actual |
+
+Los cuatro ajustes:
+
+1. **La bitácora va apenas después del vehículo**, no al final. Depende solo del bloque 6, y desde ahí ya hay cambios delicados —corregir una placa, un VIN o el monto de una factura— que tienen que quedar registrados.
+2. **`advisor_assignments` se construye con el bloque 12**, aunque figure en el 3b: apunta a los contratos, que son de ventas.
+3. **El bloque 2 se termina en el paso 3.** Los permisos hacen falta antes de las operaciones de negocio de los bloques 6 y 7, como registrar una factura o dar de alta una unidad.
+4. **Desde el paso 5 hay dos ramas independientes:** compras y pagos (pasos 7 y 8), y habilitación y fondos (pasos 9 y 10). Se pueden alternar según la prioridad del negocio; fondos usa las cargas de archivos que llegan con la habilitación.
+
+Un paso se puede construir sin sus datos, con datos de ejemplo; los reales se cargan después.
 
 **A qué contexto pertenece cada bloque**
 
@@ -1146,7 +1175,7 @@ La marca del vehículo: Chevrolet, TVS, Bajaj, Hyundai. Es la columna `MARCA` de
 
 **Ejemplo**
 
-| name | is_active |
+| id | name | is_active |
 |---|---|---|
 | 1 | CHEVROLET | Sí |
 | 2 | TVS | Sí |
