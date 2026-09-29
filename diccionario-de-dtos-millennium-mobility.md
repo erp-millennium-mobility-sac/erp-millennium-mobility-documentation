@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.11 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de cargos y permisos
+**Versión:** 1.12 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de cargos y permisos
 
 > **Cómo leer los cuadros.** En cada tabla, las columnas *Descripción* y *Por qué importa* están escritas para que las entienda cualquier persona, sin conocimientos técnicos: sirven para que quien conoce el negocio pueda revisar si el dato es el correcto. Las columnas *Tipo* y *Nulo*, las restricciones y el código SQL son para el equipo de desarrollo.
 
@@ -26,7 +26,9 @@ No documenta pantallas ni procesos. Cuando una regla de negocio determina una re
 | Llaves foráneas terminan en `_id` | `default_currency_id` | `currency` |
 | Marcas de tiempo terminan en `_at` | `created_at` | `creation_date` |
 | Fechas sin hora terminan en `_date` | `invoice_date` | `invoice` |
-| Booleanos empiezan con `is_` o `has_` | `is_system` | `system` |
+| Quien hizo algo se nombra con el participio y `_by`, y apunta a `users` | `created_by`, `granted_by` | `created_by_id`, `creator` |
+| Booleanos de estado o atributo empiezan con `is_` o `has_` | `is_system`, `has_factory_screen` | `system`, `factory_screen` |
+| Booleanos que activan una regla empiezan con el verbo de la regla | `requires_serial`, `blocks_availability`, `must_change_password` | `serial_required` |
 | Tabla en plural, columna en singular | `countries.name` | `country.names` |
 | Sin prefijo de tabla en la columna | `countries.name` | `countries.country_name` |
 
@@ -111,12 +113,12 @@ Los campos que no pasan el filtro quedan listados como **candidatos**, con el cr
 
 El orden lo fijan las dependencias, no la importancia del negocio. Una tabla no puede escribirse antes que aquellas a las que referencia.
 
-Cada bloque pertenece a un contexto delimitado, que es la unidad de código: `location`, `iam`, `organization`, `vehiclecatalog`, `fleet`, `procurement` y `shared`. El mapa de contextos, con quién puede llamar a quién y la estructura de paquetes, está en el documento de contextos delimitados.
+Cada bloque pertenece a un contexto delimitado, que es la unidad de código: `location`, `iam`, `organization`, `vehiclecatalog`, `fleet`, `procurement` y `shared`. El mapa de contextos, con quién puede llamar a quién y la estructura de paquetes, todavía no tiene un documento propio. La regla que lo gobierna es una sola: un contexto usa a otro únicamente a través de su fachada, y nunca consulta ni escribe sus tablas; la única excepción son los modelos de lectura declarados como tales, que solo leen.
 
 | Bloque | Contenido | Depende de | Estado |
 |---|---|---|---|
 | 1 | Geografía: `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses` | — | **Cerrado** |
-| 2 | Seguridad: `users`, `user_access_suspensions`, `roles`, `permissions`, `role_permissions` | — | **Cerrado** |
+| 2 | Seguridad: `users`, `user_access_suspensions`, `roles`, `permissions`, `role_permissions` | — (`roles.company_id` espera al 3) | **Cerrado** |
 | 3 | Empresas: `tax_id_types`, `companies`, `commercial_brands`, `branches`, `locations` | 1, 2 | **Cerrado** |
 | 3b | Colaboradores y accesos: `employees`, `user_roles`, `advisor_assignments` | 2, 3 | **Cerrado** |
 | 4 | Catálogos de flota: `vehicle_types`, `vehicle_brands`, `vehicle_models`, `colors`, `equipment_types` | 3 | **Cerrado** |
@@ -127,6 +129,7 @@ Cada bloque pertenece a un contexto delimitado, que es la unidad de código: `lo
 | 9 | Habilitación: documentos, equipamiento, llaves, seguros | 6 | **Cerrado** |
 | 10 | Fondos y garantía mobiliaria | 6 | **Cerrado** |
 | 11 | Bitácora general de cambios | 6 | **Cerrado** |
+| 12 | Ventas y contratos | 6, 11 | Fuera del alcance actual |
 
 **A qué contexto pertenece cada bloque**
 
@@ -145,11 +148,10 @@ Cada bloque pertenece a un contexto delimitado, que es la unidad de código: `lo
 | 11 · Bitácora y cargas de archivos | `shared` |
 
 Los contextos `fleet` y `procurement` comparten el vehículo y hablan de él distinto: para el primero es una unidad física que se mueve y se habilita; para el segundo, una línea de comprobante con un VIN y un monto. Ninguno consulta las tablas del otro.
-| 12 | Ventas y contratos | 6, 11 | Fuera del alcance actual |
 
 `employees` se documenta en §5.3 junto con las cuentas, pero se crea después de `companies` porque depende de ella.
 
-**No hay dependencia circular entre `users` y `companies`:** el usuario no pertenece a una empresa, así que se crea antes. Lo que depende de ambas es `user_roles`, que va al final. El único caso de arranque —el primer usuario, que nadie creó— se resuelve con la semilla de §5.9.
+**No hay dependencia circular entre `users` y `companies`:** el usuario no pertenece a una empresa, así que se crea antes. Lo que depende de ambas es `user_roles`, que va al final. Lo mismo pasa con `roles.company_id`: los cargos del sistema lo tienen vacío, así que `roles` se crea con el bloque 2 y esa columna se agrega con el bloque 3, cuando ya existe `companies`. El único caso de arranque —el primer usuario, que nadie creó— se resuelve con la semilla de §5.9.
 
 ---
 
@@ -197,13 +199,13 @@ Los países donde la empresa opera o puede operar. Casi toda la información del
 | `default_timezone` | VARCHAR(50) | No | La hora local del país, que sirve de punto de partida al crear una sede nueva | La hora real se guarda en cada sede, porque hay países con varias: México tiene cuatro. Si se usara una sola por país, los vencimientos y los cortes del día saldrían corridos varias horas |
 | `tax_name` | VARCHAR(20) | Sí | Cómo se llama el impuesto general en ese país: IGV, IVA | Se imprime en comprobantes y reportes. En Colombia nadie entiende "IGV" |
 | `tax_rate` | NUMERIC(5,4) | Sí | Tasa vigente del impuesto general | Es solo el valor que se propone al registrar una factura. La tasa que manda es la que queda guardada en cada comprobante |
-| `postal_code_required` | BOOLEAN | No | Indica si en ese país el código postal es obligatorio en una dirección | En México es un dato clave del domicilio fiscal; en Perú casi nadie lo usa. El formulario tiene que pedirlo o no según el país |
+| `requires_postal_code` | BOOLEAN | No | Indica si en ese país el código postal es obligatorio en una dirección | En México es un dato clave del domicilio fiscal; en Perú casi nadie lo usa. El formulario tiene que pedirlo o no según el país |
 
 **Relaciones.** Apunta a `currencies`. Le apuntan `geo_division_levels` (cómo se divide), `geo_divisions` (sus divisiones), `addresses`, `tax_id_types` (qué documentos emite) y `companies` (qué empresa está constituida ahí).
 
 **Ejemplo**
 
-| id | iso_alpha_2 | iso_alpha_3 | name | calling_code | default_currency_id | default_timezone | postal_code_required |
+| id | iso_alpha_2 | iso_alpha_3 | name | calling_code | default_currency_id | default_timezone | requires_postal_code |
 |---|---|---|---|---|---|---|---|
 | 1 | PE | PER | Perú | +51 | 1 · PEN | America/Lima | No |
 | 2 | CO | COL | Colombia | +57 | 3 · COP | America/Bogota | No |
@@ -355,7 +357,7 @@ Campos que hoy no entran porque nadie los usa todavía, con la condición que lo
 | **Permiso** | Una acción concreta que se puede autorizar: registrar una factura, anular una unidad | `permissions` |
 | **Asignación** | Qué rol tiene un usuario **y sobre qué alcance**: empresa, sede o todo el sistema | `user_roles` |
 
-**Sobre la palabra "perfil"** (decisión D-4, cerrada): se refiere a los **datos personales** de quien usa el sistema —nombre, documento, teléfono, foto—, no al cargo. Esos datos van dentro de `users`, en las mismas filas. No hace falta una tabla aparte: ver §5.3.
+**Sobre la palabra "perfil"** (decisión D-4, cerrada): se refiere a los **datos personales** de la persona —nombre, documento, teléfono, puesto, fecha de ingreso—, no al cargo. Esos datos van en `employees` (§5.3), no en `users`: la cuenta guarda solo lo necesario para entrar (D-10).
 
 El cargo con su nivel de acceso se llama **rol** en todo este documento.
 
@@ -525,21 +527,15 @@ Lo que **no** cubre esta tabla es la corrección posterior de una de estas filas
 
 **Al bloquear una cuenta se cierran también sus sesiones abiertas**, o la persona seguiría dentro hasta que vencieran. Como las sesiones viven en el servidor (§5.12), cerrarlas es borrarlas y el efecto es inmediato.
 
-#### Los datos personales van aquí, no en una tabla aparte
+#### Los datos personales van en `employees`, no aquí
 
-Separar los datos personales en una tabla `user_profiles` es una tentación frecuente y casi siempre un error: obliga a unir dos tablas cada vez que se muestra el nombre de alguien, y abre la posibilidad de que exista un usuario sin sus datos personales. Es una relación uno a uno, y una relación uno a uno normalmente significa que son la misma cosa.
+Guardar el nombre, el documento o el teléfono dentro de la cuenta parece lo más simple, pero no encaja con cómo trabaja la empresa (D-10):
 
-Solo hay dos casos donde separarlos se justifica: cuando los datos personales son muchos y pesados —una foto guardada dentro de la base, un currículum— o cuando por política de privacidad deben tener permisos de acceso distintos a los de la cuenta. Ninguno de los dos aplica hoy: la foto se guarda como archivo y se referencia con una ruta, igual que los documentos del vehículo.
+- Hay personas con datos y sin cuenta: el mecánico del taller es colaborador y no entra al sistema.
+- Hay cuentas sin persona: `SYSTEM` firma las cargas masivas y los procesos automáticos.
+- Quien trabaja para dos empresas del grupo tiene una sola cuenta y dos registros de colaborador, uno por empresa, cada uno con su puesto y su fecha de ingreso.
 
-Qué datos personales entran es una decisión pendiente (D-10), porque cada uno necesita quién lo use:
-
-| Dato | Para qué serviría |
-|---|---|
-| Documento de identidad | Identificar a la persona en actas, contratos o accesos físicos |
-| Teléfono | Contactarla y recuperar la cuenta |
-| Foto | Mostrarla en pantalla junto a sus registros |
-| Cargo o puesto | Texto informativo, distinto del rol que da permisos |
-| Fecha de ingreso | Reportes de personal |
+Por eso los datos personales viven en `employees` (§5.3) y `users` guarda solo lo necesario para entrar.
 
 ### 5.5 `roles` — Cargos
 Un cargo con su nivel de acceso. Define qué puede hacer alguien, no sobre qué empresa.
@@ -553,7 +549,7 @@ Un cargo con su nivel de acceso. Define qué puede hacer alguien, no sobre qué 
 | `scope_level` | VARCHAR(10) | No | Hasta dónde llega el cargo: `SYSTEM` (todo el sistema), `COMPANY` (una empresa) o `BRANCH` (una sede) | Es lo que impide darle a un asesor de una tienda el mismo alcance que al administrador general |
 | `is_system` | BOOLEAN | No | Marca los cargos que trae el sistema y no se pueden borrar ni modificar | Protege al administrador general: si alguien lo borrara por error, nadie podría volver a administrar el sistema |
 
-**Relaciones.** Apunta a `companies` cuando el cargo pertenece a una empresa concreta. Le apuntan `role_permissions` y `user_roles`.
+**Relaciones.** Apunta a `companies` cuando el cargo pertenece a una empresa concreta. Le apuntan `role_permissions` (qué permisos incluye) y `user_roles` (a quién se le asignó).
 
 **Ejemplo**
 
@@ -566,12 +562,9 @@ Un cargo con su nivel de acceso. Define qué puede hacer alguien, no sobre qué 
 
 El último lo creó el administrador de Perú: no le aparece a Colombia.
 
-**Relaciones.** Apunta a `companies` cuando el cargo pertenece a una empresa concreta. Le apuntan `role_permissions` (qué permisos incluye) y `user_roles` (a quién se le asignó). El ejemplo es el cuadro de cargos del sistema de arriba, todos con empresa vacía porque sirven en cualquier país.
-
-
 #### Crear cargos nuevos
 
-Los seis cargos de arriba son el punto de partida, no la lista definitiva: los puestos cambian y hay que poder agregar cargos sin tocar el programa. Crear uno es insertar una fila en `roles` y marcar sus permisos, todo desde la pantalla de administración.
+Los seis cargos que trae el sistema (cuadro al final de esta sección) son el punto de partida, no la lista definitiva: los puestos cambian y hay que poder agregar cargos sin tocar el programa. Crear uno es insertar una fila en `roles` y marcar sus permisos, todo desde la pantalla de administración.
 
 | Quién lo crea | Dónde queda disponible |
 |---|---|
@@ -596,7 +589,7 @@ Como los accesos otorgados no caducan solos, el control que los mantiene sanos e
 
 Los cargos marcados como propios del sistema no se pueden editar ni borrar, aunque quien lo intente tenga todos los permisos.
 
-**Límite de lo que la base puede garantizar.** La consistencia entre la empresa del cargo y la empresa de la asignación no se puede exigir con una llave foránea, porque el campo admite vacío para los cargos generales. Se resuelve con una validación programada que rechaza asignar un cargo de una empresa dentro de otra. Las tres reglas anteriores también viven en la aplicación: la base no sabe qué permisos tiene quien está ejecutando la operación.
+**Límite de lo que la base puede garantizar.** La consistencia entre la empresa del cargo y la empresa de la asignación no se puede exigir con una llave foránea, porque el campo admite vacío para los cargos generales. Se resuelve con una validación programada que rechaza asignar un cargo de una empresa dentro de otra. Las reglas 1 a 3 también viven en la aplicación: la base no sabe qué permisos tiene quien está ejecutando la operación.
 
 **Reglas de negocio**
 
