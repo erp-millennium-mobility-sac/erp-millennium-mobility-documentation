@@ -24,8 +24,10 @@ No documenta pantallas ni procesos. Cuando una regla de negocio determina una re
 |---|---|---|
 | `snake_case`; dígito solo si es parte del nombre del estándar | `iso_alpha_2` | `iso2`, `isoCode2` |
 | Llaves foráneas terminan en `_id` | `default_currency_id` | `currency` |
-| Marcas de tiempo terminan en `_at` | `created_at` | `creation_date` |
-| Fechas sin hora terminan en `_date` | `invoice_date` | `invoice` |
+| Marcas de tiempo (`TIMESTAMPTZ`) terminan en `_at`, y solo ellas | `created_at` | `creation_date`, `hired_at` para una fecha sin hora |
+| Fechas sin hora (`DATE`) terminan en `_date` | `invoice_date`, `hire_date` | `invoice`, `hired_at` |
+| Un mes se guarda como `DATE` con día 1 y termina en `_month` | `campaign_month` | `campaign_period` |
+| Un período se guarda como rango en una columna `period` | `period` | `valid_from` + `valid_to` |
 | Quien hizo algo se nombra con el participio y `_by`, y apunta a `users` | `created_by`, `granted_by` | `created_by_id`, `creator` |
 | Booleanos de estado o atributo empiezan con `is_` o `has_` | `is_system`, `has_factory_screen` | `system`, `factory_screen` |
 | Booleanos que activan una regla empiezan con el verbo de la regla | `requires_serial`, `blocks_availability`, `must_change_password` | `serial_required` |
@@ -46,8 +48,8 @@ No documenta pantallas ni procesos. Cuando una regla de negocio determina una re
 | **Todo monto viaja con su moneda** | O la fila tiene `currency_id NOT NULL` junto al monto, o la hereda del encabezado por llave foránea. Un monto sin moneda no se guarda |
 | **Toda conversión viaja con su tipo de cambio, y la fecha de ese tipo de cambio es la del documento** | El tipo de cambio de una factura es el de su fecha de emisión; el de un pago, el de su fecha de pago. No hace falta una columna aparte, pero la regla debe estar escrita o alguien usará el tipo de cambio del día en que registra |
 | Montos: `NUMERIC`, `NOT NULL DEFAULT 0` | Un `NULL` en un monto se propaga por toda la aritmética y llega a pantalla como celda vacía |
-| Vigencias: `valid_from` obligatorio, `valid_to` nulo = vigente | Una vigencia se cierra, nunca se borra |
-| Intervalos sin solapamiento: `daterange` + `WITHOUT OVERLAPS` (PG 18) | Impide dos períodos cruzados incluso en el pasado |
+| Vigencias: un rango en la columna `period`, con el inicio incluido y el fin excluido; fin vacío = vigente (§2.6) | Una vigencia se cierra, nunca se borra |
+| Intervalos sin solapamiento: `daterange` o `tstzrange` + `WITHOUT OVERLAPS` (PG 18) | Impide dos períodos cruzados incluso en el pasado |
 | Identificadores de texto normalizados al guardar: `TRIM` + `UPPER`, sin guiones. Los correos electrónicos, `TRIM` + `LOWER` | `UNIQUE` no distingue `ABC-123` de `ABC123`, ni `Tere@…` de `tere@…` |
 | Centinelas (`-`, `NO TIENE`, `NO CORRESPONDE`) no se almacenan | Se generan al exportar. Guardados, obligan a parsear texto en cada cálculo |
 
@@ -106,6 +108,22 @@ Los campos que no pasan el filtro quedan listados como **candidatos**, con el cr
 - Hay campos que no ve cualquiera aunque vea la fila. Cuando falta el permiso, el campo no sale de la base: ocultarlo en la pantalla no alcanza.
 - El acceso total es una excepción explícita evaluada con las mismas reglas, no una cuenta que se saltea el control.
 - Cuando existan clientes, la tabla de direcciones tendrá que quedar acotada igual que el resto: el domicilio de un cliente sí es un dato sensible.
+
+### 2.6 Fechas y horas
+
+Decisión D-40. Las reglas valen para la base, la API, los archivos exportados y la bitácora de cambios.
+
+| Regla | Fundamento |
+|---|---|
+| Un momento exacto —cuándo se registró, se aprobó o se bloqueó algo— es `TIMESTAMPTZ` y termina en `_at` | PostgreSQL lo guarda en UTC y lo convierte a cualquier zona al leerlo. Dos registros hechos en Lima y en Bogotá se ordenan bien sin cálculos |
+| Una fecha de calendario —la emisión de una factura, el ingreso de un colaborador— es `DATE` y termina en `_date` | No tiene hora ni zona: el 15 de marzo es el 15 de marzo en cualquier país. Guardada con hora, cambiaría de día al convertirla de zona |
+| Un período es un rango (`daterange` o `tstzrange`) en la columna `period`, con el inicio incluido y el fin excluido: `[inicio, fin)`. Fin vacío = sigue vigente | Un período termina exactamente donde empieza el siguiente, sin huecos ni cruces, y `WITHOUT OVERLAPS` lo valida. El GPS que se cambia el 04/07/2026 cierra el anterior en esa fecha y abre el nuevo en la misma |
+| Un mes es un `DATE` con día 1 y termina en `_month` | Septiembre de 2026 se guarda como `2026-09-01`, y así se compara y se ordena como cualquier fecha |
+| **Todo intercambio usa ISO 8601** —la API, los archivos exportados y los valores de fecha de la bitácora—: fechas `AAAA-MM-DD`, momentos `AAAA-MM-DDThh:mm:ssZ` en UTC | Es el único formato que no se presta a confusión: `01/03/2025` es 1 de marzo en Perú y 3 de enero en Estados Unidos. Además se ordena bien como texto |
+| En la API, un período viaja como dos campos, desde y hasta; hasta vacío = abierto | Cualquier cliente lo entiende sin conocer la notación de rangos de PostgreSQL |
+| Las zonas horarias se guardan con su nombre IANA: `America/Lima`, `America/Bogota` | Un nombre, a diferencia de un desfase fijo como `-05:00`, sigue los cambios de horario que decida cada país |
+| "Hoy" y las fechas de operación se calculan en la zona de la sede donde ocurre el hecho. Sin sede, en la del país de la empresa del registro; si el registro no pertenece a ninguna empresa —una cuenta, un bloqueo—, en `America/Lima` | Una factura registrada a las 11 de la noche en Lima es de ese día en Lima, aunque en UTC ya sea el siguiente. De esto dependen la antigüedad de 20 días de una factura, los vencimientos y los cortes del día |
+| El formato de pantalla es `dd/mm/aaaa` y `dd/mm/aaaa hh:mm`, solo al mostrar | Nunca se guarda ni se transmite así. Los ejemplos de este documento usan el formato de pantalla para que se lean fácil |
 
 ---
 
@@ -357,7 +375,7 @@ Campos que hoy no entran porque nadie los usa todavía, con la condición que lo
 | **Permiso** | Una acción concreta que se puede autorizar: registrar una factura, anular una unidad | `permissions` |
 | **Asignación** | Qué rol tiene un usuario **y sobre qué alcance**: empresa, sede o todo el sistema | `user_roles` |
 
-**Sobre la palabra "perfil"** (decisión D-4, cerrada): se refiere a los **datos personales** de la persona —nombre, documento, teléfono, puesto, fecha de ingreso—, no al rol. Esos datos van en `employees` (§5.3), no en `users`: la cuenta guarda solo lo necesario para entrar (D-10).
+**Sobre la palabra "perfil"** (decisión D-4, cerrada): se refiere a los **datos personales** de la persona —nombre, documento, teléfono, foto, puesto, fecha de ingreso—, no al rol. Esos datos van en `employees` (§5.3), no en `users`: la cuenta guarda solo lo necesario para entrar (D-10).
 
 **Vocabulario** (decisión D-39). **Rol** es el conjunto de permisos que se asigna a una cuenta, con su alcance; en la base y en el código se llama igual, `role`. **Puesto** es el trabajo del colaborador —asesor de ventas, mecánico, contador—: es informativo y no da permisos. **Perfil** son los datos personales del colaborador (D-4). Este documento no usa la palabra "cargo", porque se confundía con los dos primeros.
 
@@ -412,9 +430,10 @@ Las personas que trabajan para la empresa, usen o no el sistema. Un mecánico de
 | `document_number` | VARCHAR(20) | No | Número del documento | Es como se identifica a la persona en actas y contratos |
 | `position` | VARCHAR(80) | Sí | Puesto: asesor de ventas, mecánico, contador | Es informativo y distinto del rol que da permisos: dos personas con el mismo puesto pueden tener accesos distintos |
 | `phone` | VARCHAR(30) | Sí | Teléfono | — |
+| `photo_path` | TEXT | Sí | Foto del colaborador, opcional | El archivo se guarda fuera de la base, igual que los documentos del vehículo; aquí queda su ubicación. Sirve para mostrarla junto a sus registros |
 | `user_id` | BIGINT FK → `users` | Sí | La cuenta con que esta persona entra al sistema | Vacío para quien no usa el sistema, como un mecánico. **La referencia va en este sentido a propósito**: quien trabaja para dos empresas del grupo tiene dos filas de colaborador y una sola cuenta, y ambas pueden apuntar a ella |
-| `hired_at` | DATE | No | Fecha de ingreso | — |
-| `terminated_at` | DATE | Sí | Fecha de salida. Vacío = sigue trabajando | Un colaborador que se va no se borra: sus ventas y sus registros siguen siendo suyos |
+| `hire_date` | DATE | No | Fecha de ingreso | — |
+| `termination_date` | DATE | Sí | Fecha de salida. Vacío = sigue trabajando | Un colaborador que se va no se borra: sus ventas y sus registros siguen siendo suyos |
 | `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y modificación | — |
 
 **Relaciones.** Apunta a `companies`, `branches`, `tax_id_types` y `users`. Le apuntan las asignaciones de asesora y las instalaciones de equipamiento.
@@ -759,7 +778,7 @@ Las vacaciones y las licencias funcionan al revés a propósito: ahí los roles 
 
 ### 5.10 Candidatos del bloque 2
 
-Ninguno: todos los campos que estaban en espera se incorporaron. `last_login_at`, `password_updated_at` y `mfa_secret` entraron a `users`; `phone`, a `employees`; `expires_at`, a las asignaciones; y los roles propios por empresa quedaron resueltos al cerrar D-7.
+Ninguno: todos los campos que estaban en espera se incorporaron. `last_login_at`, `password_updated_at` y `mfa_secret` entraron a `users`; `phone` y `photo_path`, a `employees`; `expires_at`, a las asignaciones; y los roles propios por empresa quedaron resueltos al cerrar D-7.
 
 Los datos personales de las personas viven en `employees`, no aquí.
 
@@ -1263,7 +1282,7 @@ Es el centro del modelo: la empresa financia vehículos, y todo lo demás —com
 | `current_location_id` | BIGINT FK → `locations` | Sí | Dónde está físicamente la unidad | Vacío mientras no ha ingresado. Apunta siempre a una ubicación, aunque sea la sede propia, para que "¿dónde está?" se responda igual en todos los casos |
 | `current_status_id` | BIGINT FK → `vehicle_statuses` | No | En qué estado del ciclo de vida está | Ver §8.2 |
 | `legacy_number` | INTEGER | Sí | El número correlativo que la unidad tenía en el Excel | Solo para las unidades migradas, como referencia a reportes antiguos. No se generan números nuevos: ver abajo |
-| `transferred_at` | DATE | Sí | Fecha en que dejó de ser de la empresa | Es cuando el activo sale de los libros. Vacío significa que sigue siendo de la empresa |
+| `transfer_date` | DATE | Sí | Fecha en que dejó de ser de la empresa | Es cuando el activo sale de los libros. Vacío significa que sigue siendo de la empresa |
 | `transfer_reason` | VARCHAR(30) | Sí | Por qué se traspasó: fin de contrato, venta directa, otro | Un traspaso por fin de contrato y una venta directa tienen tratamientos contables distintos |
 | `annulled_at` | TIMESTAMPTZ | Sí | Cuándo se anuló la unidad | Se marca cuando una nota de crédito deja su valor en cero: la compra se deshizo. La fila no se borra porque su historial debe seguir siendo explicable |
 | `created_at` / `created_by` | TIMESTAMPTZ / FK `users` | No / Sí | Cuándo y quién registró la unidad | — |
@@ -1712,7 +1731,7 @@ Solo de crédito: el proveedor no emite notas de débito.
 | `exchange_rate` | NUMERIC(12,6) | No | Tipo de cambio aplicado | — |
 | `total_amount` | NUMERIC(14,2) | No | Monto total del documento | Debe coincidir con la suma de lo que reparte entre unidades |
 | `reason` | VARCHAR(30) | No | Por qué se emitió: descuento de campaña, anulación de unidad, ajuste de precio | Un descuento y una anulación tienen efectos distintos sobre la unidad |
-| `campaign_period` | DATE | Sí | Mes de la campaña que la origina | Es lo que permite responder qué notas corresponden a las entregas de septiembre, que es como el proveedor las liquida |
+| `campaign_month` | DATE | Sí | Mes de la campaña que la origina, guardado con día 1 | Es lo que permite responder qué notas corresponden a las entregas de septiembre, que es como el proveedor las liquida |
 | `file_path` | TEXT | Sí | Archivo del documento | — |
 | `created_at` / `created_by` | TIMESTAMPTZ / FK `users` | No / Sí | Quién la registró y cuándo | — |
 
@@ -1936,11 +1955,11 @@ Son atributos de la unidad, con un solo valor cada uno, así que van en la misma
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
-| `arrived_at` | DATE | Sí | Cuándo ingresó físicamente a la empresa | Es el "en planta" del Excel. Se conserva como hito aunque la unidad salga después: sin ingreso no se puede instalar el GPS |
-| `registration_started_at` | DATE | Sí | Cuándo empezó la inmatriculación | — |
+| `arrival_date` | DATE | Sí | Cuándo ingresó físicamente a la empresa | Es el "en planta" del Excel. Se conserva como hito aunque la unidad salga después: sin ingreso no se puede instalar el GPS |
+| `registration_start_date` | DATE | Sí | Cuándo empezó la inmatriculación | — |
 | `title_number` | VARCHAR(50) | Sí | Número de título que entrega el concesionario | Sirve para seguir el trámite. No es único: puede repetirse entre unidades |
 | `title_date` | DATE | Sí | Fecha del título | Solo existe si hay título. Es la fecha de primera inscripción que se reporta |
-| `plates_received_at` | DATE | Sí | Cuándo llegaron las placas físicas | Distinto de tener el número de placa asignado |
+| `plates_received_date` | DATE | Sí | Cuándo llegaron las placas físicas | Distinto de tener el número de placa asignado |
 | `current_mileage` | INTEGER | Sí | Último kilometraje conocido | Es el valor de la última lectura registrada. Se guarda además en la unidad porque toda pantalla de stock lo muestra y deducirlo exigiría buscar la última lectura de cada una |
 
 **Reglas de negocio**
@@ -1992,8 +2011,8 @@ Cada archivo que se sube para una unidad.
 | `file_name` | VARCHAR(255) | No | Nombre original del archivo | Es el que ve el usuario al descargarlo |
 | `mime_type` | VARCHAR(100) | No | Tipo de archivo: PDF, imagen | Determina si se puede mostrar en pantalla o solo descargar |
 | `file_size` | BIGINT | Sí | Tamaño en bytes | — |
-| `issued_at` | DATE | Sí | Fecha de emisión del documento | — |
-| `expires_at` | DATE | Sí | Fecha de vencimiento | Obligatoria si el tipo vence. Es lo que dispara el aviso de renovación |
+| `issue_date` | DATE | Sí | Fecha de emisión del documento | — |
+| `expiry_date` | DATE | Sí | Fecha de vencimiento | Obligatoria si el tipo vence. Es lo que dispara el aviso de renovación |
 | `is_current` | BOOLEAN | No | Si es la versión vigente | Un SOAT renovado no borra al anterior: el nuevo queda vigente y el viejo se conserva |
 | `uploaded_by` | BIGINT FK → `users` | No | Quién lo cargó | — |
 | `uploaded_at` | TIMESTAMPTZ | No | Cuándo | — |
@@ -2098,7 +2117,7 @@ Se completa desde el archivo que exporta la plataforma estatal. El archivo **sol
 |---|---|---|---|---|
 | `vehicle_id` | BIGINT FK → `vehicles` | No | La unidad | — |
 | `status` | VARCHAR(30) | No | Estado que informa el archivo | — |
-| `declared_at` | DATE | Sí | Fecha de inscripción de la declaración | — |
+| `declaration_date` | DATE | Sí | Fecha de inscripción de la declaración | — |
 | `import_batch_id` | BIGINT FK → `import_batches` | No | De qué carga salió | Permite saber con qué archivo llegó cada dato y rehacer una carga equivocada |
 
 **Relaciones.** Apunta a `vehicles` e `import_batches`.
@@ -2224,7 +2243,7 @@ Catálogo administrable. Hoy hay uno; se esperan más.
 | unidad | fondo | desde | hasta |
 |---|---|---|---|
 | ABC123 | PF Millennium | 01/03/2025 | — |
-| DEF456 | PF Millennium | 01/03/2025 | 30/06/2026 |
+| DEF456 | PF Millennium | 01/03/2025 | 01/07/2026 |
 | DEF456 | BID | 01/07/2026 | — |
 
 **Reglas de negocio**
@@ -2271,8 +2290,10 @@ Esta tabla cubre eso. Son dos auditorías distintas y ninguna reemplaza a la otr
 | entidad | registro | campo | valor anterior | valor nuevo | motivo | quién | cuándo |
 |---|---|---|---|---|---|---|---|
 | `vehicles` | 1 | `plate` | ABC124 | ABC123 | Error de digitación | Alejandro | 14/03/2026 09:12 |
-| `vehicle_fund_assignments` | 87 | `period` | 01/03/2025 → | 01/04/2025 → | Fecha real de cesión | Tere | 20/03/2026 16:40 |
+| `vehicle_fund_assignments` | 87 | `period` | `[2025-03-01,)` | `[2025-04-01,)` | Fecha real de cesión | Tere | 20/03/2026 16:40 |
 | `user_access_suspensions` | 12 | `reason` | licencia | baja | Corrección | Tere | 02/04/2026 11:05 |
+
+Los valores de fecha se guardan en ISO 8601 (§2.6): un período abierto que empieza el 1 de marzo de 2025 es `[2025-03-01,)`. La columna *cuándo* está en formato de pantalla solo para leer el ejemplo.
 
 La primera fila es el caso que más importa: la placa es la llave con que se cruzan los archivos del impuesto vehicular y de garantía mobiliaria, y corregirla sin dejar rastro haría imposible explicar por qué un cruce dejó de funcionar.
 
@@ -2330,6 +2351,7 @@ No quedan decisiones de diseño abiertas. Lo que falta para construir son datos,
 | D-37 | Las líneas de una orden de compra admiten conceptos que no son vehículos, igual que las de factura: las órdenes de taller no compran modelos (§9.2) |
 | D-38 | Toda cuenta pertenece a un colaborador y nace vinculada a él: un administrador da acceso a un colaborador ya registrado, o el registro público crea el colaborador y la cuenta juntos (D-32). Para tener un rol en una empresa, la cuenta debe estar vinculada a un colaborador activo de esa empresa; al registrar su salida se retiran esos roles, y si no le queda ningún colaborador activo la cuenta se bloquea. Excepciones: `SYSTEM`, que no es una persona, y el primer superadministrador, que hasta vincularse a su perfil configura el sistema pero no puede dar acceso (§5.2, §5.3) |
 | D-39 | Vocabulario: **rol** es el conjunto de permisos de una cuenta; **puesto**, el trabajo del colaborador, informativo; **perfil**, sus datos personales. El documento no usa "cargo" (§5.1) |
+| D-40 | Fechas: los momentos son `TIMESTAMPTZ` en UTC (`_at`), las fechas de calendario `DATE` (`_date`) y los períodos rangos con fin excluido. Todo intercambio usa ISO 8601; "hoy" se calcula en la zona de la sede, o del país de la empresa, o `America/Lima`; `dd/mm/aaaa` solo en pantalla (§2.6) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
