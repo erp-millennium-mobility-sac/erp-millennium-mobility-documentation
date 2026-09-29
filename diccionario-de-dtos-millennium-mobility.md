@@ -115,7 +115,7 @@ Decisión D-40. Las reglas valen para la base, la API, los archivos exportados y
 
 | Regla | Fundamento |
 |---|---|
-| Un momento exacto —cuándo se registró, se aprobó o se bloqueó algo— es `TIMESTAMPTZ` y termina en `_at` | PostgreSQL lo guarda en UTC y lo convierte a cualquier zona al leerlo. Dos registros hechos en Lima y en Bogotá se ordenan bien sin cálculos |
+| Un momento exacto —cuándo se registró, se aprobó o se bloqueó algo— es `TIMESTAMPTZ` y termina en `_at` | PostgreSQL lo guarda en UTC y lo convierte a cualquier zona al leerlo. Dos registros hechos en Lima y en Bogotá se ordenan bien sin cálculos, y la zona del servidor no importa. Nunca `TIMESTAMP` sin zona: guardaría la hora sin saber de qué país es |
 | Una fecha de calendario —la emisión de una factura, el ingreso de un colaborador— es `DATE` y termina en `_date` | No tiene hora ni zona: el 15 de marzo es el 15 de marzo en cualquier país. Guardada con hora, cambiaría de día al convertirla de zona |
 | Un período es un rango (`daterange` o `tstzrange`) en la columna `period`, con el inicio incluido y el fin excluido: `[inicio, fin)`. Fin vacío = sigue vigente | Un período termina exactamente donde empieza el siguiente, sin huecos ni cruces, y `WITHOUT OVERLAPS` lo valida. El GPS que se cambia el 04/07/2026 cierra el anterior en esa fecha y abre el nuevo en la misma |
 | Un mes es un `DATE` con día 1 y termina en `_month` | Septiembre de 2026 se guarda como `2026-09-01`, y así se compara y se ordena como cualquier fecha |
@@ -123,6 +123,7 @@ Decisión D-40. Las reglas valen para la base, la API, los archivos exportados y
 | En la API, un período viaja como dos campos, desde y hasta; hasta vacío = abierto | Cualquier cliente lo entiende sin conocer la notación de rangos de PostgreSQL |
 | Las zonas horarias se guardan con su nombre IANA: `America/Lima`, `America/Bogota` | Un nombre, a diferencia de un desfase fijo como `-05:00`, sigue los cambios de horario que decida cada país |
 | "Hoy" y las fechas de operación se calculan en la zona de la sede donde ocurre el hecho. Sin sede, en la del país de la empresa del registro; si el registro no pertenece a ninguna empresa —una cuenta, un bloqueo—, en `America/Lima` | Una factura registrada a las 11 de la noche en Lima es de ese día en Lima, aunque en UTC ya sea el siguiente. De esto dependen la antigüedad de 20 días de una factura, los vencimientos y los cortes del día |
+| Una hora local futura o que se repite —un corte diario a las 18:00, un horario de atención— no es un momento: se guarda como hora local junto con la zona de la sede, y se convierte a UTC recién al usarla. Hoy ninguna tabla lo necesita | Si un país cambia su horario, una hora futura guardada en UTC quedaría corrida. Lo que ya ocurrió sí se guarda en UTC, porque ese momento no cambia |
 | El formato de pantalla es `dd/mm/aaaa` y `dd/mm/aaaa hh:mm`, solo al mostrar | Nunca se guarda ni se transmite así. Los ejemplos de este documento usan el formato de pantalla para que se lean fácil |
 
 ---
@@ -216,7 +217,7 @@ Los países donde la empresa opera o puede operar. Casi toda la información del
 | `name` | VARCHAR(100) | No | El nombre del país como lo lee una persona: Perú | Va separado del código para que nadie busque por el texto escrito, que cambia según quién lo escriba |
 | `calling_code` | VARCHAR(6) | No | El código telefónico del país: `+51` para Perú | Sirve para completar los teléfonos que alguien escribe sin el código. No sirve para lo contrario —adivinar el país por el número—, porque el `+1` lo comparten más de veinte países |
 | `default_currency_id` | BIGINT FK → `currencies` | No | La moneda que el sistema propone cuando se registra algo en ese país | Ahorra elegirla en cada registro. Es solo una sugerencia: en Perú también se compra en dólares con normalidad |
-| `default_timezone` | VARCHAR(50) | No | La hora local del país, que sirve de punto de partida al crear una sede nueva | La hora real se guarda en cada sede, porque hay países con varias: México tiene cuatro. Si se usara una sola por país, los vencimientos y los cortes del día saldrían corridos varias horas |
+| `default_timezone` | VARCHAR(50) | No | La zona horaria del país, con su nombre IANA (`America/Lima`). Es el punto de partida al crear una sede nueva | La hora real se guarda en cada sede, porque hay países con varias: México tiene cuatro. Si se usara una sola por país, los vencimientos y los cortes del día saldrían corridos varias horas |
 | `tax_name` | VARCHAR(20) | Sí | Cómo se llama el impuesto general en ese país: IGV, IVA | Se imprime en comprobantes y reportes. En Colombia nadie entiende "IGV" |
 | `tax_rate` | NUMERIC(5,4) | Sí | Tasa vigente del impuesto general | Es solo el valor que se propone al registrar una factura. La tasa que manda es la que queda guardada en cada comprobante |
 | `requires_postal_code` | BOOLEAN | No | Indica si en ese país el código postal es obligatorio en una dirección | En México es un dato clave del domicilio fiscal; en Perú casi nadie lo usa. El formulario tiene que pedirlo o no según el país |
@@ -1033,7 +1034,7 @@ Los locales de la empresa donde trabaja personal: oficinas, el patio propio, el 
 | `name` | VARCHAR(100) | No | Nombre de la sede | — |
 | `address_id` | BIGINT FK → `addresses` | Sí | Dónde queda | La dirección registrada aquí debe coincidir con la declarada ante la autoridad tributaria, porque es la que se imprime en los comprobantes |
 | `tax_establishment_code` | VARCHAR(10) | Sí | Código con que la autoridad tributaria identifica este local. En Perú es el código de establecimiento anexo de SUNAT: `0000` es el domicilio fiscal y `0001` en adelante los anexos | Va impreso en cada comprobante que emite la sede. Sin él no se puede facturar desde ese local. Se deja opcional porque no todos los países usan este concepto |
-| `timezone` | VARCHAR(50) | No | La hora local de esta sede | Aquí ocurren los hechos que se fechan: ingreso del vehículo, instalación de GPS, entrega. En países con varias zonas horarias, tomar la del país haría que los cortes del día salgan corridos |
+| `timezone` | VARCHAR(50) | No | La zona horaria de esta sede, con su nombre IANA (`America/Lima`) | Aquí ocurren los hechos que se fechan: ingreso del vehículo, instalación de GPS, entrega. En países con varias zonas horarias, tomar la del país haría que los cortes del día salgan corridos |
 | `is_active` | BOOLEAN | No | Si la sede sigue funcionando | — |
 | `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | — |
 
