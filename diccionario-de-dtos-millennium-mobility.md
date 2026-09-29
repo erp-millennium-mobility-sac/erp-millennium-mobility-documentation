@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.12 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de cargos y permisos
+**Versión:** 1.12 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
 
 > **Cómo leer los cuadros.** En cada tabla, las columnas *Descripción* y *Por qué importa* están escritas para que las entienda cualquier persona, sin conocimientos técnicos: sirven para que quien conoce el negocio pueda revisar si el dato es el correcto. Las columnas *Tipo* y *Nulo*, las restricciones y el código SQL son para el equipo de desarrollo.
 
@@ -151,7 +151,7 @@ Los contextos `fleet` y `procurement` comparten el vehículo y hablan de él dis
 
 `employees` se documenta en §5.3 junto con las cuentas, pero se crea después de `companies` porque depende de ella.
 
-**No hay dependencia circular entre `users` y `companies`:** el usuario no pertenece a una empresa, así que se crea antes. Lo que depende de ambas es `user_roles`, que va al final. Lo mismo pasa con `roles.company_id`: los cargos del sistema lo tienen vacío, así que `roles` se crea con el bloque 2 y esa columna se agrega con el bloque 3, cuando ya existe `companies`. El único caso de arranque —el primer usuario, que nadie creó— se resuelve con la semilla de §5.9.
+**No hay dependencia circular entre `users` y `companies`:** el usuario no pertenece a una empresa, así que se crea antes. Lo que depende de ambas es `user_roles`, que va al final. Lo mismo pasa con `roles.company_id`: los roles del sistema lo tienen vacío, así que `roles` se crea con el bloque 2 y esa columna se agrega con el bloque 3, cuando ya existe `companies`. El único caso de arranque —el primer usuario, que nadie creó— se resuelve con la semilla de §5.9.
 
 ---
 
@@ -353,15 +353,15 @@ Campos que hoy no entran porque nadie los usa todavía, con la condición que lo
 |---|---|---|
 | **Colaborador** | La persona que trabaja para la empresa, use o no el sistema | `employees` |
 | **Usuario** | La cuenta con que un colaborador inicia sesión | `users` |
-| **Rol** | Un cargo con un conjunto de permisos: *Administrador de empresa*, *Asesor de ventas*, *Contabilidad* | `roles` |
+| **Rol** | Un conjunto de permisos que se asigna a una cuenta: *Administrador de empresa*, *Asesor de ventas*, *Contabilidad* | `roles` |
 | **Permiso** | Una acción concreta que se puede autorizar: registrar una factura, anular una unidad | `permissions` |
 | **Asignación** | Qué rol tiene un usuario **y sobre qué alcance**: empresa, sede o todo el sistema | `user_roles` |
 
-**Sobre la palabra "perfil"** (decisión D-4, cerrada): se refiere a los **datos personales** de la persona —nombre, documento, teléfono, puesto, fecha de ingreso—, no al cargo. Esos datos van en `employees` (§5.3), no en `users`: la cuenta guarda solo lo necesario para entrar (D-10).
+**Sobre la palabra "perfil"** (decisión D-4, cerrada): se refiere a los **datos personales** de la persona —nombre, documento, teléfono, puesto, fecha de ingreso—, no al rol. Esos datos van en `employees` (§5.3), no en `users`: la cuenta guarda solo lo necesario para entrar (D-10).
 
-El cargo con su nivel de acceso se llama **rol** en todo este documento.
+**Vocabulario** (decisión D-39). **Rol** es el conjunto de permisos que se asigna a una cuenta, con su alcance; en la base y en el código se llama igual, `role`. **Puesto** es el trabajo del colaborador —asesor de ventas, mecánico, contador—: es informativo y no da permisos. **Perfil** son los datos personales del colaborador (D-4). Este documento no usa la palabra "cargo", porque se confundía con los dos primeros.
 
-**Los clientes no van en esta tabla.** Cuando exista la aplicación para clientes, quienes entren por ahí tendrán su propia tabla de identidades, separada de la del personal interno. Tres razones: un error asignando un cargo podría darle acceso interno a un cliente; la tabla pasaría de decenas de filas a miles, con reglas de contraseña y recuperación distintas; y todo el modelo de cargos y alcances no le aplica a alguien que solo ve lo suyo.
+**Los clientes no van en esta tabla.** Cuando exista la aplicación para clientes, quienes entren por ahí tendrán su propia tabla de identidades, separada de la del personal interno. Tres razones: un error asignando un rol podría darle acceso interno a un cliente; la tabla pasaría de decenas de filas a miles, con reglas de contraseña y recuperación distintas; y todo el modelo de roles y alcances no le aplica a alguien que solo ve lo suyo.
 
 Y sobre distinguir al que ya es cliente del que solo descargó la aplicación: **no se guarda como un campo**. Es cliente quien tiene o tuvo un contrato, de modo que se deduce. Guardarlo como estado obligaría a acordarse de cambiarlo al firmar, y el primer olvido deja a alguien con contrato marcado como prospecto. Se define en el bloque 12.
 
@@ -374,22 +374,28 @@ Y sobre distinguir al que ya es cliente del que solo descargó la aplicación: *
 | 1 | Se cargan los catálogos: monedas, países, divisiones geográficas | Migración inicial |
 | 2 | Se crean los permisos y los roles del sistema | Migración inicial |
 | 3 | Se crea el usuario `SYSTEM` y el primer superadministrador, con una contraseña provisional | Migración inicial (`SYSTEM`) y la aplicación al arrancar (superadministrador) |
-| 4 | El administrador global crea las empresas, una por país | Usuario |
+| 4 | El superadministrador crea las empresas, una por país | Usuario |
 | 5 | Crea las sedes de cada empresa | Usuario |
-| 6 | Crea al admin general de cada empresa y le asigna el rol con alcance de esa empresa | Usuario |
-| 7 | El admin de cada empresa crea a los demás usuarios y les asigna roles por cargo y sede | Usuario |
+| 6 | Se registra como colaborador de la empresa para la que trabaja y vincula su cuenta a ese perfil | Usuario |
+| 7 | Registra al administrador de cada empresa como colaborador, le da acceso y le asigna el rol `ADMIN_EMPRESA` sobre esa empresa | Usuario |
+| 8 | El administrador de cada empresa registra a sus colaboradores y da acceso a quienes usan el sistema, con los roles que corresponden a su puesto y su sede | Usuario |
 
 Los pasos 1 a 3 no los puede ejecutar nadie desde la aplicación —no hay con qué iniciar sesión todavía—. Esto no es un rodeo: es la única forma de resolver que el primer usuario no tiene creador.
 
-Los catálogos, los cargos y `SYSTEM` van en la migración. El primer superadministrador, en cambio, lo crea la aplicación al arrancar (decisión D-34), y solo mientras no exista ningún superadministrador activo. Toma el correo y la contraseña provisional de las variables de entorno `IAM_BOOTSTRAP_ADMIN_EMAIL` e `IAM_BOOTSTRAP_ADMIN_PASSWORD`, así esa contraseña no queda escrita en el repositorio. La cuenta figura creada por `SYSTEM` y debe cambiar la contraseña en su primer ingreso.
+Los catálogos, los roles y `SYSTEM` van en la migración. El primer superadministrador, en cambio, lo crea la aplicación al arrancar (decisión D-34), y solo mientras no exista ningún superadministrador activo. Toma el correo y la contraseña provisional de las variables de entorno `IAM_BOOTSTRAP_ADMIN_EMAIL` e `IAM_BOOTSTRAP_ADMIN_PASSWORD`, así esa contraseña no queda escrita en el repositorio. La cuenta figura creada por `SYSTEM` y debe cambiar la contraseña en su primer ingreso.
 
-**Registro público, apagado por defecto** (decisión D-32). Además del alta que hace un administrador, una persona puede crear su propia cuenta desde la pantalla de inicio de sesión. Se enciende o se apaga con la variable de entorno `IAM_PUBLIC_SIGN_UP_ENABLED`, y viene apagado. Una cuenta creada así:
+**Es la única persona que nace sin perfil de colaborador**, porque todavía no existe ninguna empresa donde registrarla. Mientras no se vincule a su perfil (paso 6) puede configurar el sistema —empresas, sedes, catálogos y su propio perfil—, pero no puede dar acceso a nadie ni otorgar roles. Así, desde el primer acceso que se otorga, cada acción queda atribuida a una persona con nombre, documento y puesto.
 
-- **Nace sin cargos.** Nadie puede darse acceso a sí mismo: un administrador le asigna el cargo después, con las mismas reglas de §5.5.
-- **Figura creada por `SYSTEM`**, igual que cualquier otro proceso automático, para que `created_by` siga respondiendo quién originó la cuenta.
+**Registro público, apagado por defecto** (decisión D-32). Además del acceso que da un administrador, una persona puede registrarse desde la pantalla de inicio de sesión. Se enciende o se apaga con la variable de entorno `IAM_PUBLIC_SIGN_UP_ENABLED`, y viene apagado. Como toda cuenta pertenece a un colaborador (D-38), el registro no crea solo la cuenta:
+
+- **Registra el perfil y la cuenta en la misma operación.** La persona elige su empresa —y su sede, si corresponde— y completa los mismos datos obligatorios que exige el registro de un colaborador (§5.3), además de su correo y su contraseña. Si algo falla, no queda ni el colaborador ni la cuenta.
+- **Si su documento ya está registrado en esa empresa, el registro se rechaza.** Esa persona ya tiene perfil, y el acceso se lo da un administrador desde ahí. Si el registro pudiera vincularse a un perfil existente, cualquiera que conozca un número de documento podría apropiarse del perfil de otra persona.
+- **Nace sin roles.** Declararse colaborador no da acceso a nada: un administrador revisa el perfil y le asigna los roles después, con las mismas reglas de §5.5.
+- **La cuenta figura creada por `SYSTEM`**, igual que cualquier otro proceso automático, para que `created_by` siga respondiendo quién originó la cuenta.
 - **No tiene que cambiar su contraseña**, porque la eligió la propia persona; la obligación de §5.4 es para las claves provisionales que entrega un administrador.
+- **Para elegir empresa y sede**, el formulario las lista sin sesión iniciada, solo con su nombre, y solo mientras el registro está encendido.
 
-La consecuencia que hay que respetar al programar: con el registro encendido, cualquiera puede tener una sesión iniciada. Por eso ninguna operación de negocio puede conformarse con que el usuario haya iniciado sesión: tiene que exigir un cargo o un permiso.
+La consecuencia que hay que respetar al programar: con el registro encendido, cualquiera puede tener una sesión iniciada, y también puede haber sesiones sin ningún rol por otras razones, como la de alguien a quien se le retiraron todos. Por eso ninguna operación de negocio puede conformarse con que el usuario haya iniciado sesión: tiene que exigir un rol o un permiso.
 
 ### 5.3 `employees` — Colaboradores
 
@@ -404,7 +410,7 @@ Las personas que trabajan para la empresa, usen o no el sistema. Un mecánico de
 | `last_name_maternal` | VARCHAR(80) | Sí | Apellido materno | Opcional: un colaborador extranjero puede no tenerlo |
 | `document_type_id` | BIGINT FK → `tax_id_types` | No | Tipo de documento de identidad | Usa el mismo catálogo de documentos, filtrado a los que aplican a personas |
 | `document_number` | VARCHAR(20) | No | Número del documento | Es como se identifica a la persona en actas y contratos |
-| `position` | VARCHAR(80) | Sí | Puesto: asesor de ventas, mecánico, contador | Es informativo y distinto del cargo que da permisos: dos personas con el mismo puesto pueden tener accesos distintos |
+| `position` | VARCHAR(80) | Sí | Puesto: asesor de ventas, mecánico, contador | Es informativo y distinto del rol que da permisos: dos personas con el mismo puesto pueden tener accesos distintos |
 | `phone` | VARCHAR(30) | Sí | Teléfono | — |
 | `user_id` | BIGINT FK → `users` | Sí | La cuenta con que esta persona entra al sistema | Vacío para quien no usa el sistema, como un mecánico. **La referencia va en este sentido a propósito**: quien trabaja para dos empresas del grupo tiene dos filas de colaborador y una sola cuenta, y ambas pueden apuntar a ella |
 | `hired_at` | DATE | No | Fecha de ingreso | — |
@@ -426,13 +432,17 @@ El tercero no tiene cuenta en el sistema y existe igual.
 **Reglas de negocio**
 
 - El documento de identidad no se repite dentro de la misma empresa.
-- Un colaborador no se borra: se registra su fecha de salida. Sus ventas, sus registros y los cargos que otorgó siguen siendo explicables.
-- El puesto es un texto informativo y **no da permisos**. Los permisos vienen del cargo asignado en §5.7.
+- Un colaborador no se borra: se registra su fecha de salida. Sus ventas, sus registros y los roles que otorgó siguen siendo explicables.
+- El puesto es un texto informativo y **no da permisos**. Los permisos vienen del rol asignado en §5.7.
 - La misma persona trabajando para dos empresas del grupo son dos colaboradores, uno por empresa, con una sola cuenta de acceso.
+- Una cuenta se vincula a lo sumo a un colaborador por empresa.
+- **Toda cuenta pertenece a un colaborador** (decisión D-38). Las cuentas no se crean solas. Hay dos caminos, y en ambos la cuenta queda vinculada a su colaborador en la misma operación: un administrador **da acceso** a un colaborador ya registrado, o la persona usa el **registro público**, si está encendido, que crea el colaborador y la cuenta juntos (§5.2). Un colaborador puede existir sin cuenta y recibir acceso cuando lo necesite. Las únicas cuentas sin colaborador son `SYSTEM`, que no es una persona, y el primer superadministrador hasta que se vincula (§5.2).
+- **Para tener un rol en una empresa o una sede**, la cuenta debe estar vinculada a un colaborador activo —sin fecha de salida— de esa empresa. Un rol de alcance sistema exige un colaborador activo en alguna empresa.
+- **Cuando un colaborador sale**, se registra su fecha de salida y en la misma operación se retiran los roles de su cuenta en esa empresa, con motivo "baja del colaborador" (§5.7). Si a la cuenta no le queda ningún colaborador activo, se bloquea con motivo `baja` (§5.4), lo que cierra sus sesiones. Quien trabaja para dos empresas y deja una conserva su cuenta y sus roles en la otra. El sistema impide registrar la salida si con ella no quedaría ningún superadministrador activo (§5.9).
 
 ### 5.4 `users` — Cuentas de acceso
 
-Solo lo necesario para entrar. Quién es la persona vive en `employees`.
+Solo lo necesario para entrar. Quién es la persona vive en `employees`: toda cuenta pertenece a un colaborador, salvo `SYSTEM` y el primer superadministrador hasta que se vincula (§5.3).
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
@@ -458,7 +468,7 @@ Solo lo necesario para entrar. Quién es la persona vive en `employees`.
 
 La primera no corresponde a ninguna persona: existe para figurar como responsable de las cargas masivas y los procesos automáticos. Luis, el mecánico, no aparece aquí porque no usa el sistema.
 
-**Quién es la persona detrás de una cuenta** se responde desde `employees`, que es quien guarda la referencia. Así alguien empleado por dos empresas del grupo tiene dos filas de colaborador —una por empresa, como exige la regla— y ambas apuntan a la misma cuenta.
+**Quién es la persona detrás de una cuenta** se responde desde `employees`, que es quien guarda la referencia. Así alguien empleado por dos empresas del grupo tiene dos filas de colaborador —una por empresa, como exige la regla— y ambas apuntan a la misma cuenta. En las dos cuentas sin colaborador, la pantalla muestra el correo.
 
 **Reglas de negocio**
 
@@ -523,7 +533,7 @@ Lo que **no** cubre esta tabla es la corrección posterior de una de estas filas
 
 **Se pueden programar por adelantado.** Nada impide crear un bloqueo con fecha de inicio futura para unas vacaciones ya aprobadas: la persona conserva el acceso hasta que llegue esa fecha y lo pierde sola. No hace falta que nadie se acuerde el día que empieza.
 
-**Una ventaja concreta de bloquear la cuenta en vez de retirarle los cargos.** Cuando alguien sale de vacaciones se podrían quitar sus roles y devolvérselos al volver. En la práctica alguien olvida devolver alguno, o devuelve uno de más. Bloqueando la cuenta, los cargos quedan intactos: la persona vuelve y encuentra exactamente los mismos accesos que tenía.
+**Una ventaja concreta de bloquear la cuenta en vez de retirarle los roles.** Cuando alguien sale de vacaciones se podrían quitar sus roles y devolvérselos al volver. En la práctica alguien olvida devolver alguno, o devuelve uno de más. Bloqueando la cuenta, los roles quedan intactos: la persona vuelve y encuentra exactamente los mismos accesos que tenía.
 
 **Al bloquear una cuenta se cierran también sus sesiones abiertas**, o la persona seguiría dentro hasta que vencieran. Como las sesiones viven en el servidor (§5.12), cerrarlas es borrarlas y el efecto es inmediato.
 
@@ -537,19 +547,19 @@ Guardar el nombre, el documento o el teléfono dentro de la cuenta parece lo má
 
 Por eso los datos personales viven en `employees` (§5.3) y `users` guarda solo lo necesario para entrar.
 
-### 5.5 `roles` — Cargos
-Un cargo con su nivel de acceso. Define qué puede hacer alguien, no sobre qué empresa.
+### 5.5 `roles` — Roles
+Un rol con su nivel de acceso. Define qué puede hacer alguien, no sobre qué empresa.
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
-| `company_id` | BIGINT FK → `companies` | Sí | La empresa que creó el cargo. **Vacío = disponible para todas** | Los cargos que trae el sistema y los que crea el superadministrador sirven en cualquier país. Uno creado por el administrador de Perú no debe aparecerle a Colombia |
-| `code` | VARCHAR(40) | No | Nombre corto e invariable del cargo: `ADMIN_EMPRESA` | El sistema lo usa internamente, así que se puede cambiar cómo se llama el cargo en pantalla sin que nada deje de funcionar |
-| `name` | VARCHAR(80) | No | El nombre del cargo como se lee: Administrador de empresa | Es lo que ve quien asigna un acceso |
-| `description` | TEXT | Sí | Explicación de qué hace este cargo | Evita que dentro de un año nadie sepa en qué se diferencian dos cargos parecidos |
-| `scope_level` | VARCHAR(10) | No | Hasta dónde llega el cargo: `SYSTEM` (todo el sistema), `COMPANY` (una empresa) o `BRANCH` (una sede) | Es lo que impide darle a un asesor de una tienda el mismo alcance que al administrador general |
-| `is_system` | BOOLEAN | No | Marca los cargos que trae el sistema y no se pueden borrar ni modificar | Protege al administrador general: si alguien lo borrara por error, nadie podría volver a administrar el sistema |
+| `company_id` | BIGINT FK → `companies` | Sí | La empresa que creó el rol. **Vacío = disponible para todas** | Los roles que trae el sistema y los que crea el superadministrador sirven en cualquier país. Uno creado por el administrador de Perú no debe aparecerle a Colombia |
+| `code` | VARCHAR(40) | No | Nombre corto e invariable del rol: `ADMIN_EMPRESA` | El sistema lo usa internamente, así que se puede cambiar cómo se llama el rol en pantalla sin que nada deje de funcionar |
+| `name` | VARCHAR(80) | No | El nombre del rol como se lee: Administrador de empresa | Es lo que ve quien asigna un acceso |
+| `description` | TEXT | Sí | Explicación de qué hace este rol | Evita que dentro de un año nadie sepa en qué se diferencian dos roles parecidos |
+| `scope_level` | VARCHAR(10) | No | Hasta dónde llega el rol: `SYSTEM` (todo el sistema), `COMPANY` (una empresa) o `BRANCH` (una sede) | Es lo que impide darle a un asesor de una tienda el mismo alcance que al administrador general |
+| `is_system` | BOOLEAN | No | Marca los roles que trae el sistema y no se pueden borrar ni modificar | Protege al administrador general: si alguien lo borrara por error, nadie podría volver a administrar el sistema |
 
-**Relaciones.** Apunta a `companies` cuando el cargo pertenece a una empresa concreta. Le apuntan `role_permissions` (qué permisos incluye) y `user_roles` (a quién se le asignó).
+**Relaciones.** Apunta a `companies` cuando el rol pertenece a una empresa concreta. Le apuntan `role_permissions` (qué permisos incluye) y `user_roles` (a quién se le asignó).
 
 **Ejemplo**
 
@@ -562,9 +572,9 @@ Un cargo con su nivel de acceso. Define qué puede hacer alguien, no sobre qué 
 
 El último lo creó el administrador de Perú: no le aparece a Colombia.
 
-#### Crear cargos nuevos
+#### Crear roles nuevos
 
-Los seis cargos que trae el sistema (cuadro al final de esta sección) son el punto de partida, no la lista definitiva: los puestos cambian y hay que poder agregar cargos sin tocar el programa. Crear uno es insertar una fila en `roles` y marcar sus permisos, todo desde la pantalla de administración.
+Los seis roles que trae el sistema (cuadro al final de esta sección) son el punto de partida, no la lista definitiva: los puestos cambian y hay que poder agregar roles sin tocar el programa. Crear uno es insertar una fila en `roles` y marcar sus permisos, todo desde la pantalla de administración.
 
 | Quién lo crea | Dónde queda disponible |
 |---|---|
@@ -573,27 +583,27 @@ Los seis cargos que trae el sistema (cuadro al final de esta sección) son el pu
 
 Cinco reglas que gobiernan esto:
 
-**1. No se puede dar lo que no se tiene.** Al crear o editar un cargo, solo se pueden marcar permisos que quien lo está haciendo ya posee. Sin esta regla, el administrador de una empresa podría crear un cargo con acceso total y asignárselo: quedaría convertido en superadministrador sin que nadie lo autorizara.
+**1. No se puede dar lo que no se tiene.** Al crear o editar un rol, solo se pueden marcar permisos que quien lo está haciendo ya posee. Sin esta regla, el administrador de una empresa podría crear un rol con acceso total y asignárselo: quedaría convertido en superadministrador sin que nadie lo autorizara.
 
-**2. La misma regla vale al asignar.** Restringir solo la creación no sirve de nada: si el administrador no puede crear un cargo con acceso total pero sí puede asignarse uno existente que ya lo tiene, el resultado es idéntico. Nadie puede otorgar un cargo cuyos permisos excedan los suyos.
+**2. La misma regla vale al asignar.** Restringir solo la creación no sirve de nada: si el administrador no puede crear un rol con acceso total pero sí puede asignarse uno existente que ya lo tiene, el resultado es idéntico. Nadie puede otorgar un rol cuyos permisos excedan los suyos.
 
-**3. Los permisos no tienen niveles, son conjuntos.** No existe "un permiso por encima de otro": la comparación es de contenido. El cargo nuevo es válido si todos sus permisos están dentro de los de quien lo crea.
+**3. Los permisos no tienen niveles, son conjuntos.** No existe "un permiso por encima de otro": la comparación es de contenido. El rol nuevo es válido si todos sus permisos están dentro de los de quien lo crea.
 
-**4. El alcance se fija al crear y no cambia.** Si un cargo nace para asignarse a nivel de sede, no puede convertirse después en cargo de empresa: las asignaciones que ya existen quedarían con datos incoherentes. Para cambiarlo se crea un cargo nuevo.
+**4. El alcance se fija al crear y no cambia.** Si un rol nace para asignarse a nivel de sede, no puede convertirse después en rol de empresa: las asignaciones que ya existen quedarían con datos incoherentes. Para cambiarlo se crea un rol nuevo.
 
-**5. Lo que alguien autorizó sobrevive a su salida.** Si a un administrador se le retiran permisos o deja la empresa, los cargos que creó y los accesos que otorgó **siguen siendo válidos**. La autorización fue legítima cuando se dio, igual que un contrato firmado por un gerente que después renunció. Lo que sí deja de poder hacer es seguir editándolos: de ahí en adelante se le aplica la regla 1 con los permisos que tenga en ese momento, o ninguno si ya salió.
+**5. Lo que alguien autorizó sobrevive a su salida.** Si a un administrador se le retiran permisos o deja la empresa, los roles que creó y los accesos que otorgó **siguen siendo válidos**. La autorización fue legítima cuando se dio, igual que un contrato firmado por un gerente que después renunció. Lo que sí deja de poder hacer es seguir editándolos: de ahí en adelante se le aplica la regla 1 con los permisos que tenga en ese momento, o ninguno si ya salió.
 
-Esto es también la razón de fondo por la que un usuario nunca se borra: si desapareciera, los cargos y accesos que autorizó quedarían sin responsable y no habría forma de explicar quién los aprobó.
+Esto es también la razón de fondo por la que un usuario nunca se borra: si desapareciera, los roles y accesos que autorizó quedarían sin responsable y no habría forma de explicar quién los aprobó.
 
 Como los accesos otorgados no caducan solos, el control que los mantiene sanos es revisarlos cada cierto tiempo. El modelo lo permite sin campos adicionales: cada asignación guarda quién la otorgó y cuándo, así que se puede listar todo lo vigente y depurar lo que ya no corresponde.
 
-Los cargos marcados como propios del sistema no se pueden editar ni borrar, aunque quien lo intente tenga todos los permisos.
+Los roles marcados como propios del sistema no se pueden editar ni borrar, aunque quien lo intente tenga todos los permisos.
 
-**Límite de lo que la base puede garantizar.** La consistencia entre la empresa del cargo y la empresa de la asignación no se puede exigir con una llave foránea, porque el campo admite vacío para los cargos generales. Se resuelve con una validación programada que rechaza asignar un cargo de una empresa dentro de otra. Las reglas 1 a 3 también viven en la aplicación: la base no sabe qué permisos tiene quien está ejecutando la operación.
+**Límite de lo que la base puede garantizar.** La consistencia entre la empresa del rol y la empresa de la asignación no se puede exigir con una llave foránea, porque el campo admite vacío para los roles generales. Se resuelve con una validación programada que rechaza asignar un rol de una empresa dentro de otra. Las reglas 1 a 3 también viven en la aplicación: la base no sabe qué permisos tiene quien está ejecutando la operación.
 
 **Reglas de negocio**
 
-Cargos que trae el sistema:
+Roles que trae el sistema:
 
 | code | name | Alcance |
 |---|---|---|
@@ -605,7 +615,7 @@ Cargos que trae el sistema:
 | `TALLER` | Taller | Una sede |
 
 ### 5.6 `permissions` y `role_permissions` — Permisos
-Cada acción concreta que se puede autorizar por separado. Un cargo es un conjunto de permisos.
+Cada acción concreta que se puede autorizar por separado. Un rol es un conjunto de permisos.
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
@@ -613,7 +623,7 @@ Cada acción concreta que se puede autorizar por separado. Un cargo es un conjun
 | `module` | VARCHAR(30) | No | A qué parte del sistema pertenece: stock, compras, seguridad | Ordena la pantalla donde se asignan. Con cien permisos sueltos, nadie encuentra el que busca |
 | `description` | VARCHAR(150) | No | Qué habilita exactamente este permiso | Es lo que lee quien asigna. Sin explicación se otorgan permisos por el nombre y se termina dando de más |
 
-**Relaciones.** `permissions` no apunta a nadie: es un catálogo fijo que se carga con el sistema. `role_permissions` es la tabla intermedia que une cargos con permisos.
+**Relaciones.** `permissions` no apunta a nadie: es un catálogo fijo que se carga con el sistema. `role_permissions` es la tabla intermedia que une roles con permisos.
 
 **Ejemplo de `permissions`**
 
@@ -631,7 +641,7 @@ Cada acción concreta que se puede autorizar por separado. Un cargo es un conjun
 
 **Ejemplo de `role_permissions`**
 
-| Cargo | Permisos que incluye |
+| Rol | Permisos que incluye |
 |---|---|
 | Operaciones | 1, 3 |
 | Contabilidad | 1, 2 |
@@ -641,20 +651,20 @@ Contabilidad puede registrar facturas atrasadas y Operaciones no: es la excepci�
 
 **Reglas de negocio**
 
-`role_permissions` solo une las dos tablas: indica qué permisos tiene cada cargo.
+`role_permissions` solo une las dos tablas: indica qué permisos tiene cada rol.
 
-**Por qué los permisos van uno por uno y no se resuelven con el cargo.** La guía funcional exige que una factura con más de veinte días de antigüedad solo pueda registrarla un administrador. Si eso se programa como "solo si el cargo es administrador", el día que contabilidad necesite hacerlo hay que modificar el programa y volver a instalarlo. Como permiso separado, es marcar una casilla. Lo mismo aplica a corregir una placa ya registrada, anular una unidad o cargar el archivo del SAT: son excepciones controladas y cada una debe poder darse por separado.
+**Por qué los permisos van uno por uno y no se resuelven con el rol.** La guía funcional exige que una factura con más de veinte días de antigüedad solo pueda registrarla un administrador. Si eso se programa como "solo si el rol es administrador", el día que contabilidad necesite hacerlo hay que modificar el programa y volver a instalarlo. Como permiso separado, es marcar una casilla. Lo mismo aplica a corregir una placa ya registrada, anular una unidad o cargar el archivo del SAT: son excepciones controladas y cada una debe poder darse por separado.
 
-### 5.7 `user_roles` — Quién tiene qué cargo y sobre qué
-Aquí se responde la pregunta real: *esta persona, con este cargo, sobre qué empresa o sede*.
+### 5.7 `user_roles` — Quién tiene qué rol y sobre qué
+Aquí se responde la pregunta real: *esta persona, con este rol, sobre qué empresa o sede*.
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
-| `user_id` | BIGINT FK → `users` | No | A qué persona se le da el cargo | — |
-| `role_id` | BIGINT FK → `roles` | No | Qué cargo se le da | Una persona puede tener varias filas aquí: uno o muchos cargos a la vez |
-| `scope_level` | VARCHAR(10) | No | Copia del alcance del cargo: `SYSTEM`, `COMPANY` o `BRANCH` | Guardarlo aquí permite que el sistema verifique solo que los datos sean coherentes, sin depender de que el programa lo recuerde |
-| `company_id` | BIGINT FK → `companies` | Sí | Sobre qué empresa aplica. Vacío si el cargo alcanza todo el sistema | Es lo que hace que "Administrador" signifique administrador de una empresa y no de todas |
-| `branch_id` | BIGINT FK → `branches` | Sí | Sobre qué sede aplica. Vacío salvo que el cargo sea de sede | Permite que un asesor vea solo el local donde trabaja |
+| `user_id` | BIGINT FK → `users` | No | A qué persona se le da el rol | — |
+| `role_id` | BIGINT FK → `roles` | No | Qué rol se le da | Una persona puede tener varias filas aquí: uno o muchos roles a la vez |
+| `scope_level` | VARCHAR(10) | No | Copia del alcance del rol: `SYSTEM`, `COMPANY` o `BRANCH` | Guardarlo aquí permite que el sistema verifique solo que los datos sean coherentes, sin depender de que el programa lo recuerde |
+| `company_id` | BIGINT FK → `companies` | Sí | Sobre qué empresa aplica. Vacío si el rol alcanza todo el sistema | Es lo que hace que "Administrador" signifique administrador de una empresa y no de todas |
+| `branch_id` | BIGINT FK → `branches` | Sí | Sobre qué sede aplica. Vacío salvo que el rol sea de sede | Permite que un asesor vea solo el local donde trabaja |
 | `commercial_brand_id` | BIGINT FK → `commercial_brands` | Sí | Sobre qué marca aplica. **Vacío significa todas las marcas de esa empresa** | Permite que un asesor vea solo Lima Bikes y no Lizzo. Para darle dos marcas de tres, se crean dos filas |
 | `granted_at` | TIMESTAMPTZ | No | Cuándo se le dio el acceso | — |
 | `granted_by` | BIGINT FK → `users` | Sí | Quién se lo dio | Primera pregunta de toda revisión de accesos: quién autorizó esto |
@@ -669,16 +679,16 @@ Aquí se responde la pregunta real: *esta persona, con este cargo, sobre qué em
 
 El rol define **qué puede hacer** una persona; la asignación define **sobre qué**. Por eso el acceso a dos empresas no se configura en el rol: se otorga con dos filas en esta tabla.
 
-| Persona | Cargo | Sobre |
+| Persona | Rol | Sobre |
 |---|---|---|
 | Tere | Contabilidad | Lizzo |
 | Tere | Contabilidad | Lima Bikes |
 
 Tere hace lo mismo en ambas, pero es un acceso por empresa. Si mañana deja de llevar la contabilidad de una, se retira esa fila y la otra queda intacta.
 
-Nada obliga a que el cargo sea el mismo en las dos:
+Nada obliga a que el rol sea el mismo en las dos:
 
-| Persona | Cargo | Sobre |
+| Persona | Rol | Sobre |
 |---|---|---|
 | Alejandro | Operaciones | Lima Bikes |
 | Alejandro | Asesor de ventas | Lizzo — sede San Isidro |
@@ -689,7 +699,7 @@ Hay entonces tres formas de dar acceso, y conviene no confundirlas:
 |---|---|---|
 | Una empresa | Una fila | No la ve |
 | Algunas empresas | Una fila por cada una | No la ve hasta que se le agregue una fila |
-| Todas las empresas | Un cargo de alcance global, una sola fila | La ve automáticamente |
+| Todas las empresas | Un rol de alcance global, una sola fila | La ve automáticamente |
 
 Esa última columna es la diferencia real entre "todas las empresas de hoy" y "alcance global": el alcance global incluye las empresas que todavía no existen. Para un superadministrador eso es lo correcto; para un contador externo, casi nunca.
 
@@ -697,7 +707,7 @@ Esa última columna es la diferencia real entre "todas las empresas de hoy" y "a
 
 Lizzo y Lima Bikes son marcas de la misma empresa, no empresas distintas (§6.3). Aun así, el acceso se puede limitar a una de ellas: la asignación lleva una marca opcional.
 
-| Persona | Cargo | Empresa | Marca |
+| Persona | Rol | Empresa | Marca |
 |---|---|---|---|
 | Asesor de motos | Asesor de ventas | Millennium Perú | Lima Bikes |
 | Jefe comercial | Operaciones | Millennium Perú | *(vacío = todas)* |
@@ -716,18 +726,20 @@ Lo que el sistema impide por sí solo, sin depender del programa:
 
 | Regla | Qué evita |
 |---|---|
-| El alcance guardado debe coincidir con el del cargo | Que alguien invente un alcance distinto al que el cargo permite |
-| Cargo de todo el sistema: sin empresa ni sede. De empresa: con empresa y sin sede. De sede: con ambas | Un superadministrador limitado a una tienda, o un asesor sin tienda asignada |
+| El alcance guardado debe coincidir con el del rol | Que alguien invente un alcance distinto al que el rol permite |
+| Rol de todo el sistema: sin empresa ni sede. De empresa: con empresa y sin sede. De sede: con ambas | Un superadministrador limitado a una tienda, o un asesor sin tienda asignada |
 | La sede debe pertenecer a la empresa asignada | Dar acceso a la sede de otra empresa |
 | La marca debe pertenecer a la empresa asignada | Dar acceso a una marca que no es de esa empresa |
-| Un cargo de alcance global no puede limitarse a una marca | Un superadministrador que en realidad solo ve una parte del sistema |
-| El mismo cargo no se puede dar dos veces sobre lo mismo, mientras siga vigente | Asignaciones duplicadas que después nadie sabe cuál retirar |
+| Un rol de alcance global no puede limitarse a una marca | Un superadministrador que en realidad solo ve una parte del sistema |
+| El mismo rol no se puede dar dos veces sobre lo mismo, mientras siga vigente | Asignaciones duplicadas que después nadie sabe cuál retirar |
+
+Lo que valida la aplicación, porque la base no puede verlo en una sola fila: para otorgar un rol de alcance empresa o sede, la cuenta debe estar vinculada a un colaborador activo de esa empresa; para uno de alcance sistema, a un colaborador activo de alguna empresa (§5.3). La única excepción es el rol del primer superadministrador, que se otorga al arrancar (§5.2).
 
 ### 5.8 Cómo se resuelven los permisos
 
-1. **Los permisos se suman.** Con varios cargos, la persona puede hacer todo lo que permite cualquiera de ellos. No existen reglas que quiten permisos. Un sistema con permitir y quitar obliga a definir cuál manda, y a partir de ahí nadie puede saber qué puede hacer alguien sin revisar el programa.
-2. **El alcance baja, nunca sube.** Un cargo sobre una empresa alcanza todas sus sedes. Uno sobre todo el sistema alcanza todas las empresas. Nunca al revés.
-3. **Consecuencia práctica:** como los permisos se suman, dar un cargo amplio "por un rato" no se compensa dando además uno restringido. Los cargos deben ser estrechos y combinables.
+1. **Los permisos se suman.** Con varios roles, la persona puede hacer todo lo que permite cualquiera de ellos. No existen reglas que quiten permisos. Un sistema con permitir y quitar obliga a definir cuál manda, y a partir de ahí nadie puede saber qué puede hacer alguien sin revisar el programa.
+2. **El alcance baja, nunca sube.** Un rol sobre una empresa alcanza todas sus sedes. Uno sobre todo el sistema alcanza todas las empresas. Nunca al revés.
+3. **Consecuencia práctica:** como los permisos se suman, dar un rol amplio "por un rato" no se compensa dando además uno restringido. Los roles deben ser estrechos y combinables.
 4. **Los accesos retirados dejan de valer**, pero se conservan para poder reconstruir quién podía hacer qué en una fecha pasada.
 5. **Un acceso que caduca se cierra como si lo hubieran retirado**: el sistema le pone la fecha de retiro con el motivo de caducidad. Tiene que ser así y no quedar abierto con la fecha vencida, porque de lo contrario esa persona no podría recibir de nuevo el mismo acceso —el sistema lo vería como duplicado del que sigue abierto— y el auditor externo que vuelve el año siguiente quedaría fuera.
 
@@ -735,17 +747,19 @@ Lo que el sistema impide por sí solo, sin depender del programa:
 
 El usuario `SYSTEM` no puede iniciar sesión y figura como responsable de toda carga masiva y de todo proceso automático, incluida la actualización por archivo del SAT. Sin él, esos registros quedarían sin autor.
 
-**Qué pasa automáticamente al registrar una baja.** Cuando se crea un bloqueo con motivo `baja`, el sistema revoca en la misma operación todas las asignaciones activas de esa persona. Son dos acciones distintas y las dos hacen falta: bloquear la cuenta corta el acceso en el momento, y retirar los cargos evita que, si esa cuenta se reactiva algún día, la persona recupere de golpe todo lo que tenía. Automatizarlo es lo que impide que el segundo paso dependa de que alguien lo recuerde.
+**Qué pasa automáticamente al registrar una baja.** Cuando se crea un bloqueo con motivo `baja`, el sistema revoca en la misma operación todas las asignaciones activas de esa persona. Son dos acciones distintas y las dos hacen falta: bloquear la cuenta corta el acceso en el momento, y retirar los roles evita que, si esa cuenta se reactiva algún día, la persona recupere de golpe todo lo que tenía. Automatizarlo es lo que impide que el segundo paso dependa de que alguien lo recuerde.
 
 Nada se pierde al revocar: las asignaciones quedan con su fecha de retiro y se puede seguir explicando qué accesos tenía esa persona en cualquier fecha pasada.
 
-Las vacaciones y las licencias funcionan al revés a propósito: ahí los cargos **no** se tocan. Si se retiraran, al volver habría que devolvérselos y alguien olvidaría uno o daría uno de más. La persona regresa con exactamente los mismos accesos que tenía.
+Las vacaciones y las licencias funcionan al revés a propósito: ahí los roles **no** se tocan. Si se retiraran, al volver habría que devolvérselos y alguien olvidaría uno o daría uno de más. La persona regresa con exactamente los mismos accesos que tenía.
 
-**Protección necesaria:** el sistema impide retirar el último superadministrador activo. Sin ninguno, no hay forma de volver a entrar sin tocar la base a mano.
+**Protección necesaria:** el sistema impide retirar el último superadministrador activo, ya sea quitándole el rol, bloqueando su cuenta o registrando la salida de su colaborador. Sin ninguno, no hay forma de volver a entrar sin tocar la base a mano.
+
+**El primer superadministrador no puede dar acceso a nadie ni otorgar roles** hasta vincularse a su perfil de colaborador (§5.2).
 
 ### 5.10 Candidatos del bloque 2
 
-Ninguno: todos los campos que estaban en espera se incorporaron. `last_login_at`, `password_updated_at` y `mfa_secret` entraron a `users`; `phone`, a `employees`; `expires_at`, a las asignaciones; y los cargos propios por empresa quedaron resueltos al cerrar D-7.
+Ninguno: todos los campos que estaban en espera se incorporaron. `last_login_at`, `password_updated_at` y `mfa_secret` entraron a `users`; `phone`, a `employees`; `expires_at`, a las asignaciones; y los roles propios por empresa quedaron resueltos al cerrar D-7.
 
 Los datos personales de las personas viven en `employees`, no aquí.
 
@@ -844,7 +858,7 @@ Cómo se mantiene iniciada la sesión de alguien (decisión D-33). No es un dato
 | Cambio de contraseña | Se cierran las demás sesiones de la persona; sigue abierta la que hizo el cambio | Quien conocía la contraseña anterior pierde el acceso en ese momento |
 | Bloqueo de la cuenta | Se cierran todas sus sesiones | Ver §5.4 |
 | Cerrar sesión | Se borra la sesión en el servidor, no solo en la pantalla | La cookie que quedara en el navegador ya no sirve para nada |
-| Cargos y contraseña provisional | Se leen de la base en cada operación, no se guardan en la sesión | Un cargo otorgado o retirado vale desde la operación siguiente, sin esperar a que la persona vuelva a entrar |
+| Roles y contraseña provisional | Se leen de la base en cada operación, no se guardan en la sesión | Un rol otorgado o retirado vale desde la operación siguiente, sin esperar a que la persona vuelva a entrar |
 
 **Protección de la cookie.** Viaja marcada como inaccesible para el código de la página (`HttpOnly`), solo hacia el mismo sitio (`SameSite=Strict`) y, en producción, solo por HTTPS (`Secure`). Como el navegador la envía por sí solo, toda operación que modifica datos exige además un token contra solicitudes falsificadas (CSRF) que únicamente la propia aplicación puede leer.
 
@@ -906,7 +920,7 @@ La razón social constituida en un país. Es quien compra, factura, tributa y fi
 | `created_at` / `created_by` | TIMESTAMPTZ / FK `users` | No / Sí | Cuándo y quién la registró | — |
 | `updated_at` / `updated_by` | TIMESTAMPTZ / FK `users` | No / Sí | Cuándo y quién la modificó por última vez | — |
 
-**Relaciones.** Apunta a `countries`, a `tax_id_types`, a `addresses` (domicilio fiscal) y a `currencies` (moneda de sus libros). Le apuntan `commercial_brands`, `branches`, `locations`, `roles` (los cargos propios de esa empresa), `user_roles` (los accesos otorgados sobre ella), y `purchase_order_types` y `purchase_order_templates` (sus tipos y plantillas de orden de compra). Más adelante le apuntarán los vehículos y las facturas.
+**Relaciones.** Apunta a `countries`, a `tax_id_types`, a `addresses` (domicilio fiscal) y a `currencies` (moneda de sus libros). Le apuntan `commercial_brands`, `branches`, `locations`, `roles` (los roles propios de esa empresa), `user_roles` (los accesos otorgados sobre ella), y `purchase_order_types` y `purchase_order_templates` (sus tipos y plantillas de orden de compra). Más adelante le apuntarán los vehículos y las facturas.
 
 **Ejemplo**
 
@@ -963,7 +977,7 @@ Son tablas distintas y nunca deben mezclarse. La primera dice bajo qué nombre v
 En la práctica cada marca se asocia a ciertos tipos de vehículo —Lizzo a autos, Lima Bikes a motos y trimotos—, pero esa relación se define en el bloque 4, cuando exista el catálogo de tipos.
 
 ### 6.4 `branches` — Sedes
-Los locales de la empresa donde trabaja personal: oficinas, el patio propio, el taller. Es la unidad a la que se pueden asignar cargos.
+Los locales de la empresa donde trabaja personal: oficinas, el patio propio, el taller. Es la unidad a la que se pueden asignar roles.
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
@@ -997,7 +1011,7 @@ Los locales de la empresa donde trabaja personal: oficinas, el patio propio, el 
 ### 6.5 `locations` — Ubicaciones de vehículos
 **Decisión cerrada (D-6):** los patios arrendados y las tiendas de los dealers donde se entregan las trimotos **no son sedes de la empresa**: son lugares donde puede haber vehículos. Por eso van en una tabla aparte.
 
-La diferencia importa por una razón concreta: a una sede se le asignan cargos y personas, y aparece en la pantalla de accesos. Si cada cochera alquilada se registrara como sede, esa pantalla se llenaría de lugares a los que nadie va a asignar a nadie, y la tienda de un tercero figuraría como local propio.
+La diferencia importa por una razón concreta: a una sede se le asignan roles y personas, y aparece en la pantalla de accesos. Si cada cochera alquilada se registrara como sede, esa pantalla se llenaría de lugares a los que nadie va a asignar a nadie, y la tienda de un tercero figuraría como local propio.
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
@@ -1421,7 +1435,7 @@ La primera es la lectura de entrega: contra ella se mide todo lo que el cliente 
 | Campo | Tabla | Qué lo admitiría |
 |---|---|---|
 | `transferred_to_customer_id` | `vehicles` | El bloque 12, cuando exista el cliente al que se traspasa la unidad |
-| `requires_permission_id` | `status_change_reasons` | Que algún cambio de estado deba estar reservado a ciertos cargos |
+| `requires_permission_id` | `status_change_reasons` | Que algún cambio de estado deba estar reservado a ciertos roles |
 
 
 ---
@@ -1577,7 +1591,7 @@ El formato con que se emite una orden. Los campos son siempre los mismos; lo que
 | `issuer_phone` | VARCHAR(30) | Sí | Teléfono del emisor | Se propone el de la empresa (`companies.phone`) |
 | `issuer_address_id` | BIGINT FK → `addresses` | Sí | Dirección que se imprime; el distrito o ciudad sale de su división territorial | Fila propia, copiada del domicilio fiscal de la empresa al crear la plantilla. Las direcciones no se comparten entre entidades (§4.6) |
 | `attention_name` | VARCHAR(150) | Sí | Sección "Atención": quién recibe la orden dentro de la empresa | Es texto y no una referencia a un colaborador: puede ser un área o un buzón compartido |
-| `attention_position` | VARCHAR(80) | Sí | Cargo de quien recibe | — |
+| `attention_position` | VARCHAR(80) | Sí | Puesto de quien recibe | — |
 | `attention_email` | VARCHAR(255) | Sí | Correo de quien recibe | — |
 | `attention_phone` | VARCHAR(30) | Sí | Teléfono de quien recibe | — |
 | `support_name` | VARCHAR(150) | Sí | Contacto de soporte: aparece al pie como "Si usted tiene alguna pregunta, póngase en contacto con…" | — |
@@ -1606,7 +1620,7 @@ Las tres toman el emisor de la misma empresa y difieren en lo demás. Cambiar el
 - Los campos son los mismos en todas las plantillas; lo que cambia son sus valores. Una línea de negocio o un tipo de orden nuevos no requieren tocar el programa: se crea otra plantilla.
 - Al crear una plantilla, los datos del emisor —razón social, documento, teléfono y domicilio fiscal— se copian de la empresa dueña y **se pueden editar**. Es el mismo criterio que la tasa de impuesto: `countries` la propone y la que manda es la guardada en el comprobante. Editar la empresa después no cambia las plantillas existentes.
 - La serie no se repite dentro de la empresa. Se guarda normalizada —mayúsculas, sin espacios— y se puede corregir mientras la plantilla no tenga órdenes; después queda fija, como el código de un catálogo (§2.4).
-- La línea de negocio, si se indica, tiene que ser una marca de la misma empresa: el sistema lo impide, igual que en las asignaciones de cargo (§5.7).
+- La línea de negocio, si se indica, tiene que ser una marca de la misma empresa: el sistema lo impide, igual que en las asignaciones de rol (§5.7).
 - Puede haber más de una plantilla activa para la misma línea y tipo —dos talleres con contactos distintos, por ejemplo—: quien emite la orden elige cuál usar.
 - Los correos se guardan sin espacios y en minúsculas, y el documento del emisor sin guiones ni espacios (§2.2).
 - Una plantilla no se borra: se desactiva. Las órdenes emitidas con ella la siguen referenciando.
@@ -2279,7 +2293,7 @@ La primera fila es el caso que más importa: la placa es la llave con que se cru
 | ¿Por qué esta unidad estuvo un mes parada? | Historial de estados |
 | ¿A qué fondo respaldaba en marzo? | Cesiones a fondos |
 | ¿Qué GPS tenía instalado el año pasado? | Equipamiento |
-| ¿Qué accesos tenía esta persona cuando registró esa factura? | Asignaciones de cargo y bloqueos de cuenta |
+| ¿Qué accesos tenía esta persona cuando registró esa factura? | Asignaciones de rol y bloqueos de cuenta |
 | ¿Quién cambió esta placa y por qué? | Bitácora de cambios |
 
 ### 13.3 Candidatos del bloque 11
@@ -2292,7 +2306,7 @@ La primera fila es el caso que más importa: la placa es la llave con que se cru
 
 ## 14. Decisiones
 
-No quedan decisiones de diseño abiertas. Lo que falta para construir son datos, no definiciones: la matriz de permisos por cargo, los datos maestros reales —razón social y documento tributario de la empresa, sedes con su código de establecimiento, marcas, proveedores, colaboradores— y el archivo oficial de divisiones territoriales.
+No quedan decisiones de diseño abiertas. Lo que falta para construir son datos, no definiciones: la matriz de permisos por rol, los datos maestros reales —razón social y documento tributario de la empresa, sedes con su código de establecimiento, marcas, proveedores, colaboradores— y el archivo oficial de divisiones territoriales.
 
 ### Decisiones ya cerradas
 
@@ -2307,13 +2321,15 @@ No quedan decisiones de diseño abiertas. Lo que falta para construir son datos,
 | D-29 | Las llaves llevan dos códigos: la etiqueta que asigna la empresa, única, y el serial de fábrica, que puede repetirse. El grupo es la caja donde se guarda |
 | D-30 | El archivo de garantía mobiliaria actualiza la historia de cesiones, no la reemplaza |
 | D-31 | La diferencia por inicial mide lo que Millennium no desembolsó porque el cliente pagó al concesionario. Se calcula del lado de compras y se valida contra la inicial registrada en el contrato |
-| D-32 | Existe un registro público de cuentas, habilitable por la variable de entorno `IAM_PUBLIC_SIGN_UP_ENABLED` y apagado por defecto. La cuenta nace sin cargos y la crea `SYSTEM` (§5.2) |
+| D-32 | Existe un registro público de cuentas, habilitable por la variable de entorno `IAM_PUBLIC_SIGN_UP_ENABLED` y apagado por defecto. Registra el perfil de colaborador y la cuenta en la misma operación, y se rechaza si el documento ya existe en esa empresa. La cuenta nace sin roles y la crea `SYSTEM` (§5.2) |
 | — | Los identificadores internos y sus llaves foráneas son `BIGINT`, el `Long` del código (§2.2) |
 | D-33 | Las sesiones se guardan en el servidor y el navegador solo recibe una cookie `HttpOnly`. Se cierran por 30 minutos de inactividad, a las 8 horas en cualquier caso, al cerrar sesión, al cambiar la contraseña (las demás) y al bloquear la cuenta (§5.12) |
 | D-34 | El primer superadministrador lo crea la aplicación al arrancar, desde variables de entorno y con contraseña provisional; no la migración (§5.2) |
 | D-35 | Las órdenes de compra se emiten con plantillas. Todas tienen los mismos campos; sus valores cambian según la línea de negocio y el tipo de orden (vehículos, taller, otros), que es un catálogo administrable. Los datos del emisor se proponen desde la empresa y se pueden editar; los contactos de atención y soporte son texto (§9.2) |
 | D-36 | Cada plantilla tiene su serie y cada serie su correlativo, que se reinicia cada año: `OC-LBT-2026-0001`. El número se asigna al crear la orden, con el año en la hora local del país de la empresa, y no se reutiliza (§9.2) |
 | D-37 | Las líneas de una orden de compra admiten conceptos que no son vehículos, igual que las de factura: las órdenes de taller no compran modelos (§9.2) |
+| D-38 | Toda cuenta pertenece a un colaborador y nace vinculada a él: un administrador da acceso a un colaborador ya registrado, o el registro público crea el colaborador y la cuenta juntos (D-32). Para tener un rol en una empresa, la cuenta debe estar vinculada a un colaborador activo de esa empresa; al registrar su salida se retiran esos roles, y si no le queda ningún colaborador activo la cuenta se bloquea. Excepciones: `SYSTEM`, que no es una persona, y el primer superadministrador, que hasta vincularse a su perfil configura el sistema pero no puede dar acceso (§5.2, §5.3) |
+| D-39 | Vocabulario: **rol** es el conjunto de permisos de una cuenta; **puesto**, el trabajo del colaborador, informativo; **perfil**, sus datos personales. El documento no usa "cargo" (§5.1) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
@@ -2334,7 +2350,7 @@ No quedan decisiones de diseño abiertas. Lo que falta para construir son datos,
 | D-4 | "Perfil" son los datos personales de la persona; van en `employees`, no en `users` |
 | D-5 | Una sola empresa por país. Lizzo y Lima Bikes son marcas, no empresas |
 | D-6 | Los patios arrendados y las tiendas de dealers son ubicaciones, no sedes |
-| D-7 | Los cargos se crean desde la pantalla; `company_id` los acota a una empresa |
+| D-7 | Los roles se crean desde la pantalla; `company_id` los acota a una empresa |
 | D-12 | Registrar una baja revoca automáticamente todos los accesos |
 | D-13 | Las direcciones web usan siempre UUID; los catálogos de estándar externo viajan por código dentro de los mensajes |
 | — | No existe la entidad `organizations`: el agrupador de países son las empresas |
