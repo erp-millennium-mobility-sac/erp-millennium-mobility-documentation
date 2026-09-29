@@ -149,6 +149,8 @@ Cada bloque pertenece a un contexto delimitado, que es la unidad de código: `lo
 | 11 | Bitácora general de cambios | 6 | **Cerrado** |
 | 12 | Ventas y contratos | 6, 11 | Fuera del alcance actual |
 
+La columna *Estado* se refiere al diseño. Del código existe hoy el bloque 2, en parte: lo que falta está en §5.13.
+
 **A qué contexto pertenece cada bloque**
 
 | Bloque | Contexto |
@@ -404,6 +406,8 @@ Los catálogos, los roles y `SYSTEM` van en la migración. El primer superadmini
 
 **Es la única persona que nace sin perfil de colaborador**, porque todavía no existe ninguna empresa donde registrarla. Mientras no se vincule a su perfil (paso 6) puede configurar el sistema —empresas, sedes, catálogos y su propio perfil—, pero no puede dar acceso a nadie ni otorgar roles. Así, desde el primer acceso que se otorga, cada acción queda atribuida a una persona con nombre, documento y puesto.
 
+**Casos del arranque.** Si faltan las variables, la aplicación arranca igual, sin superadministrador, y lo advierte en su registro de eventos. Si el correo indicado ya pertenece a otra cuenta, la aplicación no arranca hasta que se corrija. El rol de ese primer superadministrador figura otorgado por `SYSTEM`.
+
 **Registro público, apagado por defecto** (decisión D-32). Además del acceso que da un administrador, una persona puede registrarse desde la pantalla de inicio de sesión. Se enciende o se apaga con la variable de entorno `IAM_PUBLIC_SIGN_UP_ENABLED`, y viene apagado. Como toda cuenta pertenece a un colaborador (D-38), el registro no crea solo la cuenta:
 
 - **Registra el perfil y la cuenta en la misma operación.** La persona elige su empresa —y su sede, si corresponde— y completa los mismos datos obligatorios que exige el registro de un colaborador (§5.3), además de su correo y su contraseña. Si algo falla, no queda ni el colaborador ni la cuenta.
@@ -413,6 +417,7 @@ Los catálogos, los roles y `SYSTEM` van en la migración. El primer superadmini
 - **La cuenta y el perfil figuran creados por `SYSTEM`**, igual que cualquier otro proceso automático, para que `created_by` siga respondiendo quién los originó.
 - **No tiene que cambiar su contraseña**, porque la eligió la propia persona; la obligación de §5.4 es para las claves provisionales que entrega un administrador.
 - **Para elegir empresa y sede**, el formulario las lista sin sesión iniciada, solo con su nombre, y solo mientras el registro está encendido.
+- **La pantalla de inicio de sesión sabe si el registro está encendido** por una ruta pública que solo responde eso. Si alguien intenta registrarse con el registro apagado, la API rechaza la operación como prohibida.
 
 La consecuencia que hay que respetar al programar: con el registro encendido, cualquiera puede tener una sesión iniciada, y también puede haber sesiones sin ningún rol por otras razones, como la de alguien a quien se le retiraron todos. Por eso ninguna operación de negocio puede conformarse con que el usuario haya iniciado sesión: tiene que exigir un rol o un permiso.
 
@@ -459,7 +464,7 @@ El tercero no tiene cuenta en el sistema y existe igual.
 - Una cuenta se vincula a lo sumo a un colaborador por empresa.
 - **Toda cuenta pertenece a un colaborador** (decisión D-38). Las cuentas no se crean solas. Hay dos caminos, y en ambos la cuenta queda vinculada a su colaborador en la misma operación: un administrador **da acceso** a un colaborador ya registrado, o la persona usa el **registro público**, si está encendido, que crea el colaborador y la cuenta juntos (§5.2). Si la persona ya tiene cuenta porque trabaja para otra empresa del grupo, dar acceso vincula el nuevo colaborador a esa misma cuenta en vez de crear otra. Un colaborador puede existir sin cuenta y recibir acceso cuando lo necesite. Las únicas cuentas sin colaborador son `SYSTEM`, que no es una persona, y el primer superadministrador hasta que se vincula (§5.2).
 - **Para tener un rol en una empresa o una sede**, la cuenta debe estar vinculada a un colaborador activo —sin fecha de salida— de esa empresa. Un rol de alcance sistema exige un colaborador activo en alguna empresa.
-- **Cuando un colaborador sale**, se registra su fecha de salida y en la misma operación se retiran los roles de su cuenta en esa empresa, con motivo "baja del colaborador" (§5.7). Si a la cuenta no le queda ningún colaborador activo, se bloquea con motivo `baja` (§5.4), lo que cierra sus sesiones. Quien trabaja para dos empresas y deja una conserva su cuenta y sus roles en la otra. El sistema impide registrar la salida si con ella no quedaría ningún superadministrador activo (§5.9).
+- **Cuando un colaborador sale**, se registra su fecha de salida y en la misma operación se retiran los roles de su cuenta en esa empresa, con motivo `baja_colaborador` (§5.7). Si a la cuenta no le queda ningún colaborador activo, se bloquea con motivo `baja` (§5.4), lo que cierra sus sesiones. Quien trabaja para dos empresas y deja una conserva su cuenta y sus roles en la otra. El sistema impide registrar la salida si con ella no quedaría ningún superadministrador activo (§5.9).
 
 ### 5.4 `users` — Cuentas de acceso
 
@@ -494,6 +499,10 @@ La primera no corresponde a ninguna persona: existe para figurar como responsabl
 **Reglas de negocio**
 
 El usuario **nunca se borra**: su nombre está en las facturas, habilitaciones y cambios de estado que registró. Borrarlo dejaría todo ese historial sin autor.
+
+**Contraseñas.** Tienen entre 8 y 72 caracteres, sin reglas de composición; 72 es el máximo que procesa el cifrado que se usa (BCrypt). La nueva tiene que ser distinta de la actual. Al iniciar sesión, un correo que no existe y una contraseña equivocada reciben la misma respuesta, para no revelar qué cuentas existen.
+
+**Mientras la contraseña es provisional**, la cuenta solo puede consultar quién es y cambiar su contraseña. Sus roles no valen hasta que la cambie.
 
 #### Suspender, dar de baja y volver a activar
 
@@ -691,7 +700,7 @@ Aquí se responde la pregunta real: *esta persona, con este rol, sobre qué empr
 | `granted_by` | BIGINT FK → `users` | Sí | Quién se lo dio | Primera pregunta de toda revisión de accesos: quién autorizó esto |
 | `expires_at` | TIMESTAMPTZ | Sí | Fecha prevista de caducidad. Vacío significa que no caduca | Para accesos temporales, como el de un auditor externo que necesita entrar un mes. Sin esto, el acceso queda vivo hasta que alguien se acuerde de retirarlo |
 | `revoked_at` | TIMESTAMPTZ | Sí | Cuándo se le quitó. Vacío significa que lo tiene todavía | El acceso se retira, no se borra: hay que poder explicar qué permisos tenía una persona el día que hizo una operación |
-| `revocation_reason` | VARCHAR(20) | Sí | Por qué se retiró: retiro manual, caducidad, baja del colaborador | Distingue un acceso que alguien decidió quitar de uno que venció solo. Sin él, los tres casos se ven iguales al revisar |
+| `revocation_reason` | VARCHAR(20) | Sí | Por qué se retiró: `retiro` (alguien lo quitó), `caducidad` (venció), `baja_colaborador` (la persona salió de esa empresa) o `baja_cuenta` (la cuenta se bloqueó con motivo `baja`). Obligatorio al retirar | Distingue un acceso que alguien decidió quitar de uno que venció solo o que cayó por una salida. Sin él, los cuatro casos se ven iguales al revisar |
 
 **Relaciones.** Es la tabla que une casi todo el bloque: apunta a `users` (dos veces: quién recibe el acceso y quién lo otorgó), a `roles`, a `companies`, a `branches` y a `commercial_brands`. No le apunta nadie.
 
@@ -762,13 +771,13 @@ Lo que valida la aplicación, porque la base no puede verlo en una sola fila: pa
 2. **El alcance baja, nunca sube.** Un rol sobre una empresa alcanza todas sus sedes. Uno sobre todo el sistema alcanza todas las empresas. Nunca al revés.
 3. **Consecuencia práctica:** como los permisos se suman, dar un rol amplio "por un rato" no se compensa dando además uno restringido. Los roles deben ser estrechos y combinables.
 4. **Los accesos retirados dejan de valer**, pero se conservan para poder reconstruir quién podía hacer qué en una fecha pasada.
-5. **Un acceso que caduca se cierra como si lo hubieran retirado**: el sistema le pone la fecha de retiro con el motivo de caducidad. Tiene que ser así y no quedar abierto con la fecha vencida, porque de lo contrario esa persona no podría recibir de nuevo el mismo acceso —el sistema lo vería como duplicado del que sigue abierto— y el auditor externo que vuelve el año siguiente quedaría fuera.
+5. **Un acceso que caduca se cierra como si lo hubieran retirado**: el sistema le pone la fecha de retiro con motivo `caducidad`. Tiene que ser así y no quedar abierto con la fecha vencida, porque de lo contrario esa persona no podría recibir de nuevo el mismo acceso —el sistema lo vería como duplicado del que sigue abierto— y el auditor externo que vuelve el año siguiente quedaría fuera.
 
 ### 5.9 Semilla inicial y protección del acceso
 
 El usuario `SYSTEM` no puede iniciar sesión y figura como responsable de toda carga masiva y de todo proceso automático, incluida la actualización por archivo del SAT. Sin él, esos registros quedarían sin autor.
 
-**Qué pasa automáticamente al registrar una baja.** Cuando se crea un bloqueo con motivo `baja`, el sistema revoca en la misma operación todas las asignaciones activas de esa persona. Son dos acciones distintas y las dos hacen falta: bloquear la cuenta corta el acceso en el momento, y retirar los roles evita que, si esa cuenta se reactiva algún día, la persona recupere de golpe todo lo que tenía. Automatizarlo es lo que impide que el segundo paso dependa de que alguien lo recuerde.
+**Qué pasa automáticamente al registrar una baja.** Cuando se crea un bloqueo con motivo `baja`, el sistema revoca en la misma operación todas las asignaciones activas de esa persona, con motivo `baja_cuenta`. Son dos acciones distintas y las dos hacen falta: bloquear la cuenta corta el acceso en el momento, y retirar los roles evita que, si esa cuenta se reactiva algún día, la persona recupere de golpe todo lo que tenía. Automatizarlo es lo que impide que el segundo paso dependa de que alguien lo recuerde.
 
 Nada se pierde al revocar: las asignaciones quedan con su fecha de retiro y se puede seguir explicando qué accesos tenía esa persona en cualquier fecha pasada.
 
@@ -883,9 +892,25 @@ Cómo se mantiene iniciada la sesión de alguien (decisión D-33). No es un dato
 
 **Protección de la cookie.** Viaja marcada como inaccesible para el código de la página (`HttpOnly`), solo hacia el mismo sitio (`SameSite=Strict`) y, en producción, solo por HTTPS (`Secure`). Como el navegador la envía por sí solo, toda operación que modifica datos exige además un token contra solicitudes falsificadas (CSRF) que únicamente la propia aplicación puede leer.
 
+**Detalles de la implementación.** La cookie se llama `MM_SESSION`. Al iniciar sesión se cambia el identificador de la sesión, para que uno obtenido antes no sirva después. Cerrar sesión es `POST /api/v1/authentication/sign-out`. Las 8 horas se cuentan desde que se creó la sesión. El token CSRF llega en la cookie `XSRF-TOKEN` y vuelve en el encabezado `X-XSRF-TOKEN`, también al iniciar sesión y al registrarse.
+
 **Requisito de despliegue.** La aplicación web y la API se sirven desde el mismo origen —mismo dominio y puerto—, detrás de un proxy inverso. En desarrollo lo resuelve el proxy del servidor de Angular.
 
 **Tablas técnicas.** `spring_session` y `spring_session_attributes` las administra la librería de sesiones (§2.2). `spring_session.principal_name` guarda el correo de la persona —es lo que permite cerrar todas sus sesiones— y por eso admite 255 caracteres, igual que `users.email`. Las sesiones vencidas se borran solas cada minuto.
+
+### 5.13 Lo que el backend implementa hoy
+
+El bloque 2 se construyó antes que `organization`, así que lo que depende de empresas, sedes y colaboradores quedó en una versión provisional. Nada de esto cambia el diseño de este capítulo: es lo que falta para llegar a él.
+
+| Tema | Hoy | Cuándo se completa |
+|---|---|---|
+| `user_roles` | Se creó antes de su bloque (3b), sin `company_id`, `branch_id` ni `commercial_brand_id`. Solo se asignan roles de alcance sistema | Con el bloque 3 |
+| `roles.company_id` | No existe todavía: todos los roles son generales, y `code` es único en todo el sistema | Con el bloque 3, que define también la unicidad por empresa |
+| Otorgar un rol | Se exige tener ese mismo rol vigente, porque todavía no hay permisos que comparar (§5.5, reglas 1 a 3) | Cuando existan `permissions` y `role_permissions` |
+| Gestión de usuarios | Solo el superadministrador, porque todavía no se pueden acotar por empresa (§2.5) | Con el bloque 3 |
+| Colaboradores | No existen: las cuentas se crean solas y el registro público pide solo correo y contraseña, así que D-38 todavía no se aplica | Con el bloque 3b |
+| `user_access_suspensions`, `permissions`, `role_permissions` | No existen todavía | Los bloqueos, con el bloque 3b; los permisos, cuando se cargue la matriz de permisos por rol (§14) |
+| Retirar un rol y caducidad | No hay operación para retirar un rol ni nada que fije una caducidad, así que las protecciones de §5.5 y §5.9 y el cierre por caducidad de §5.8 todavía no tienen qué vigilar | Con la pantalla de roles y usuarios |
 
 ---
 
@@ -2354,6 +2379,7 @@ No quedan decisiones de diseño abiertas. Lo que falta para construir son datos,
 | D-38 | Toda cuenta pertenece a un colaborador y nace vinculada a él: un administrador da acceso a un colaborador ya registrado —vinculándolo a su cuenta si la persona ya tiene una por otra empresa—, o el registro público crea el colaborador y la cuenta juntos (D-32). Para tener un rol en una empresa, la cuenta debe estar vinculada a un colaborador activo de esa empresa; al registrar su salida se retiran esos roles, y si no le queda ningún colaborador activo la cuenta se bloquea. Excepciones: `SYSTEM`, que no es una persona, y el primer superadministrador, que hasta vincularse a su perfil configura el sistema pero no puede dar acceso (§5.2, §5.3) |
 | D-39 | Vocabulario: **rol** es el conjunto de permisos de una cuenta; **puesto**, el trabajo del colaborador, informativo; **perfil**, sus datos personales. El documento no usa "cargo" (§5.1) |
 | D-40 | Fechas: los momentos son `TIMESTAMPTZ` en UTC (`_at`), las fechas de calendario `DATE` (`_date`) y los períodos rangos con fin excluido. Todo intercambio usa ISO 8601; "hoy" se calcula en la zona de la sede, o del país de la empresa, o `America/Lima`; `dd/mm/aaaa` solo en pantalla (§2.6) |
+| D-41 | Un rol se retira con uno de cuatro motivos: `retiro`, `caducidad`, `baja_colaborador` o `baja_cuenta` (§5.7) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
