@@ -41,6 +41,7 @@ No documenta pantallas ni procesos. Cuando una regla de negocio determina una re
 | Llave primaria subrogada `BIGINT` con `GENERATED ALWAYS AS IDENTITY`; toda llave foránea que la referencia también es `BIGINT` | `SERIAL` no es estándar SQL y permite insertar valores que desincronizan la secuencia. `BIGINT` corresponde al `Long` con que el código maneja los identificadores |
 | Llaves naturales (ISO, TIN, VIN, placa) protegidas con `UNIQUE`, nunca como PK | Una PK no debe depender de un organismo externo |
 | Toda tabla lleva `id` interno y `public_id`. No se repiten en los cuadros | El `id` es el número con que el sistema la reconoce; el `public_id` es el que sale al exterior (§2.4) |
+| Las columnas de registro —`created_at`, `updated_at`, `created_by`, `updated_by`— van donde el cuadro de cada tabla las pide, y las llena el sistema, nunca la pantalla | Las fechas se ponen al guardar y el autor sale de la sesión. Un proceso sin sesión, como el registro público o el arranque, registra a `SYSTEM` de forma explícita (D-42) |
 | **Cada tabla con identidad propia lleva `public_id UUID DEFAULT uuidv7()`** | Es el identificador que sale al exterior. El `id` interno nunca aparece en una URL, una respuesta de API ni un archivo exportado |
 | El `code` de un catálogo es inmutable una vez publicado | El nombre visible se corrige cuando haga falta; el código no, porque hay mensajes, archivos y sistemas externos que ya lo usan |
 | Es tabla lo que administra el usuario; es lista cerrada lo que interpreta el programa | La prueba: ¿puede el cliente agregar un valor un martes y que funcione solo? Un color, sí; un nivel de alcance, no, porque habría que programar cómo filtra |
@@ -217,6 +218,7 @@ Las monedas con las que la empresa compra, factura o cobra.
 | `symbol` | VARCHAR(5) | No | El signo con que se escribe el monto: `S/`, `$` | Aparece impreso en las órdenes de compra que se envían al proveedor y en los reportes |
 | `decimal_places` | SMALLINT | No | Cuántos decimales usa esa moneda. Normalmente dos | El peso colombiano no usa céntimos. Si el sistema le pone dos decimales a todo, las compras en Colombia salen descuadradas por centavos y encontrar de dónde viene la diferencia cuesta horas |
 | `is_active` | BOOLEAN | No | Indica si la moneda se puede seguir usando en operaciones nuevas | Permite dejar de usar una moneda sin borrar las facturas antiguas emitidas en ella |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | Las monedas no llevan autor: son un catálogo general, igual que las marcas o las sedes (D-42) |
 
 **Relaciones.** Nadie le apunta desde arriba; ella es referenciada por `countries` (moneda sugerida del país) y por `companies` (moneda de sus libros). Más adelante la usarán facturas, pagos y notas de crédito, porque ningún monto se guarda sin su moneda.
 
@@ -250,6 +252,7 @@ Los países donde la empresa opera o puede operar. Casi toda la información del
 | `tax_name` | VARCHAR(20) | Sí | Cómo se llama el impuesto general en ese país: IGV, IVA | Se imprime en comprobantes y reportes. En Colombia nadie entiende "IGV" |
 | `tax_rate` | NUMERIC(5,4) | Sí | Tasa vigente del impuesto general | Es solo el valor que se propone al registrar una factura. La tasa que manda es la que queda guardada en cada comprobante |
 | `requires_postal_code` | BOOLEAN | No | Indica si en ese país el código postal es obligatorio en una dirección | En México es un dato clave del domicilio fiscal; en Perú casi nadie lo usa. El formulario tiene que pedirlo o no según el país |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | Los países no llevan autor: son un catálogo general (D-42) |
 
 **Relaciones.** Apunta a `currencies`. Le apuntan `geo_division_levels` (cómo se divide), `geo_divisions` (sus divisiones), `addresses`, `tax_id_types` (qué documentos emite) y `companies` (qué empresa está constituida ahí).
 
@@ -2410,6 +2413,7 @@ No quedan decisiones de diseño abiertas. Lo que falta para construir son datos,
 | D-39 | Vocabulario: **rol** es el conjunto de permisos de una cuenta; **puesto**, el trabajo del colaborador, informativo; **perfil**, sus datos personales. El documento no usa "cargo" (§5.1) |
 | D-40 | Fechas: los momentos son `TIMESTAMPTZ` en UTC (`_at`), las fechas de calendario `DATE` (`_date`) y los períodos rangos con fin excluido. Todo intercambio usa ISO 8601; "hoy" se calcula en la zona de la sede, o del país de la empresa, o `America/Lima`; `dd/mm/aaaa` solo en pantalla (§2.6) |
 | D-41 | Un rol se retira con uno de cuatro motivos: `retiro`, `caducidad`, `baja_colaborador` o `baja_cuenta` (§5.7) |
+| D-42 | Las columnas de registro las llena el sistema: `created_at` y `updated_at` al guardar, y `created_by` y `updated_by` con la cuenta de la sesión. Cuando no hay sesión —el registro público, el arranque— el proceso registra a `SYSTEM` de forma explícita; el sistema nunca lo supone, para que un cambio que perdió su sesión por error no quede a nombre de nadie. Solo las llevan las tablas cuyo cuadro las pide: `currencies` y `countries` registran fechas pero no autor (§2.2) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
