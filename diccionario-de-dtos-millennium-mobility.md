@@ -302,6 +302,7 @@ Cada país divide su territorio de forma distinta y con nombres distintos. Perú
 | `country_id` | BIGINT FK → `countries` | No | El país al que corresponde esta forma de dividirse | — |
 | `level` | SMALLINT | No | El escalón de la división: 1 es el más grande, 2 el que sigue, y así hasta 4 | Permite que cada país tenga la cantidad de escalones que realmente usa, en vez de obligar a todos a tener tres |
 | `name` | VARCHAR(50) | No | Cómo se llama ese escalón en ese país: Departamento, Provincia, Distrito | Un usuario en Colombia debe leer "Municipio" donde uno en Perú lee "Provincia". Con nombres fijos, el formulario pediría datos que allá no existen |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | Los escalones no llevan autor: son un catálogo general (D-42) |
 
 **Relaciones.** Apunta a `countries`. Le apunta `geo_divisions`, que no puede registrar un escalón que el país no haya declarado aquí.
 
@@ -332,6 +333,7 @@ Cada división concreta del territorio. Se carga desde las listas oficiales de c
 | `code` | VARCHAR(20) | No | El código oficial que el Estado le asigna a cada división. En Perú se llama UBIGEO: Chorrillos es `150108` | Hoy el distrito se escribe a mano y aparece de varias formas. Con el código oficial se ordena de una vez, y en ese cruce se descubre cuántas versiones del mismo nombre hay en los archivos actuales |
 | `name` | VARCHAR(120) | No | El nombre de la división | — |
 | `is_active` | BOOLEAN | No | Indica si la división sigue vigente | En Perú se crean y se fusionan distritos. Permite retirar uno sin dañar las direcciones ya registradas que lo mencionan |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | Muestra cuándo se cargó o se desactivó una división. No lleva autor: es un catálogo general (D-42) |
 
 **Relaciones.** Apunta a `countries` y a sí misma (`parent_id`, la división del escalón superior). Le apunta `addresses`. El ejemplo de carga está en §4.3.
 
@@ -2413,7 +2415,7 @@ No quedan decisiones de diseño abiertas. Lo que falta para construir son datos,
 | D-39 | Vocabulario: **rol** es el conjunto de permisos de una cuenta; **puesto**, el trabajo del colaborador, informativo; **perfil**, sus datos personales. El documento no usa "cargo" (§5.1) |
 | D-40 | Fechas: los momentos son `TIMESTAMPTZ` en UTC (`_at`), las fechas de calendario `DATE` (`_date`) y los períodos rangos con fin excluido. Todo intercambio usa ISO 8601; "hoy" se calcula en la zona de la sede, o del país de la empresa, o `America/Lima`; `dd/mm/aaaa` solo en pantalla (§2.6) |
 | D-41 | Un rol se retira con uno de cuatro motivos: `retiro`, `caducidad`, `baja_colaborador` o `baja_cuenta` (§5.7) |
-| D-42 | Las columnas de registro las llena el sistema: `created_at` y `updated_at` al guardar, y `created_by` y `updated_by` con la cuenta de la sesión. Cuando no hay sesión —el registro público, el arranque— el proceso registra a `SYSTEM` de forma explícita; el sistema nunca lo supone, para que un cambio que perdió su sesión por error no quede a nombre de nadie. Solo las llevan las tablas cuyo cuadro las pide: `currencies` y `countries` registran fechas pero no autor (§2.2) |
+| D-42 | Las columnas de registro las llena el sistema: `created_at` y `updated_at` al guardar, y `created_by` y `updated_by` con la cuenta de la sesión. Cuando no hay sesión —el registro público, el arranque— el proceso registra a `SYSTEM` de forma explícita; el sistema nunca lo supone, para que un cambio que perdió su sesión por error no quede a nombre de nadie. Solo las llevan las tablas cuyo cuadro las pide: las cinco tablas de geografía —`currencies`, `countries`, `geo_division_levels`, `geo_divisions` y `addresses`— registran fechas pero no autor (§2.2) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
