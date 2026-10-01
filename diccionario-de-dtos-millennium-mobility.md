@@ -160,7 +160,7 @@ El código se construye en este orden. Respeta las dependencias del cuadro anter
 | Paso | Bloque | Contexto | Qué incluye | Datos que hacen falta | Código |
 |---|---|---|---|---|---|
 | 0 | 2 · Seguridad, en parte, y el núcleo común | `shared`, `iam` | Cuentas, roles, sesiones y asignaciones reducidas | — | Construido; lo que falta está en §5.13 |
-| 1 | 1 · Geografía | `location` | Monedas, países, niveles y divisiones territoriales, direcciones | Archivo oficial de divisiones territoriales (ubigeo del INEI) | Pendiente |
+| 1 | 1 · Geografía | `location` | Monedas, países, niveles y divisiones territoriales, direcciones | Archivo oficial de divisiones territoriales (ubigeo del INEI) | En curso: monedas y países en el backend |
 | 2 | 3 · Empresas | `organization` | Documentos tributarios, empresas, marcas comerciales, sedes y ubicaciones; `roles.company_id` | Razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales | Pendiente |
 | 3 | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | Colaboradores; asignaciones por empresa, sede y marca; bloqueos de cuenta; permisos; dar acceso; registro público con perfil | Colaboradores reales y la matriz de permisos por rol | Pendiente |
 | 4 | 4 · Catálogos de flota | `vehiclecatalog` | Tipos de vehículo, marcas y modelos, colores, equipamiento y a qué tipos aplica | Modelos reales, conciliados entre los dos catálogos que advierte §7.3 | Pendiente |
@@ -229,6 +229,7 @@ Las monedas con las que la empresa compra, factura o cobra.
 | 1 | PEN | Sol peruano | S/ | 2 | Sí |
 | 2 | USD | Dólar estadounidense | $ | 2 | Sí |
 | 3 | COP | Peso colombiano | $ | 0 | Sí |
+| 4 | MXN | Peso mexicano | $ | 2 | Sí |
 
 El peso colombiano con cero decimales es el caso que obliga a tener esa columna.
 
@@ -237,6 +238,8 @@ El peso colombiano con cero decimales es el caso que obliga a tener esa columna.
 - El código de tres letras es el que manda: ningún monto se guarda con la moneda escrita a mano.
 - Una moneda no se borra nunca. Si deja de usarse se desactiva, para no romper las facturas antiguas emitidas en ella.
 - La cantidad de decimales la fija la moneda, no el sistema: todos los cálculos y reportes la respetan.
+- Una moneda tiene de 0 a 4 decimales.
+- Los decimales se pueden corregir mientras ningún monto use la moneda. Desde el primer documento que la usa quedan fijos: cambiarlos redondearía de otra forma los montos ya registrados.
 
 ### 4.2 `countries` — Países
 Los países donde la empresa opera o puede operar. Casi toda la información del sistema se separa por país.
@@ -366,7 +369,7 @@ Una dirección física, separada en sus partes. La usan empresas, sedes, proveed
 
 **Ejemplo**
 
-| id | country_id | geo_division_id | street_name | street_number | unit | location |
+| id | country_id | geo_division_id | street_name | street_number | unit | reference |
 |---|---|---|---|---|---|---|
 | 1 | 1 · PE | 312 · Chorrillos | Av. Defensores del Morro | 1234 | Of. 302 | Frente al grifo, portón azul |
 | 2 | 1 · PE | 318 · Ate | Av. Nicolás Ayllón | Km 12.5 | — | Al costado del almacén de repuestos |
@@ -2416,6 +2419,7 @@ No quedan decisiones de diseño abiertas. Lo que falta para construir son datos,
 | D-40 | Fechas: los momentos son `TIMESTAMPTZ` en UTC (`_at`), las fechas de calendario `DATE` (`_date`) y los períodos rangos con fin excluido. Todo intercambio usa ISO 8601; "hoy" se calcula en la zona de la sede, o del país de la empresa, o `America/Lima`; `dd/mm/aaaa` solo en pantalla (§2.6) |
 | D-41 | Un rol se retira con uno de cuatro motivos: `retiro`, `caducidad`, `baja_colaborador` o `baja_cuenta` (§5.7) |
 | D-42 | Las columnas de registro las llena el sistema: `created_at` y `updated_at` al guardar, y `created_by` y `updated_by` con la cuenta de la sesión. Cuando no hay sesión —el registro público, el arranque— el proceso registra a `SYSTEM` de forma explícita; el sistema nunca lo supone, para que un cambio que perdió su sesión por error no quede a nombre de nadie. Solo las llevan las tablas cuyo cuadro las pide: las cinco tablas de geografía —`currencies`, `countries`, `geo_division_levels`, `geo_divisions` y `addresses`— registran fechas pero no autor (§2.2) |
+| D-43 | Los catálogos generales —monedas, países, divisiones territoriales— los lee cualquier cuenta con al menos un rol vigente, porque toda pantalla con un selector los necesita; solo el superadministrador los crea o modifica. Tener sesión sin rol no alcanza (§5.2). Cuando existan los permisos, la lectura pasa a un permiso propio |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
