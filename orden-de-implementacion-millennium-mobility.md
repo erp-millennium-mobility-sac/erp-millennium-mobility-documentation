@@ -10,7 +10,7 @@ El orden lo fijan las dependencias entre tablas: nada se construye antes de lo q
 | Paso | Bloque del diccionario                                | Contexto              | Depende de                       | Estado                   |
 | ---- | ----------------------------------------------------- | --------------------- | -------------------------------- | ------------------------ |
 | 0    | 2 · Seguridad, en parte, y el núcleo común            | `shared`, `iam`       | —                                | Construido               |
-| 1    | 1 · Geografía                                         | `location`            | —                                | Pendiente                |
+| 1    | 1 · Geografía                                         | `location`            | —                                | En curso                 |
 | 2    | 3 · Empresas                                          | `organization`        | 1 y 2                            | Pendiente                |
 | 3    | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | 2 y 3                            | Pendiente                |
 | 4    | 4 · Catálogos de flota                                | `vehiclecatalog`      | 3                                | Pendiente                |
@@ -50,8 +50,9 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 
 
-### Paso 1 · Geografía
+### Paso 1 · Geografía — en curso
 
+- **Estado:** el backend tiene monedas y países, con su API y sus pruebas. Faltan `geo_division_levels`, `geo_divisions`, `addresses`, la carga del ubigeo y todas las pantallas.
 - **Tablas:** `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses`.
 - **Pantallas:** Catálogos › Monedas, Países (con sus niveles de división) y Divisiones territoriales. Las direcciones se llenan dentro de cada formulario que las usa; no tienen opción propia.
 - **Datos:** el archivo oficial de divisiones territoriales (ubigeo del INEI). Se carga completo (D-2).
@@ -169,6 +170,10 @@ Corregir cómo muestra las fechas el frontend, para que todas las pantallas nuev
 | La sesión guarda el hash de la contraseña                           | Media                               |
 | Un correo de más de 255 caracteres devuelve error 500 en vez de 400 | Baja                                |
 | Cerrar como "caducidad" las asignaciones vencidas                   | Con la pantalla de roles y usuarios |
+| Fijar los decimales de una moneda cuando un monto ya la usa         | Con compras (paso 7)                |
+| Clase base para tablas con autor y sin `updated_at` (D-42)          | Antes del paso 3                    |
+| Clase base con `updated_by` en `shared` (D-42)                      | Antes del paso 2                    |
+| Listados de usuarios y roles: proyectar en vez de cargar agregados  | Baja                                |
 
 
 

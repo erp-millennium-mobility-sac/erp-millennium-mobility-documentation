@@ -15,7 +15,8 @@ Cada agregado del backend se guarda de una de dos maneras: el **camino corto**, 
 | Clases por agregado | 2: la entidad, que es a la vez el modelo, y su repositorio | 6: el agregado, la interfaz de repositorio del dominio, la entidad de persistencia, el ensamblador, el adaptador y el repositorio de Spring Data |
 | Dónde viven las anotaciones de JPA | En el modelo de dominio | Solo en la entidad de persistencia |
 | El repositorio | Extiende `JpaRepository` directamente | Es una interfaz del dominio; el adaptador la implementa con Spring Data |
-| Contextos asignados (skill `backend-module` §1) | `location` (ya construido), `vehiclecatalog`, `organization` | `iam` (ya construido), `fleet`, `procurement` |
+| Las consultas | Pueden devolver la entidad, que es la fila. Las tablas con muchas filas, como `geo_divisions`, proyectan a un recurso de lectura | Proyectan a un recurso de lectura, sin reconstruir el agregado |
+| Contextos asignados (skill `backend-module` §1) | `location` (en curso), `vehiclecatalog`, `organization` | `iam` (ya construido), `fleet`, `procurement` |
 | Ejemplos | Monedas, países, colores, marcas | Usuarios, vehículos, facturas, notas de crédito |
 
 Lo demás es igual en los dos: comandos y consultas como `record`, servicios de comandos que devuelven `Result`, recursos REST con sus transformadores y controladores sin lógica.
