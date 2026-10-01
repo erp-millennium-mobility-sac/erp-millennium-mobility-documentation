@@ -7,7 +7,12 @@ Una revisión no es una evaluación de personas. Sirve para que el equipo compar
 ## Cómo se escribe una revisión
 
 - Un archivo por revisión, con nombre `AAAA-MM-DD-<contexto>.md`.
-- Cada hallazgo indica **qué pasó**, **la evidencia** (archivo, línea o commit), **la regla que incumple** —o, si es aprendizaje, que esa regla no estaba escrita o no estaba al alcance de quien implementó— y **por qué importa para el negocio**.
+- Cada hallazgo lleva su tipo y tres líneas:
+  - **Error:** qué estaba mal, con la evidencia (archivo, línea o commit) y por qué importa.
+  - **Corrección:** cómo se corrigió y en qué commit.
+  - **Próxima vez:** cómo se hace en la siguiente implementación.
+- El tipo es **error** cuando incumple el diccionario o DESIGN.md, que están en los repositorios, y **aprendizaje** cuando la regla no estaba escrita o no estaba al alcance de quien implementó, como las skills.
+- El mensaje de un commit describe solo lo que su diff trae.
 - Se registra también lo que está bien hecho, para mantenerlo.
 - La fuente de verdad es el diccionario de datos; después, las skills del proyecto (`backend-module`, `frontend-feature`, `architecture-review`) y [patrones de persistencia](../patrones-de-persistencia-millennium-mobility.md).
 
