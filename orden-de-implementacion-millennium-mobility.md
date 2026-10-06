@@ -50,19 +50,19 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 
 
-### Paso 1 · Geografía — en curso
+### Paso 1 · Geografía y localización — en curso
 
-- **Estado:** el backend tiene monedas y países, con su API y sus pruebas. Faltan `geo_division_levels`, `geo_divisions`, `addresses`, la carga del ubigeo y todas las pantallas.
-- **Tablas:** `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses`.
-- **Pantallas:** Catálogos › Monedas, Países (con sus niveles de división) y Divisiones territoriales. Las direcciones se llenan dentro de cada formulario que las usa; no tienen opción propia.
+- **Estado (05/10/2026):** backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, sus pruebas y la ficha del país. Falta la carga del ubigeo.
+- **Tablas:** `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses`, `tax_id_types` (D-44).
+- **Pantallas:** Catálogos › Monedas y Países. Cada país abre su ficha, con sus datos, su estructura territorial (escalones y divisiones, D-45) y sus documentos tributarios, una sección bajo otra; la misma ficha registra el país y corrige sus datos. Las direcciones se llenan dentro de cada formulario que las usa; no tienen opción propia.
 - **Datos:** el archivo oficial de divisiones territoriales (ubigeo del INEI). Se carga completo (D-2).
 
 
 
 ### Paso 2 · Empresas
 
-- **Tablas:** `tax_id_types`, `companies`, `commercial_brands`, `branches`, `locations`. Además se agrega `roles.company_id`, que esperaba a que existieran las empresas.
-- **Pantallas:** Configuración › Empresas (solo superadministrador), Sedes, Marcas comerciales y Ubicaciones; Catálogos › Documentos tributarios.
+- **Tablas:** `companies`, `commercial_brands`, `branches`, `locations`. Además se agrega `roles.company_id`, que esperaba a que existieran las empresas. `tax_id_types` pasó al paso 1 (D-44).
+- **Pantallas:** Configuración › Empresas (solo superadministrador), Sedes, Marcas comerciales y Ubicaciones. Qué países operan lo muestra Empresas filtrada por país (D-3).
 - **Datos:** razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales.
 
 

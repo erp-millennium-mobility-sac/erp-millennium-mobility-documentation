@@ -21,3 +21,4 @@ Una revisión no es una evaluación de personas. Sirve para que el equipo compar
 | Fecha | Contexto | Alcance |
 |---|---|---|
 | 30/09/2026 | `location` | [Monedas y países](2026-09-30-location.md) |
+| 05/10/2026 | `location`, `organization` | [Escalones, divisiones, direcciones y tipos de documento tributario](2026-10-05-location.md) |

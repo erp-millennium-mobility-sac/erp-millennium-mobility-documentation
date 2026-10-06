@@ -77,6 +77,17 @@ La razón es un error que ya pasó. La primera versión de monedas y países arm
 
 `CurrencyAuditTests` y `CountryAuditTests` prueban que una edición conserva la fecha de creación. Cada agregado nuevo necesita una prueba igual.
 
+## Una entidad dentro del agregado
+
+Los escalones de un país viven dentro de `Country` (D-45). El país decide si admite otro, en qué posición va y cómo se renombra, y se guardan con él:
+
+- `CountryPersistenceEntity` mapea sus escalones con `@OneToMany` y `cascade` de `PERSIST` y `MERGE`. Nunca `REMOVE` ni `orphanRemoval`: las filas no se borran.
+- El ensamblador sincroniza los hijos por su `id`. Al que existe le copia el nombre y al nuevo le crea su fila, con el país y la posición.
+- Las lecturas del país cargan sus escalones en la misma consulta (`@EntityGraph`), para no hacer una consulta por país.
+- Para leer o renombrar un escalón suelto, el repositorio busca el país que lo declara.
+
+`GeoDivisionLevelAuditTests` prueba que un escalón se guarda a través de su país y conserva su fecha de creación al renombrarse.
+
 ## Por qué también los catálogos
 
 Entre el 30/09 y el 01/10/2026, `location`, `vehiclecatalog` y `organization` usaron un camino corto: el modelo era la entidad de JPA y el repositorio extendía `JpaRepository`. Se eligió porque un catálogo no tiene reglas que proteger y el patrón completo duplica campos.
@@ -129,9 +140,9 @@ Un objeto de valor que solo valida su formato, como `Vin`, `Plate` o un código 
   - `created_by` viene de `AuthoredAbstractPersistenceEntity`, que lo toma de la cuenta de la sesión.
   - Nadie calcula estas fechas con `Instant.now()`.
   - Un proceso sin sesión asigna `SYSTEM` de forma explícita.
-  - Las dos clases base traen siempre `created_at` y `updated_at`. Sirven para las tablas cuyo cuadro pide las dos fechas: con `created_by`, la clase con autor; sin él, la clase con fechas. Las cinco tablas de geografía usan la clase con fechas.
+  - `updated_by` viene de `RevisedAbstractPersistenceEntity`, que extiende la clase con autor y lo llena con `@LastModifiedBy` en cada guardado. La usa `companies`.
+  - Las tres clases base traen siempre `created_at` y `updated_at`. Sirven para las tablas cuyo cuadro pide las dos fechas: sin autor, la clase con fechas; con `created_by`, la clase con autor; con `created_by` y `updated_by`, la clase revisada. Las seis tablas del bloque 1 usan la clase con fechas.
   - **Pendiente antes del paso 3:** hay tablas que piden `created_at` y `created_by` pero no `updated_at`, como `purchase_orders`, `credit_notes` y los bloqueos de cuenta. Ninguna de las dos clases encaja: extenderlas agregaría una columna que su cuadro no pide. Hace falta una clase base solo de creación en `shared`, que se decide antes de construir la primera de esas tablas.
-  - `updated_by` también lo pide D-42, pero todavía no hay clase base que lo llene. La primera tabla que lo necesite debe agregarla en `shared` (con `@LastModifiedBy`), no en su propio contexto.
 - **Las filas no se borran**: se desactivan, se cierran o se anulan. Por eso las interfaces de repositorio no tienen `delete`.
 - **Solo el `public_id` sale por la API**; el `id` interno nunca aparece en rutas ni respuestas.
 - **El dominio no importa nada de otro contexto**: lo que necesite de él lo pide por su fachada ACL.
