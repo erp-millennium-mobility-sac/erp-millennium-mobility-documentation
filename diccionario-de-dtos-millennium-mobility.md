@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.13 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
+**Versión:** 1.14 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
 
 > **Cómo leer los cuadros.** En cada tabla, las columnas *Descripción* y *Por qué importa* están escritas para que las entienda cualquier persona, sin conocimientos técnicos: sirven para que quien conoce el negocio pueda revisar si el dato es el correcto. Las columnas *Tipo* y *Nulo*, las restricciones y el código SQL son para el equipo de desarrollo.
 
@@ -272,6 +272,10 @@ Los países donde la empresa opera o puede operar. Casi toda la información del
 **Reglas de negocio**
 
 **No hay un campo que diga si el país está operativo.** Se responde preguntando si tiene alguna empresa activa. Guardarlo además como casilla crearía dos lugares para apagar lo mismo, con la posibilidad de que se contradigan: la casilla en "no operativo" y tres empresas facturando. Dejar de operar en un país se hace desactivando sus empresas.
+
+**Los dos códigos ISO nombran un mismo país de la norma ISO 3166** (D-47). `PE` va con `PER`, nunca con `PRI`, que es Puerto Rico; un código que no nombra ningún país, como `PU`, se rechaza al escribirlo. Es el error que más cuesta: el código llega a los archivos del banco y a los papeles de aduana, donde nadie lo corrige a mano.
+
+**Los códigos ISO se corrigen mientras nada cuelga del país** (D-47). Un error de tipeo que se nota después de registrar el país se corrige mientras el país no tenga escalones, direcciones ni tipos de documento tributario. Tampoco puede tener divisiones ni empresas: una división cuelga de un escalón y una empresa necesita un tipo de documento de su país. Desde entonces los códigos pueden haber salido en un archivo o una integración, y quedan fijos. Es el mismo criterio que los decimales de una moneda (§4.1). Dentro del sistema nada se rompe al corregirlos: las demás tablas apuntan al país por su `id`, no por su código.
 
 ### 4.3 Cómo se relacionan las tres tablas de geografía
 
@@ -2471,6 +2475,7 @@ No quedan decisiones de diseño abiertas. Lo que falta para construir son datos,
 | D-44 | Los tipos de documento tributario son localización del país: pertenecen al bloque 1 y al contexto `location`, junto con los escalones y las divisiones territoriales. Los ERP que operan en varios países los tratan igual. Llevan `is_active` y fechas, sin autor (§4.7) |
 | D-45 | Los escalones territoriales forman parte del país: se guardan y se validan con él. Se declaran en orden, sin saltos, y no se borran ni se retiran; solo se corrige su nombre (§4.4) |
 | D-46 | Los tipos de cambio por día y la moneda de grupo quedan diseñados en §4.8 y se construyen cuando aparece quien los usa: los tipos de cambio justo antes de compras (paso 7) y la moneda de grupo con los reportes (paso 11). La moneda de grupo es USD |
+| D-47 | Los dos códigos ISO de un país nombran un mismo país de ISO 3166. Se corrigen mientras el país no tenga escalones, direcciones ni tipos de documento tributario, lo que también excluye divisiones y empresas; desde entonces quedan fijos. `location` lo decide sin consultar a `organization`, para no volver al ciclo que D-3 eliminó (§4.2) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
