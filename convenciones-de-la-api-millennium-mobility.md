@@ -1,6 +1,6 @@
 # Convenciones de la API REST — ERP Millennium Mobility
 
-**Actualizado:** 02/10/2026 · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.12 (§2.4 identificadores, §2.6 fechas, §5.12 sesiones, D-8, D-13, D-38, D-40, D-42, D-43), reglas de arquitectura de la skill `backend-module`, [mapa de contextos](mapa-de-contextos-millennium-mobility.md) y el backend construido. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 06/10/2026 (§6.2 búsqueda, orden y página en un solo endpoint) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.12 (§2.4 identificadores, §2.6 fechas, §5.12 sesiones, D-8, D-13, D-38, D-40, D-42, D-43), reglas de arquitectura de la skill `backend-module`, [mapa de contextos](mapa-de-contextos-millennium-mobility.md) y el backend construido. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 La API es REST: expone **recursos** con sustantivos, los manipula con los **métodos de HTTP** según su semántica y responde con **códigos de estado** que dicen qué pasó. El único cliente hoy es el frontend del ERP, que se sirve desde el mismo origen.
 
@@ -189,12 +189,12 @@ El servidor normaliza lo que recibe, así que el cliente puede enviar cualquier 
 | **(propuesta, §14.10)** Un recurso de empresa exige `companyId` cuando la cuenta tiene acceso a más de una empresa | `GET /vehicles?companyId=…` |
 | **(propuesta, §14.10)** Si el dueño de la colección no existe, responde `404`, no una lista vacía | `GET /countries/{id}/geo-divisions` con un país inexistente |
 
-### 6.2 Orden y página
+### 6.2 Búsqueda, orden y página
 
-**(propuesta, §14.4)** Las colecciones que pueden pasar de 200 filas se paginan: divisiones territoriales, vehículos, órdenes, facturas, notas de crédito, pagos, colaboradores, usuarios, bitácora y cargas.
+Desde el 06/10/2026, toda lista se busca, se filtra, se ordena y se pagina en el servidor, y **en un solo endpoint**: el mismo `GET` de la colección recibe `q`, los filtros (§6.1), `sort`, `page` y `size`. También los catálogos chicos: una tabla nunca trae la colección entera para paginarla en el navegador.
 
 ```
-GET /api/v1/countries/{id}/geo-divisions?page=0&size=50&sort=code,asc
+GET /api/v1/countries/{id}/geo-divisions?q=lima&level=2&isActive=true&page=0&size=50&sort=name,asc
 ```
 
 ```json
@@ -207,9 +207,29 @@ GET /api/v1/countries/{id}/geo-divisions?page=0&size=50&sort=code,asc
 }
 ```
 
-- `page` empieza en 0; `size` vale 50 por omisión y 200 como máximo.
-- `sort` es `campo,asc` o `campo,desc`, con el nombre del campo JSON.
-- Los catálogos chicos (monedas, países, escalones territoriales, tipos de documento tributario, roles, tipos y colores) responden un arreglo completo, sin página.
+| Parámetro | Regla |
+|---|---|
+| `q` | Texto que contiene alguno de los campos de búsqueda de la lista, sin distinguir mayúsculas. `%` y `_` se buscan tal cual |
+| `page` | Índice de la página, desde 0. **Con `page`, la respuesta es el sobre de arriba; sin `page`, es el arreglo de todo lo que coincide**, en el mismo orden y con la misma búsqueda y filtros, como lo pide un select |
+| `size` | 50 por omisión y 200 como máximo |
+| `sort` | `campo` o `campo,desc`, con el nombre del campo JSON. Cada lista declara por qué campos ordena; con otro campo usa su orden propio. Los empates se ordenan por el `id` interno, para que una fila no salte de página |
+
+Lo que busca y ordena cada lista construida:
+
+| Lista | `q` busca en | Filtros | `sort` acepta | Orden propio |
+|---|---|---|---|---|
+| `GET /currencies` | `isoCode`, `name`, `symbol` | `isActive` | `isoCode`, `name`, `symbol`, `decimalPlaces`, `isActive` | `isoCode` |
+| `GET /countries` | `name`, `isoAlpha2`, `isoAlpha3`, `callingCode` | — | `name`, `isoAlpha2`, `isoAlpha3`, `callingCode`, `defaultTimezone`, `taxRate`, `defaultCurrency` | `name` |
+| `GET /countries/{id}/geo-divisions` | `code`, `name` | `level`, `isActive` | `code`, `name`, `level`, `isActive` | `level` y `code` |
+| `GET /countries/{id}/tax-id-types` | `code`, `name` | `isActive`, `appliesTo` | `code`, `name`, `appliesTo`, `length`, `hasCheckDigit`, `isActive` | `code` |
+| `GET /companies` | `legalName`, `tradeName`, `taxId` | `active`, `countryId` | `legalName`, `tradeName`, `taxId`, `phone`, `isActive` | `tradeName` |
+| `GET /users` | `email` | — | `email`, `lastLoginAt`, `mustChangePassword` | `email` |
+
+Una columna que nombra un registro de otro contexto —el país y la moneda de una empresa, los roles de una cuenta— no se ordena: el dueño de la lista no lee las tablas ajenas (mapa de contextos).
+
+**Cómo se construye.** El controlador recibe `PageParams` (`shared.interfaces.rest.resources`) y responde con `pageParams.toResponse(...)`, que arma el sobre `PageResource` o el arreglo. La consulta lleva un `PageQuery` y el servicio devuelve un `PageResult` (`shared.domain.model.valueobjects`). El adaptador del repositorio traduce el `PageQuery` con `PageRequests` (`shared.infrastructure.persistence.jpa`): los campos que acepta `sort` y el patrón de `q`. Una lista cuyas filas traen colecciones, como los países con sus escalones, pagina primero los identificadores y después lee esas filas, para que la base pagine y no la memoria.
+
+En el frontend, `mm-data-manager` emite la búsqueda, el orden y la página en `queryChange`; el store guarda la página en un `PagedList` (`shared/application`) y el endpoint la pide con `getPage()` de `BaseApiEndpoint`.
 
 ---
 
@@ -257,9 +277,44 @@ Todo error responde el mismo recurso, también los que ocurren antes del control
 |---|---|---|
 | Subir un documento o una carga | `POST` en `multipart/form-data`: el archivo en `file` y los datos en `data`, como JSON. La ruta de las cargas de flota depende de §14.18 | `201` con el recurso |
 | Descargar | `GET .../file`, `.../pdf` o `.../error-report` | El archivo con su `Content-Type` y `Content-Disposition: attachment; filename="…"` |
-| Exportar un reporte | `GET /reports/...` con `Accept: text/csv` o el tipo de hoja de cálculo | El archivo |
+| Exportar una lista | El mismo `GET` de la lista con `Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (§8.1) | El `.xlsx` con `Content-Disposition: attachment; filename="monedas-2026-10-06.xlsx"` |
+| Exportar un reporte | `GET /reports/...` con el mismo `Accept` | El archivo |
 
 Los archivos se guardan fuera de la base; la API nunca devuelve `file_path`.
+
+### 8.1 Exportar a Excel
+
+El archivo lo arma siempre el backend, con fastexcel (`org.dhatim:fastexcel`: escribe en streaming, pesa poco y no arrastra Apache POI). El frontend nunca arma un archivo: lo pide y el navegador lo guarda con el nombre que manda el backend.
+
+**Cómo funciona**
+
+- Una lista se exporta desde **su propio endpoint**. El `GET` que devuelve el JSON, pedido con el `Accept` de Excel, devuelve el archivo con la misma búsqueda (`q`), los mismos filtros y el mismo orden (`sort`), y **todas** las filas que coinciden: ignora `page` y `size` (§6.2). No hay rutas `/export` aparte.
+- El controlador declara un segundo método en la misma ruta con `produces = SpreadsheetExporter.MEDIA_TYPE`, que llama a la misma consulta y pasa las filas a `SpreadsheetExporter` (`shared.interfaces.rest.export`) con sus columnas (`SpreadsheetColumn`).
+- Cada columna es una clave de `messages.properties` para el encabezado y una función que lee la fila. Encabezados y textos salen en el idioma de la petición (`Accept-Language`), igual que los mensajes de error.
+- Los valores conservan su tipo, para que la hoja sume, filtre y ordene: un número es número; un momento, fecha y hora en `America/Lima` (diccionario §2.6); una fecha, fecha; un booleano, "Sí" o "No". Un texto que se traduce, como un estado, se devuelve como `SpreadsheetColumn.Message`.
+- Una hoja con el nombre de la lista y la fila de encabezados fija y en negrita. El archivo se llama `<lista>-<fecha>.xlsx`, con la fecha de hoy en Lima y un nombre sin tildes, para que todos los navegadores lo guarden igual.
+- El `id` interno nunca se exporta (§4.2). Las columnas muestran lo que lee una persona: nombres y códigos, no identificadores.
+- Un error responde JSON aunque se haya pedido Excel (§7): el país que no existe es `404` y la falta de permiso, `403`.
+
+**Casos**
+
+| Caso | Ejemplo | Qué se exporta |
+|---|---|---|
+| Catálogo completo | `GET /currencies`, `/countries`, `/users` | Lo que coincide con la búsqueda y los filtros de la pantalla (`isActive` en monedas), en su orden |
+| Lista de un registro padre | `GET /countries/{countryId}/tax-id-types` | Los del padre; si el padre no existe, `404` |
+| Lista filtrada en el servidor | `GET /countries/{countryId}/geo-divisions?q=lima&level=3&isActive=true&sort=name,asc`, `/companies?countryId=…` | Lo mismo que la lista con esos parámetros, sin página: el frontend manda los de la pantalla |
+| Columnas de otro contexto | Empresas: país, documento tributario y moneda | Los nombres los resuelve la consulta de exportación por la fachada del dueño (`ExportCompaniesQuery` con `ExternalLocationService`), una vez por valor, nunca con un `join` |
+| Reporte que cruza contextos | El exportable de stock de 52 columnas | Lo arma la capa de lectura en `/reports/...` (mapa de contextos §7), con el mismo `SpreadsheetExporter` |
+
+**Lo que no hace**
+
+- No exporta solo la página visible: siempre todo lo que coincide con la búsqueda y los filtros.
+- No genera CSV ni otros formatos. Si hace falta uno, se agrega otro `produces` al mismo endpoint.
+
+**Cómo se agrega a una lista**
+
+1. Backend: en el controlador, el método `@GetMapping(produces = SpreadsheetExporter.MEDIA_TYPE)` con los mismos `@RequestParam` de la lista y `PageParams`, que lee todas las filas con `pageParams.toAllRowsQuery()`, y las claves `export.<lista>.*` en `messages.properties` y `messages_es.properties`. Una prueba lee el archivo de vuelta con `fastexcel-reader`.
+2. Frontend: el endpoint llama a `exportSpreadsheet()` de `BaseApiEndpoint` con los filtros y `listQueryParams()` de la búsqueda y el orden; la API del módulo lo expone; el store tiene `exporting` y `export<Lista>()`, que lee la consulta de su `PagedList` y en un fallo deja `data-manager.export-error`. En la vista, `<mm-data-manager exportable [exporting]="store.exporting()" (exportRequested)="store.exportX()">`.
 
 ---
 
@@ -309,11 +364,12 @@ Los archivos se guardan fuera de la base; la API nunca devuelve `file_path`.
 ## 12. Plantilla de un recurso
 
 ```
-GET    /api/v1/countries                     200  [ … ]
+GET    /api/v1/countries?page=0              200  { "items": [ … ], "page": 0, … }
+GET    /api/v1/countries                     200  [ … ]  (sin page: todo, para un select)
 POST   /api/v1/countries                     201  Location: /api/v1/countries/{id}
 GET    /api/v1/countries/{id}                200
 PUT    /api/v1/countries/{id}                200
-GET    /api/v1/countries/{id}/geo-divisions  200  { "items": [ … ], "page": 0, … }
+GET    /api/v1/countries/{id}/geo-divisions?page=0  200  { "items": [ … ], "page": 0, … }
 POST   /api/v1/countries/{id}/geo-divisions  201  Location: /api/v1/geo-divisions/{id}
 GET    /api/v1/geo-divisions/{id}            200
 PUT    /api/v1/geo-divisions/{id}            200
@@ -337,7 +393,7 @@ PATCH  /api/v1/geo-divisions/{id}/status     200
 }
 ```
 
-La plantilla aplica propuestas pendientes: el `Location` (§14.9), el sobre paginado de las divisiones (§14.4) y `taxRate` como texto (§14.2).
+La plantilla aplica propuestas pendientes: el `Location` (§14.9) y `taxRate` como texto (§14.2). El sobre paginado ya rige (§6.2).
 
 ---
 
@@ -357,10 +413,10 @@ La columna "Pendiente de" indica la propuesta de §14 que debe validarse antes d
 | 6 | `RoleResource.system` | `isSystem` (§4.1) | — |
 | 7 | `taxRate` viaja como número | Texto decimal (§5.2) | §14.2 |
 | 8 | Las altas de monedas, países y divisiones responden `201` sin `Location` | `201` con `Location` (§3) | §14.9 |
-| 9 | Filtro `activeOnly` (monedas). El filtro `operationalOnly` de países ya no existe: el país no guarda si opera (D-3) | `isActive` (§6.1) | §14.10 |
+| 9 | ~~Filtro `activeOnly` (monedas)~~ | Resuelto el 06/10/2026: las monedas se filtran con `isActive`; `activeOnly` e `isoCode` ya no existen (la búsqueda `q` cubre el código). El filtro `operationalOnly` de países tampoco existe: el país no guarda si opera (D-3). Las empresas siguen filtrando con `active` | §14.10 |
 | 10 | ~~`GET /countries/XX/divisions` con un país inexistente responde `200 []`~~ | Resuelto el 05/10/2026: escalones, divisiones y tipos de documento responden `404` si el país no existe | — |
-| 11 | Las divisiones territoriales se listan completas, sin página | Paginadas (§6.2) | §14.4 |
-| 12 | `GET /users` devuelve la lista completa, sin página | Paginada (§6.2) | §14.4 |
+| 11 | ~~Las divisiones territoriales se listan completas, sin página~~ | Resuelto el 06/10/2026: con `page` responden una página (§6.2) | — |
+| 12 | ~~`GET /users` devuelve la lista completa, sin página~~ | Resuelto el 06/10/2026: con `page` responde una página (§6.2) | — |
 | 13 | Códigos `GEODIVISION_*`, `GEODIVISIONLEVEL_*` y `TAXIDTYPE_*`. El padre inexistente ya responde `GEODIVISION_NOT_FOUND` | Con guion bajo entre palabras si se valida §14.11 | §14.11 |
 | 14 | Un error inesperado devuelve en `details` el mensaje de la excepción | `details` nunca lleva el texto interno (§7.1) | — |
 | 15 | El `422` no dice qué regla falló | Campo `rule` (§7.2) | §14.5 |
@@ -380,7 +436,7 @@ Todo lo que este documento fija y no remite al diccionario ni a una regla de arq
 1. **Prefijo de contexto en las rutas** (`/api/v1/{contexto}/…`, §2.1). Viene de *Contextos delimitados* v1.8 y de la plantilla de la skill `backend-module`; ninguna decisión del diccionario lo cubre. Hoy ninguna ruta lo lleva, y el diccionario (§5.12) fija `POST /api/v1/authentication/sign-out`. Si se aprueba, se registra en el diccionario y se aplica §13 fila 1; si alcanzara también a la autenticación, antes hay que cambiar §5.12 del diccionario.
 2. **Formato de los montos**: objeto `{ amount, currency }` con `amount` como texto decimal; los tipos de cambio y las tasas, también como texto decimal (§5.2).
 3. **Nombres de los campos de un período**: `periodStart` y `periodEnd` (§5.1). El diccionario fija que viajan como dos campos, pero no cómo se llaman.
-4. **Página**: el sobre `{ items, page, size, totalItems, totalPages }`, el umbral de 200 filas y la lista de colecciones paginadas (§6.2).
+4. ~~**Página**~~. Resuelto el 06/10/2026, a pedido: toda lista, también los catálogos chicos, se busca, filtra, ordena y pagina en su propio endpoint, con el sobre `{ items, page, size, totalItems, totalPages }`; sin `page` responde el arreglo completo (§6.2).
 5. **Campo `rule`** en los `422` (§7.2), que obliga a ampliar `ErrorResource` y `ApplicationError`.
 6. **`404` para una empresa ajena** en lugar de `403` (§9.2).
 7. **Concurrencia**: si dos personas editan el mismo registro, hoy gana la última. Una opción es exigir `If-Match` con la versión del recurso; no hace falta mientras los catálogos los edite solo el superadministrador.
