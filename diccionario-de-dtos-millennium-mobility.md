@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.12 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
+**Versión:** 1.13 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
 
 > **Cómo leer los cuadros.** En cada tabla, las columnas *Descripción* y *Por qué importa* están escritas para que las entienda cualquier persona, sin conocimientos técnicos: sirven para que quien conoce el negocio pueda revisar si el dato es el correcto. Las columnas *Tipo* y *Nulo*, las restricciones y el código SQL son para el equipo de desarrollo.
 
@@ -103,7 +103,7 @@ Los campos que no pasan el filtro quedan listados como **candidatos**, con el cr
 **Reglas**
 
 - Toda tabla que se consulte por sí sola o que acumule volumen lleva su `company_id`, aunque se pudiera deducir siguiendo la cadena de relaciones. Las filas que solo se leen a través de su padre se apoyan en él.
-- Los catálogos generales —monedas, países, divisiones territoriales, permisos— no se filtran: son iguales para todos.
+- Los catálogos generales —monedas, países, divisiones territoriales, tipos de documento tributario, permisos— no se filtran: son iguales para todos.
 - Los usuarios no pertenecen a una empresa. El administrador de una empresa ve a quienes tienen alguna asignación vigente en ella.
 - El stock es visible para toda la empresa. La sede limita dónde se puede actuar, no qué se ve.
 - Hay campos que no ve cualquiera aunque vea la fila. Cuando falta el permiso, el campo no sale de la base: ocultarlo en la pantalla no alcanza.
@@ -137,9 +137,9 @@ Cada bloque pertenece a un contexto delimitado, que es la unidad de código: `lo
 
 | Bloque | Contenido | Depende de | Estado |
 |---|---|---|---|
-| 1 | Geografía: `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses` | — | **Cerrado** |
+| 1 | Geografía y localización: `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses`, `tax_id_types` | — | **Cerrado** |
 | 2 | Seguridad: `users`, `user_access_suspensions`, `roles`, `permissions`, `role_permissions` | — (`roles.company_id` espera al 3) | **Cerrado** |
-| 3 | Empresas: `tax_id_types`, `companies`, `commercial_brands`, `branches`, `locations` | 1, 2 | **Cerrado** |
+| 3 | Empresas: `companies`, `commercial_brands`, `branches`, `locations` | 1, 2 | **Cerrado** |
 | 3b | Colaboradores y accesos: `employees`, `user_roles`, `advisor_assignments` | 2, 3 | **Cerrado** |
 | 4 | Catálogos de flota: `vehicle_types`, `vehicle_brands`, `vehicle_models`, `colors`, `equipment_types` | 3 | **Cerrado** |
 | 5 | Terceros: `suppliers` | 3 | **Cerrado** — se absorbió en el bloque 7 |
@@ -160,8 +160,8 @@ El código se construye en este orden. Respeta las dependencias del cuadro anter
 | Paso | Bloque | Contexto | Qué incluye | Datos que hacen falta | Código |
 |---|---|---|---|---|---|
 | 0 | 2 · Seguridad, en parte, y el núcleo común | `shared`, `iam` | Cuentas, roles, sesiones y asignaciones reducidas | — | Construido; lo que falta está en §5.13 |
-| 1 | 1 · Geografía | `location` | Monedas, países, niveles y divisiones territoriales, direcciones | Archivo oficial de divisiones territoriales (ubigeo del INEI) | En curso: monedas y países en el backend |
-| 2 | 3 · Empresas | `organization` | Documentos tributarios, empresas, marcas comerciales, sedes y ubicaciones; `roles.company_id` | Razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales | Pendiente |
+| 1 | 1 · Geografía y localización | `location` | Monedas, países con sus escalones, divisiones territoriales, direcciones y tipos de documento tributario | Archivo oficial de divisiones territoriales (ubigeo del INEI) | Construido, salvo la carga del ubigeo |
+| 2 | 3 · Empresas | `organization` | Empresas, marcas comerciales, sedes y ubicaciones; `roles.company_id` | Razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales | En curso: empresas |
 | 3 | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | Colaboradores; asignaciones por empresa, sede y marca; bloqueos de cuenta; permisos; dar acceso; registro público con perfil | Colaboradores reales y la matriz de permisos por rol | Pendiente |
 | 4 | 4 · Catálogos de flota | `vehiclecatalog` | Tipos de vehículo, marcas y modelos, colores, equipamiento y a qué tipos aplica | Modelos reales, conciliados entre los dos catálogos que advierte §7.3 | Pendiente |
 | 5 | 6 · Vehículo y estados | `fleet` | Estados, caminos y motivos, vehículos, historial de estados, kilometraje | — | Pendiente |
@@ -186,7 +186,7 @@ Un paso se puede construir sin sus datos, con datos de ejemplo; los reales se ca
 
 | Bloque | Contexto |
 |---|---|
-| 1 · Geografía | `location` |
+| 1 · Geografía y localización | `location` |
 | 2 · Seguridad | `iam` |
 | 3 · Empresas | `organization` |
 | 3b · Colaboradores y accesos | `organization` e `iam` |
@@ -206,7 +206,9 @@ Los contextos `fleet` y `procurement` comparten el vehículo y hablan de él dis
 
 ---
 
-## 4. Bloque 1 · Geografía
+## 4. Bloque 1 · Geografía y localización
+
+El bloque reúne los datos maestros que comparten todas las empresas y la localización de cada país: cómo se divide su territorio y con qué documentos se identifican ante su Estado las empresas y las personas (D-44).
 
 ### 4.1 `currencies` — Monedas
 Las monedas con las que la empresa compra, factura o cobra.
@@ -324,6 +326,9 @@ Cada país divide su territorio de forma distinta y con nombres distintos. Perú
 - La combinación de país y número de escalón identifica cada fila: un país no puede declarar dos veces el mismo escalón.
 - Se admiten hasta cuatro escalones. Perú usa tres y Colombia dos.
 - Cada país declara sus escalones antes de cargar sus divisiones. Sin esta tabla, la siguiente no se puede llenar.
+- **Los escalones se declaran en orden, sin saltos** (D-45). El siguiente escalón es siempre el que sigue al último declarado. Un escalón 3 sin escalón 2 no podría tener divisiones, porque cada división cuelga de una del escalón inmediato superior.
+- **Un escalón declarado no se borra ni se retira** (D-45). Se corrige su nombre. Las divisiones y las direcciones dependen de él, y retirarlo dejaría divisiones colgando de un escalón que ya no existe.
+- Los escalones forman parte del país: se guardan y se validan junto con él (D-45).
 
 ### 4.5 `geo_divisions` — Departamentos, provincias y distritos
 Cada división concreta del territorio. Se carga desde las listas oficiales de cada país: INEI en Perú, DANE en Colombia, INEGI en México.
@@ -348,7 +353,7 @@ Cada división concreta del territorio. Se carga desde las listas oficiales de c
 - Solo las divisiones del primer escalón no pertenecen a ninguna otra.
 - Una división que se fusiona o desaparece se desactiva, nunca se borra: las direcciones ya registradas siguen apuntando a ella.
 
-**Lo que el sistema no puede impedir solo.** Que una división pertenezca exactamente al escalón inmediato superior. Hoy nada evita que un distrito cuelgue directo del departamento, saltándose la provincia. Esa validación debe programarse aparte.
+**Qué protege la base y qué la aplicación.** La base impide que una división cuelgue de otra de un país distinto: la llave hacia la división superior incluye el país. También impide usar un escalón que el país no declaró. Lo que no puede impedir sola es que la división superior sea exactamente del escalón inmediato: nada en la base evita que un distrito cuelgue directo del departamento, saltándose la provincia. Esa regla la valida la aplicación al registrar la división.
 
 ### 4.6 `addresses` — Direcciones
 Una dirección física, separada en sus partes. La usan empresas, sedes, proveedores y clientes.
@@ -389,7 +394,46 @@ La segunda fila muestra por qué el número de puerta se guarda como texto.
 
 Así el contrato conserva el domicilio con el que se firmó sin necesidad de copiarlo dentro, y la dirección actual del cliente queda siempre disponible. Es la opción de menor costo: no agrega campos ni tablas, solo exige que la pantalla distinga una corrección de una mudanza.
 
-### 4.7 Candidatos del bloque 1
+**La división de una dirección es del mismo país y del escalón más bajo que ese país declaró.** Es lo que permite deducir la provincia y el departamento subiendo por la cadena (§4.3). Una dirección de Perú no puede apuntar a un municipio colombiano ni quedarse en la provincia cuando el país declara distritos. Para una dirección nueva, la división debe estar activa. Que la división sea del mismo país lo impide la base, porque la llave hacia la división incluye el país; que sea del escalón más bajo y que esté activa lo valida la aplicación.
+
+### 4.7 `tax_id_types` — Tipos de documento tributario
+Con qué documento se identifica una empresa o una persona ante el Estado, en cada país. Es localización del país, igual que sus escalones territoriales, y por eso pertenece a este bloque (D-44).
+
+**Por qué es una tabla y no un dato fijo:** no existe un documento tributario universal. El nombre neutro que se usa internacionalmente es **TIN** (*Tax Identification Number*, el término de la OCDE); "RUT" es simplemente como se le dice en Chile y Colombia, igual que RUC en Perú y Ecuador, NIT en Colombia, RFC en México, CUIT en Argentina o CNPJ en Brasil. La forma correcta de identificar a una empresa en un sistema que opera en varios países es la combinación **país + tipo de documento + número**.
+
+El único identificador realmente mundial de empresas es el **LEI** (una clave de 20 caracteres que emite un organismo internacional). No todas lo tienen: se paga y se renueva cada año. Va como dato opcional de la empresa, no aquí.
+
+| Variable | Tipo | Nulo | Descripción | Por qué importa |
+|---|---|---|---|---|
+| `country_id` | BIGINT FK → `countries` | No | El país que emite ese documento | Un mismo nombre puede existir en dos países con reglas distintas |
+| `code` | VARCHAR(20) | No | La sigla con que se conoce: RUC en Perú, NIT en Colombia, RFC en México | Es lo que se imprime en las facturas y lo que la persona reconoce en pantalla |
+| `name` | VARCHAR(100) | No | El nombre completo: Registro Único de Contribuyentes | Aparece en formularios y documentos legales |
+| `applies_to` | VARCHAR(10) | No | Si ese documento lo tienen empresas, personas o ambos: `empresa`, `persona`, `ambos` | En Perú el RUC lo tienen ambos, el DNI solo las personas. Una empresa no se registra con un DNI |
+| `length` | SMALLINT | Sí | Cuántos caracteres debe tener el número | Permite avisar en el momento si alguien escribe un RUC de 10 dígitos en lugar de 11 |
+| `has_check_digit` | BOOLEAN | No | Indica si el número trae un dígito de control que permite verificar que esté bien escrito | Un RUC mal escrito que llega a una factura se convierte en un problema tributario. Con el dígito de control se detecta al momento de registrarlo |
+| `is_active` | BOOLEAN | No | Si el documento se puede elegir en registros nuevos | Permite retirar un documento sin tocar las empresas, proveedores y colaboradores que ya lo usan |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | No lleva autor: es un catálogo general, como el resto del bloque (D-42) |
+
+**Relaciones.** Apunta a `countries`. Le apuntan `companies`, `suppliers`, `employees` y el emisor de `purchase_order_templates`, que se identifican con la pareja tipo de documento más número. Más adelante también los clientes, que usan DNI en vez de RUC.
+
+**Ejemplo**
+
+| País | Sigla | Nombre | Aplica a | Longitud | Dígito de control |
+|---|---|---|---|---|---|
+| PE | RUC | Registro Único de Contribuyentes | ambos | 11 | Sí |
+| PE | DNI | Documento Nacional de Identidad | persona | 8 | Sí |
+| CO | NIT | Número de Identificación Tributaria | ambos | 9 | Sí |
+| MX | RFC | Registro Federal de Contribuyentes | ambos | 12 | Sí |
+
+**Reglas de negocio**
+
+- La sigla no se repite dentro del mismo país y no se edita: se corrige el nombre, el alcance, la longitud y el dígito de control.
+- Un tipo de documento no se borra: se desactiva. Los registros que ya lo usan siguen siendo válidos.
+- Quien registra una empresa, un proveedor o un colaborador elige un tipo activo, de su mismo país y que aplique a lo que registra. Cuando el tipo declara una longitud, el número la respeta.
+
+**Nota técnica:** aquí se guardan la longitud y la existencia de dígito de control en vez de un patrón de validación, por el mismo motivo por el que se eliminó el del código postal. La diferencia es que estos dos son datos estables —la longitud del RUC no cambia por decreto— y el cálculo del dígito de control vive en el programa, no en la base.
+
+### 4.8 Candidatos del bloque 1
 
 Campos que hoy no entran porque nadie los usa todavía, con la condición que los admitiría.
 
@@ -400,6 +444,36 @@ Campos que hoy no entran porque nadie los usa todavía, con la condición que lo
 | `iso_subdivision_code` | `geo_divisions` | Un reporte o una integración que use códigos internacionales de región |
 | `latitude` / `longitude` | `addresses` | Que se implemente ruteo de entregas o gestión de cobranza en campo |
 | `street_type` | `addresses` | Que se defina como lista cerrada por país y alguien realmente lo use para filtrar |
+| `exchange_rates` (tabla) | — | El primer documento que convierte montos: la factura de compra. Se construye justo antes del paso 7, con el diseño de abajo (D-46) |
+| `purchase_exchange_rate_type` | `countries` | La misma condición: qué tipo de tasa propone cada país para sus compras |
+| `is_group_currency` | `currencies` | El primer reporte consolidado de varias empresas. Se construye con el paso 11, con el diseño de abajo (D-46) |
+
+#### Diseño previsto: tipos de cambio
+
+Hoy cada documento guarda el tipo de cambio que usó (§2.2), pero nada lo propone, así que alguien lo escribiría a mano en cada factura. Los ERP que operan en varios países guardan la tasa de cada día y la proponen según la fecha del documento.
+
+`exchange_rates`, en el bloque 1:
+
+| Variable | Tipo | Nulo | Descripción | Por qué importa |
+|---|---|---|---|---|
+| `from_currency_id` | BIGINT FK → `currencies` | No | La moneda que se convierte: USD | — |
+| `to_currency_id` | BIGINT FK → `currencies` | No | La moneda a la que se convierte: PEN | — |
+| `rate_date` | DATE | No | El día al que corresponde la tasa | Una tasa vale por un día de calendario, no por un momento (§2.6) |
+| `rate_type` | VARCHAR(10) | No | `compra`, `venta` u `oficial` | La SBS de Perú publica compra y venta; la TRM de Colombia y el FIX de México publican una sola tasa oficial |
+| `rate` | NUMERIC(12,6) | No | Cuántas unidades de la moneda de destino vale una de la de origen | La misma precisión que el `exchange_rate` de facturas, notas y pagos |
+| `source` | VARCHAR(20) | No | De dónde salió: `SBS`, `BCRP`, `BANREP`, `BANXICO`, `manual` | Es lo primero que pregunta un auditor sobre una tasa |
+| `created_at` / `created_by` | TIMESTAMPTZ / FK `users` | No / Sí | Quién la cargó y cuándo | `SYSTEM` cuando la trajo la carga automática |
+| `updated_at` / `updated_by` | TIMESTAMPTZ / FK `users` | No / Sí | Quién la corrigió por última vez | — |
+
+- Las dos monedas, la fecha y el tipo no se repiten. Las dos monedas son distintas y la tasa es mayor que cero.
+- La tasa de cada día la carga un proceso automático desde la fuente oficial del país, a nombre de `SYSTEM`. Contabilidad la corrige a mano cuando hace falta, y la corrección queda en la bitácora.
+- El documento propone la tasa más reciente de su fecha o anterior, porque las fuentes no publican los fines de semana, y la copia en su propia columna. Corregir una tasa después no cambia los documentos que ya la copiaron.
+- Qué tipo de tasa propone cada país para sus compras lo dice `countries.purchase_exchange_rate_type`. En Perú la práctica es la de venta de la SBS a la fecha de emisión del comprobante; lo confirma Contabilidad antes del paso 7.
+
+#### Diseño previsto: moneda de grupo
+
+- `currencies.is_group_currency`: BOOLEAN, `NOT NULL DEFAULT FALSE`, con un índice único parcial para que solo una moneda la tenga. Es USD (D-46).
+- Los reportes consolidados convierten cada monto desde la moneda funcional de su empresa a la de grupo, con la tasa de la fecha de su documento. Sirve para reportes de gestión; una consolidación contable con tasas de cierre y promedio queda fuera, porque este sistema no lleva libros contables.
 
 ---
 
@@ -954,36 +1028,9 @@ El bloque 2 se construyó antes que `organization`, así que lo que depende de e
 
 ## 6. Bloque 3 · Empresas
 
-### 6.1 `tax_id_types` — Tipos de documento tributario
-Con qué documento se identifica una empresa o una persona ante el Estado, en cada país.
+### 6.1 `tax_id_types` — se trasladó a §4.7
 
-**Por qué es una tabla y no un dato fijo:** no existe un documento tributario universal. El nombre neutro que se usa internacionalmente es **TIN** (*Tax Identification Number*, el término de la OCDE); "RUT" es simplemente como se le dice en Chile y Colombia, igual que RUC en Perú y Ecuador, NIT en Colombia, RFC en México, CUIT en Argentina o CNPJ en Brasil. La forma correcta de identificar a una empresa en un sistema que opera en varios países es la combinación **país + tipo de documento + número**.
-
-El único identificador realmente mundial de empresas es el **LEI** (una clave de 20 caracteres que emite un organismo internacional). No todas lo tienen: se paga y se renueva cada año. Va como dato opcional de la empresa, no aquí.
-
-| Variable | Tipo | Nulo | Descripción | Por qué importa |
-|---|---|---|---|---|
-| `country_id` | BIGINT FK → `countries` | No | El país que emite ese documento | Un mismo nombre puede existir en dos países con reglas distintas |
-| `code` | VARCHAR(20) | No | La sigla con que se conoce: RUC en Perú, NIT en Colombia, RFC en México | Es lo que se imprime en las facturas y lo que la persona reconoce en pantalla |
-| `name` | VARCHAR(100) | No | El nombre completo: Registro Único de Contribuyentes | Aparece en formularios y documentos legales |
-| `applies_to` | VARCHAR(10) | No | Si ese documento lo tienen empresas, personas o ambos | En Perú el RUC lo tienen ambos, el DNI solo las personas. Hará falta cuando se registren clientes |
-| `length` | SMALLINT | Sí | Cuántos caracteres debe tener el número | Permite avisar en el momento si alguien escribe un RUC de 10 dígitos en lugar de 11 |
-| `has_check_digit` | BOOLEAN | No | Indica si el número trae un dígito de control que permite verificar que esté bien escrito | Un RUC mal escrito que llega a una factura se convierte en un problema tributario. Con el dígito de control se detecta al momento de registrarlo |
-
-**Relaciones.** Apunta a `countries`. Le apuntan `companies`, `suppliers` y `employees`, que se identifican con la pareja tipo de documento más número. Más adelante también los clientes, que usan DNI en vez de RUC.
-
-**Reglas de negocio**
-
-**Ejemplo**
-
-| País | Sigla | Nombre | Aplica a | Longitud | Dígito de control |
-|---|---|---|---|---|---|
-| PE | RUC | Registro Único de Contribuyentes | ambos | 11 | Sí |
-| PE | DNI | Documento Nacional de Identidad | persona | 8 | Sí |
-| CO | NIT | Número de Identificación Tributaria | ambos | 9 | Sí |
-| MX | RFC | Registro Federal de Contribuyentes | ambos | 12 | Sí |
-
-**Nota técnica:** aquí se guardan la longitud y la existencia de dígito de control en vez de un patrón de validación, por el mismo motivo por el que se eliminó el del código postal. La diferencia es que estos dos son datos estables —la longitud del RUC no cambia por decreto— y el cálculo del dígito de control vive en el programa, no en la base.
+Los tipos de documento tributario son localización del país y pasaron al bloque 1 (D-44). La sección conserva su número para que las referencias a §6.2 y siguientes no cambien.
 
 ### 6.2 `companies` — Empresas
 La razón social constituida en un país. Es quien compra, factura, tributa y figura como propietaria de los vehículos.
@@ -1021,6 +1068,7 @@ Una empresa por país, cada una con su propia razón social y su propio document
 - Una plantilla de orden de compra puede imprimir un emisor editado (§9.2), pero eso no crea otra empresa. Si algún día aparece otra razón social en el mismo país, será otra fila de esta tabla y habrá que revisar D-5.
 - El número de documento tributario no se repite dentro del mismo país.
 - El número se guarda normalizado, sin guiones ni espacios, para que la misma empresa no se registre dos veces escrita de formas distintas.
+- El tipo de documento es del país de la empresa, está activo y aplica a empresas (§4.7). Si el tipo declara una longitud, el número la respeta. Que sea del mismo país lo impide la base, porque la llave hacia el tipo incluye el país; lo demás lo valida la aplicación.
 - La razón social es la del registro público y no se ajusta para que se vea mejor: es la que se imprime en comprobantes y contratos.
 - Una empresa que deja de operar se desactiva, nunca se borra: su historial de compras y contratos debe seguir siendo consultable.
 - El país de la empresa se propaga a sus sedes y vehículos sin que puedan contradecirlo.
@@ -2418,8 +2466,11 @@ No quedan decisiones de diseño abiertas. Lo que falta para construir son datos,
 | D-39 | Vocabulario: **rol** es el conjunto de permisos de una cuenta; **puesto**, el trabajo del colaborador, informativo; **perfil**, sus datos personales. El documento no usa "cargo" (§5.1) |
 | D-40 | Fechas: los momentos son `TIMESTAMPTZ` en UTC (`_at`), las fechas de calendario `DATE` (`_date`) y los períodos rangos con fin excluido. Todo intercambio usa ISO 8601; "hoy" se calcula en la zona de la sede, o del país de la empresa, o `America/Lima`; `dd/mm/aaaa` solo en pantalla (§2.6) |
 | D-41 | Un rol se retira con uno de cuatro motivos: `retiro`, `caducidad`, `baja_colaborador` o `baja_cuenta` (§5.7) |
-| D-42 | Las columnas de registro las llena el sistema: `created_at` y `updated_at` al guardar, y `created_by` y `updated_by` con la cuenta de la sesión. Cuando no hay sesión —el registro público, el arranque— el proceso registra a `SYSTEM` de forma explícita; el sistema nunca lo supone, para que un cambio que perdió su sesión por error no quede a nombre de nadie. Solo las llevan las tablas cuyo cuadro las pide: las cinco tablas de geografía —`currencies`, `countries`, `geo_division_levels`, `geo_divisions` y `addresses`— registran fechas pero no autor (§2.2) |
-| D-43 | Los catálogos generales —monedas, países, divisiones territoriales— los lee cualquier cuenta con al menos un rol vigente, porque toda pantalla con un selector los necesita; solo el superadministrador los crea o modifica. Tener sesión sin rol no alcanza (§5.2). Cuando existan los permisos, la lectura pasa a un permiso propio |
+| D-42 | Las columnas de registro las llena el sistema: `created_at` y `updated_at` al guardar, y `created_by` y `updated_by` con la cuenta de la sesión. Cuando no hay sesión —el registro público, el arranque— el proceso registra a `SYSTEM` de forma explícita; el sistema nunca lo supone, para que un cambio que perdió su sesión por error no quede a nombre de nadie. Solo las llevan las tablas cuyo cuadro las pide: las seis tablas del bloque 1 —`currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses` y `tax_id_types`— registran fechas pero no autor (§2.2) |
+| D-43 | Los catálogos generales —monedas, países, divisiones territoriales, tipos de documento tributario— los lee cualquier cuenta con al menos un rol vigente, porque toda pantalla con un selector los necesita; solo el superadministrador los crea o modifica. Tener sesión sin rol no alcanza (§5.2). Cuando existan los permisos, la lectura pasa a un permiso propio |
+| D-44 | Los tipos de documento tributario son localización del país: pertenecen al bloque 1 y al contexto `location`, junto con los escalones y las divisiones territoriales. Los ERP que operan en varios países los tratan igual. Llevan `is_active` y fechas, sin autor (§4.7) |
+| D-45 | Los escalones territoriales forman parte del país: se guardan y se validan con él. Se declaran en orden, sin saltos, y no se borran ni se retiran; solo se corrige su nombre (§4.4) |
+| D-46 | Los tipos de cambio por día y la moneda de grupo quedan diseñados en §4.8 y se construyen cuando aparece quien los usa: los tipos de cambio justo antes de compras (paso 7) y la moneda de grupo con los reportes (paso 11). La moneda de grupo es USD |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
