@@ -1,6 +1,6 @@
 # Orden de implementación — ERP Millennium Mobility
 
-**Actualizado:** 29/09/2026 · **Fuente:** diccionario de datos v1.12, §3. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 06/10/2026 · **Fuente:** diccionario de datos v1.15, §3. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 El orden lo fijan las dependencias entre tablas: nada se construye antes de lo que referencia. Cada paso entrega su contexto completo, del backend (migraciones, dominio y API) al frontend (pantallas y opciones del menú).
 
@@ -11,7 +11,7 @@ El orden lo fijan las dependencias entre tablas: nada se construye antes de lo q
 | ---- | ----------------------------------------------------- | --------------------- | -------------------------------- | ------------------------ |
 | 0    | 2 · Seguridad, en parte, y el núcleo común            | `shared`, `iam`       | —                                | Construido               |
 | 1    | 1 · Geografía                                         | `location`            | —                                | En curso                 |
-| 2    | 3 · Empresas                                          | `organization`        | 1 y 2                            | Pendiente                |
+| 2    | 3 · Empresas                                          | `organization`        | 1 y 2                            | En curso                 |
 | 3    | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | 2 y 3                            | Pendiente                |
 | 4    | 4 · Catálogos de flota                                | `vehiclecatalog`      | 3                                | Pendiente                |
 | 5    | 6 · Vehículo y estados                                | `fleet`               | 4                                | Pendiente                |
@@ -52,15 +52,16 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 ### Paso 1 · Geografía y localización — en curso
 
-- **Estado (05/10/2026):** backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, sus pruebas y la ficha del país. Falta la carga del ubigeo.
+- **Estado (06/10/2026):** backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, sus pruebas y la ficha del país. Las direcciones no tienen API propia: las escribe y las lee su dueño, por la fachada de `location` ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §3.3). Solo falta la carga del ubigeo.
 - **Tablas:** `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses`, `tax_id_types` (D-44).
 - **Pantallas:** Catálogos › Monedas y Países. Cada país abre su ficha, con sus datos, su estructura territorial (escalones y divisiones, D-45) y sus documentos tributarios, una sección bajo otra; la misma ficha registra el país y corrige sus datos. Las direcciones se llenan dentro de cada formulario que las usa; no tienen opción propia.
 - **Datos:** el archivo oficial de divisiones territoriales (ubigeo del INEI). Se carga completo (D-2).
 
 
 
-### Paso 2 · Empresas
+### Paso 2 · Empresas — en curso
 
+- **Estado (06/10/2026):** Empresas está construida en el backend y en el frontend, con su dirección fiscal anidada: se registra con la empresa y se corrige o se muda desde su subrecurso. El frontend tiene además las vistas de Sedes y Marcas comerciales, sin ruta y con su opción del menú pendiente hasta que exista su backend. En el backend faltan `commercial_brands`, `branches`, `locations` y `roles.company_id`; Ubicaciones falta en los dos. Las sedes y las ubicaciones nacen con la dirección anidada, igual que la empresa.
 - **Tablas:** `companies`, `commercial_brands`, `branches`, `locations`. Además se agrega `roles.company_id`, que esperaba a que existieran las empresas. `tax_id_types` pasó al paso 1 (D-44).
 - **Pantallas:** Configuración › Empresas (solo superadministrador), Sedes, Marcas comerciales y Ubicaciones. Qué países operan lo muestra Empresas filtrada por país (D-3).
 - **Datos:** razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales.
@@ -165,15 +166,18 @@ Corregir cómo muestra las fechas el frontend, para que todas las pantallas nuev
 ## Pendientes transversales
 
 
-| Qué                                                                 | Prioridad                           |
-| ------------------------------------------------------------------- | ----------------------------------- |
-| La sesión guarda el hash de la contraseña                           | Media                               |
-| Un correo de más de 255 caracteres devuelve error 500 en vez de 400 | Baja                                |
-| Cerrar como "caducidad" las asignaciones vencidas                   | Con la pantalla de roles y usuarios |
-| Fijar los decimales de una moneda cuando un monto ya la usa         | Con compras (paso 7)                |
-| Clase base para tablas con autor y sin `updated_at` (D-42)          | Antes del paso 3                    |
-| Clase base con `updated_by` en `shared` (D-42)                      | Antes del paso 2                    |
-| Listados de usuarios y roles: proyectar en vez de cargar agregados  | Baja                                |
+| Qué | Prioridad |
+| --- | --- |
+| La sesión guarda el hash de la contraseña | Media |
+| Un correo de más de 255 caracteres devuelve error 500 en vez de 400 | Baja |
+| Cerrar como "caducidad" las asignaciones vencidas | Con la pantalla de roles y usuarios |
+| Separar la cuenta de Flyway, dueña de las tablas, de la cuenta de la aplicación, que lee, inserta y actualiza, y solo borra en `spring_session*`. El backend ya trae los scripts (`scripts/database/create-roles.sql`, una vez por clúster, y `hand-over-database.sql`, una vez por base ya migrada) y la migración V17 de permisos, que no otorga nada mientras no exista la cuenta `erp_mm_app`; la aplicación arranca como antes. Falta correr los scripts en cada entorno y fijar `FLYWAY_USER`, `FLYWAY_PASSWORD`, `DATABASE_USER` y `DATABASE_PASSWORD` (README del backend, "Cuentas de la base"). En desarrollo se deja de usar `postgres` | Antes de la primera migración con `company_id` (paso 2) |
+| Aislamiento entre empresas en la base: políticas RLS sobre `company_id`, un punto central que fija con `set_config` las empresas de la cuenta en cada transacción (`SYSTEM` para el superadministrador, el arranque y los procesos automáticos) y pruebas de integración contra PostgreSQL 18 (Testcontainers), conectadas con la cuenta de la aplicación. Hasta entonces solo se otorgan roles de alcance sistema: el bloqueo de `UserCommandServiceImpl` se quita en este mismo cambio, nunca antes | Primera rebanada del paso 3 |
+| Filtro de alcance por asignaciones en el listado, la exportación y la consulta por id de `/companies` y sus rutas anidadas; `/users` abierto al administrador de empresa; una prueba de que una empresa ajena responde `404` ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §9.2) | En el mismo cambio que habilite los roles de empresa (paso 3) |
+| Zona de los momentos en las exportaciones con alcance de empresa o de sede: cada controlador le pasa a `SpreadsheetExporter` la zona de ese alcance ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §8.1) | Paso 3 |
+| Clases base de las cinco formas de columnas de registro: faltan la raíz `CreatedAbstractPersistenceEntity` y `CreatedByAbstractPersistenceEntity` (D-42; [patrones de persistencia](patrones-de-persistencia-millennium-mobility.md)) | Paso 3, con `user_access_suspensions`, su primera tabla |
+| Fijar los decimales de una moneda cuando un monto ya la usa (§4.1): `location` publica un puerto (SPI) que implementan los contextos con montos, para saber si alguno usa la moneda sin depender de ellos | Antes del paso 7 |
+| Listados de usuarios: quitar el N+1 de los roles de cada cuenta (colección `EAGER` en `UserPersistenceEntity`), con una lectura en lote o con `default_batch_fetch_size` | Baja |
 
 
 

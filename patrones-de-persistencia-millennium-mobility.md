@@ -1,6 +1,6 @@
 # Patrones de persistencia — ERP Millennium Mobility
 
-**Actualizado:** 01/10/2026 · **Fuente:** skill `backend-module` (§1 y pasos de construcción; `module-template.md`), `architecture-rules.md` (reglas 2.1 y 3.1) y diccionario de datos (D-42). Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 06/10/2026 (clases base por forma de las columnas de registro; el adaptador carga y copia también en `iam`) · **Fuente:** skill `backend-module` (§1 y pasos de construcción; `module-template.md`), `architecture-rules.md` (reglas 2.1 y 3.1) y diccionario de datos v1.15 (D-42). Si este documento y el diccionario no coinciden, manda el diccionario.
 
 Todos los agregados del backend se guardan de la misma manera: el modelo de negocio en `domain`, la tabla en `infrastructure`. Este documento explica qué hace cada pieza, cómo se guarda una edición sin perder datos y por qué no hay excepciones para los catálogos.
 
@@ -14,8 +14,8 @@ Todos los agregados del backend se guardan de la misma manera: el modelo de nego
 |---|---|---|
 | **Agregado** | `domain/model` | Contiene las reglas del negocio y nada más. Sin anotaciones de JPA, sin constructor vacío para Hibernate, sin setters para el mapeo. Tiene dos constructores: el que crea uno nuevo, validando, y el que lo reconstituye desde la base |
 | **Interfaz de repositorio** | `domain/repositories` | Dice qué necesita el dominio para guardar y leer, en sus términos y solo eso. No tiene `delete`: las filas no se borran |
-| **Entidad de persistencia** | `infrastructure/persistence/jpa/entities` | Tiene la forma de la tabla: columnas, llaves foráneas y relaciones. Extiende la clase base de auditoría |
-| **Ensamblador** | `infrastructure/persistence/jpa/assemblers` | Reconstituye el agregado desde la fila y copia los valores del agregado sobre una fila |
+| **Entidad de persistencia** | `infrastructure/persistence/jpa/entities` | Tiene la forma de la tabla: columnas, llaves foráneas y relaciones. Extiende la clase base que corresponde a sus columnas de registro, o ninguna (ver "Lo que vale siempre") |
+| **Ensamblador** | `infrastructure/persistence/jpa/assemblers` | Reconstituye el agregado desde la fila (`toDomainFromPersistence`) y copia los valores del agregado sobre una fila que recibe (`copyToPersistence`). Nunca arma la fila |
 | **Repositorio de Spring Data** | `infrastructure/persistence/jpa/repositories` | Las consultas a la tabla. Solo lo usa el adaptador |
 | **Adaptador** | `infrastructure/persistence/jpa/adapters` | Implementa la interfaz del dominio con el repositorio de Spring Data |
 
@@ -75,7 +75,14 @@ public class CurrencyRepositoryImpl implements CurrencyRepository {
 
 La razón es un error que ya pasó. La primera versión de monedas y países armaba una fila desde cero en cada guardado, con el id pero sin la fecha de creación, porque esa fecha la registra el sistema y el dominio no la asigna. La base conservaba el valor, ya que la columna no se actualiza, pero la respuesta de `PUT` y `PATCH` salía con `createdAt: null`. Cargando la fila, los valores que registró el sistema (`created_at` y, donde exista, `created_by`) siguen ahí.
 
-`CurrencyAuditTests` y `CountryAuditTests` prueban que una edición conserva la fecha de creación. Cada agregado nuevo necesita una prueba igual.
+La regla, en concreto:
+
+- El adaptador decide la fila: una nueva si el agregado no tiene `id`, o la que carga de la base si lo tiene. Después le pide al ensamblador que copie y guarda esa fila.
+- El ensamblador no tiene un método que construya la fila desde el agregado ni llama a `setId`. Copia solo los valores que el dominio posee; el identificador, las fechas de registro y el autor quedan como los tiene la fila.
+- Los hijos se sincronizan por su `id`: al que existe se le copian sus cambios sobre su propia fila y solo un hijo nuevo recibe una fila nueva. Ninguno se quita de la colección, porque las filas no se borran.
+- Una referencia a una fila que el agregado no posee, como el rol de una asignación, apunta a la fila que la base ya tiene (`findById`), nunca a una reconstruida desde el dominio.
+
+`CurrencyAuditTests`, `CountryAuditTests` y `UserAuditTests` prueban que una edición conserva la fecha de creación (y el autor, en la cuenta). Cada agregado nuevo necesita una prueba igual. Desde el 06/10/2026 `iam` sigue la misma regla: antes armaba la fila de la cuenta y la de cada rol desde el dominio.
 
 ## Una entidad dentro del agregado
 
@@ -136,13 +143,23 @@ Un objeto de valor que solo valida su formato, como `Vin`, `Plate` o un código 
 ## Lo que vale siempre
 
 - **Las columnas de registro las llena el sistema (D-42).**
-  - `created_at` y `updated_at` vienen de `AuditableAbstractPersistenceEntity`.
-  - `created_by` viene de `AuthoredAbstractPersistenceEntity`, que lo toma de la cuenta de la sesión.
-  - Nadie calcula estas fechas con `Instant.now()`.
+  - Las fechas las pone la auditoría de Spring Data (`@CreatedDate`, `@LastModifiedDate`). Nadie las calcula con `Instant.now()`.
+  - `created_by` y `updated_by` los toma de la cuenta de la sesión el auditor que aporta `iam` (`CurrentUserAuditorAware`).
   - Un proceso sin sesión asigna `SYSTEM` de forma explícita.
-  - `updated_by` viene de `RevisedAbstractPersistenceEntity`, que extiende la clase con autor y lo llena con `@LastModifiedBy` en cada guardado. La usa `companies`.
-  - Las tres clases base traen siempre `created_at` y `updated_at`. Sirven para las tablas cuyo cuadro pide las dos fechas: sin autor, la clase con fechas; con `created_by`, la clase con autor; con `created_by` y `updated_by`, la clase revisada. Las seis tablas del bloque 1 usan la clase con fechas.
-  - **Pendiente antes del paso 3:** hay tablas que piden `created_at` y `created_by` pero no `updated_at`, como `purchase_orders`, `credit_notes` y los bloqueos de cuenta. Ninguna de las dos clases encaja: extenderlas agregaría una columna que su cuadro no pide. Hace falta una clase base solo de creación en `shared`, que se decide antes de construir la primera de esas tablas.
+- **La clase base se elige por las columnas que pide el cuadro del diccionario, nunca por el nombre.** Todas viven en `shared/infrastructure/persistence/jpa/entities` y forman una sola cadena, con `id` y `created_at` en la raíz. `CreatedAbstractPersistenceEntity` y `CreatedByAbstractPersistenceEntity` todavía no existen (ver el pendiente de abajo):
+
+| Columnas de registro del cuadro | Clase base | Ejemplos |
+|---|---|---|
+| `created_at` | `CreatedAbstractPersistenceEntity` | `vehicle_equipments` |
+| `created_at`, `updated_at` | `AuditableAbstractPersistenceEntity` | Las seis tablas del bloque 1 |
+| `created_at`, `created_by` | `CreatedByAbstractPersistenceEntity` | `user_access_suspensions`, `purchase_orders`, `purchase_invoices`, `credit_notes`, `supplier_payments`, `vehicle_fund_assignments` |
+| `created_at`, `updated_at`, `created_by` | `AuthoredAbstractPersistenceEntity` | `users` |
+| `created_at`, `updated_at`, `created_by`, `updated_by` | `RevisedAbstractPersistenceEntity` | `companies` |
+| Ninguna | Ninguna: la entidad declara su propio `id` | `roles`, `user_roles` |
+
+  - `CreatedAbstractPersistenceEntity` es la raíz: `id`, `created_at` y el oyente de auditoría. `Auditable` la extiende y agrega `updated_at`; `Authored` agrega `created_by` y `Revised`, `updated_by`. `CreatedBy` extiende la raíz y agrega `created_by`, con las mismas anotaciones que `Authored`: es la única duplicación aceptada.
+  - Extender una clase que trae una columna que el cuadro no pide es una violación: con `ddl-auto: validate`, la aplicación no arranca.
+  - **Pendiente para el paso 3:** `CreatedAbstractPersistenceEntity` y `CreatedByAbstractPersistenceEntity` todavía no existen. Se escriben en el mismo cambio que `user_access_suspensions`, su primera tabla, sin tocar las entidades actuales ni Flyway. Que `purchase_orders`, que se edita mientras es borrador, lleve `updated_at` lo decide el diccionario; si lo lleva, pasa a la clase con autor sin cambiar ninguna clase.
 - **Las filas no se borran**: se desactivan, se cierran o se anulan. Por eso las interfaces de repositorio no tienen `delete`.
 - **Solo el `public_id` sale por la API**; el `id` interno nunca aparece en rutas ni respuestas.
 - **El dominio no importa nada de otro contexto**: lo que necesite de él lo pide por su fachada ACL.

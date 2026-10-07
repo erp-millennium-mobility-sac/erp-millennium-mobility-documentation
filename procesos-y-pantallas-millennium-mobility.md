@@ -1,6 +1,6 @@
 # Procesos y pantallas — ERP Millennium Mobility
 
-**Actualizado:** 02/10/2026 · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.12, [orden de implementación](orden-de-implementacion-millennium-mobility.md) (pantallas de cada paso), menú del frontend (`app-shell/app-navigation.ts`) y los diagramas escritos sobre la v1.8. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 06/10/2026 (Empresas construida; todo formulario pregunta antes de descartar cambios) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15, [orden de implementación](orden-de-implementacion-millennium-mobility.md) (pantallas de cada paso), menú del frontend (`app-shell/app-navigation.ts`) y los diagramas escritos sobre la v1.8. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 El diccionario documenta los datos y sus reglas, pero no los procesos ni las pantallas (§1). Este documento cubre ese hueco: qué hace la empresa con el sistema, en qué orden, quién lo hace y en qué pantalla.
 
@@ -256,10 +256,10 @@ Las rutas siguen la regla del frontend: el nombre del contexto en kebab-case y l
 | Logística | Habilitación | `/fleet/enablement` | `fleet` | 9 | Lista con el estado de habilitación y ficha | Pendiente |
 | Logística | Cargas de archivos | **(propuesta)** `/fleet/imports` | Pendiente (mapa, decisión 8); propuesta: `fleet` | 9 | Lista con carga de archivo | Pendiente |
 | Logística | Reportes | `/reports` | Capa de lectura | 11 | Filtros y exportación | Pendiente |
-| Configuración | Empresas | `/organization/companies` | `organization` | 2 | Lista con diálogo; solo `SUPERADMIN` | Pendiente |
-| Configuración | Sedes | `/organization/branches` | `organization` | 2 | Lista con diálogo | Pendiente |
+| Configuración | Empresas | `/organization/companies` | `organization` | 2 | Lista con diálogo; solo `SUPERADMIN`. La dirección fiscal se llena en el mismo diálogo; al cambiarla en una empresa ya registrada, el diálogo pregunta si es una corrección o una mudanza (D-8) | Construida |
+| Configuración | Sedes | `/organization/branches` | `organization` | 2 | Lista con diálogo; la dirección, como en Empresas | Pendiente: la vista existe en el frontend, sin ruta, hasta que exista su backend |
 | Configuración | Colaboradores | `/organization/employees` | `organization` | 3 | Lista y ficha | Pendiente |
-| Configuración | Marcas comerciales | `/organization/commercial-brands` | `organization` | 2 | Lista con diálogo | Pendiente |
+| Configuración | Marcas comerciales | `/organization/commercial-brands` | `organization` | 2 | Lista con diálogo | Pendiente: la vista existe en el frontend, sin ruta, hasta que exista su backend |
 | Configuración | Ubicaciones | `/organization/locations` | `organization` | 2 | Lista con diálogo | Pendiente |
 | Configuración | Proveedores | `/procurement/suppliers` | `procurement` | 7 | Lista con diálogo | Pendiente |
 | Configuración | Plantillas de OC | `/procurement/purchase-order-templates` | `procurement` | 7 | Lista con formulario de página; los tipos de orden se gestionan dentro | Pendiente |
@@ -305,8 +305,8 @@ Las direcciones no tienen pantalla ni opción de menú: se llenan dentro del for
 | Los montos se muestran con su moneda y con los decimales de esa moneda | §2.2, §4.1 |
 | No hay botones de borrar: se desactiva, se anula, se cierra o se retira | Regla 4.2 de arquitectura |
 | Un campo que el usuario no puede ver no llega al navegador | §2.5 |
-| En una dirección, la pantalla distingue corregir de mudarse | D-8 |
-| Los diálogos guardan abiertos y preguntan antes de descartar cambios | DESIGN.md, revisión 11 |
+| En una dirección, la pantalla distingue corregir de mudarse: al cambiar la de un registro guardado, pregunta cuál de las dos es | D-8 |
+| Los formularios (diálogos, fichas y formularios de página) guardan abiertos y preguntan antes de descartar cambios, también al navegar a otra pantalla o cerrar la pestaña | DESIGN.md, revisión 11; ampliado a todo formulario el 06/10/2026 |
 | Ninguna pantalla de negocio se conforma con que haya sesión: exige un rol o un permiso | §5.2 |
 
 ---
