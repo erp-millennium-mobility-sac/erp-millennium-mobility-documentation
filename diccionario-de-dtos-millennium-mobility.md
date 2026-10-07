@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.14 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
+**Versión:** 1.15 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
 
 > **Cómo leer los cuadros.** En cada tabla, las columnas *Descripción* y *Por qué importa* están escritas para que las entienda cualquier persona, sin conocimientos técnicos: sirven para que quien conoce el negocio pueda revisar si el dato es el correcto. Las columnas *Tipo* y *Nulo*, las restricciones y el código SQL son para el equipo de desarrollo.
 
@@ -43,7 +43,7 @@ No documenta pantallas ni procesos. Cuando una regla de negocio determina una re
 | Toda tabla lleva `id` interno y `public_id`. No se repiten en los cuadros | El `id` es el número con que el sistema la reconoce; el `public_id` es el que sale al exterior (§2.4) |
 | Las columnas de registro —`created_at`, `updated_at`, `created_by`, `updated_by`— van donde el cuadro de cada tabla las pide, y las llena el sistema, nunca la pantalla | Las fechas se ponen al guardar y el autor sale de la sesión. Un proceso sin sesión, como el registro público o el arranque, registra a `SYSTEM` de forma explícita (D-42) |
 | **Cada tabla con identidad propia lleva `public_id UUID DEFAULT uuidv7()`** | Es el identificador que sale al exterior. El `id` interno nunca aparece en una URL, una respuesta de API ni un archivo exportado |
-| El `code` de un catálogo es inmutable una vez publicado | El nombre visible se corrige cuando haga falta; el código no, porque hay mensajes, archivos y sistemas externos que ya lo usan |
+| El `code` de un catálogo queda fijo desde que algo lo usa (§2.4) | El nombre visible se corrige cuando haga falta; el código no, porque hay mensajes, archivos y sistemas externos que ya lo usan |
 | Es tabla lo que administra el usuario; es lista cerrada lo que interpreta el programa | La prueba: ¿puede el cliente agregar un valor un martes y que funcione solo? Un color, sí; un nivel de alcance, no, porque habría que programar cómo filtra |
 | Los derivados no se persisten | Columnas generadas `VIRTUAL` (por defecto en PG 18) o vistas. Un derivado almacenado se desincroniza |
 | **Todo monto viaja con su moneda** | O la fila tiene `currency_id NOT NULL` junto al monto, o la hereda del encabezado por llave foránea. Un monto sin moneda no se guarda |
@@ -70,7 +70,7 @@ Los campos que no pasan el filtro quedan listados como **candidatos**, con el cr
 | Identificador | Ejemplo | Para qué sirve | Quién lo ve |
 |---|---|---|---|
 | `id` interno | `312` | Unir tablas entre sí | Nadie fuera de la base |
-| `public_id` | `019352e1-…-7f3a` | Direcciones web, integraciones, archivos que salen del sistema | Los sistemas externos |
+| `public_id` | `019352e1-…-7f3a` | Direcciones web e integraciones por API | Los sistemas externos |
 | Código de negocio | VIN, placa, RUC | Identificar la cosa real | Las personas |
 
 **Reglas**
@@ -79,8 +79,8 @@ Los campos que no pasan el filtro quedan listados como **candidatos**, con el cr
 - El `id` interno no aparece nunca en una dirección web, una respuesta de API ni un archivo exportado. Tampoco en las llaves foráneas que se devuelven: un vehículo devuelve el `public_id` de su empresa, no su número interno.
 - La llave primaria sigue siendo el entero. El UUID es una columna aparte con valor único.
 - Las direcciones web usan siempre el UUID. Dentro de los mensajes, los catálogos que siguen un estándar externo viajan por su código —`"moneda": "PEN"`— y las entidades del negocio por UUID.
-- Los archivos y documentos que salen del sistema llevan códigos de negocio: VIN, placa, RUC.
-- El `code` de un catálogo propio se puede corregir mientras nada dependa de él; una vez que hay registros que lo usan, queda fijo. Los códigos de normas externas no se editan nunca.
+- Los archivos y documentos que salen del sistema llevan códigos de negocio y nombres —VIN, placa, RUC—, nunca el `id` interno ni el `public_id`. Excepción: un archivo diseñado para editarse y volver a subirse con el fin de actualizar registros existentes lleva además la columna `public_id` como llave estable, porque un código o un nombre pueden corregirse entre la descarga y la subida. El criterio es el uso de ida y vuelta, no quién recibe el archivo (D-51).
+- El `code` de un catálogo propio se puede corregir mientras nada dependa de él; una vez que hay registros que lo usan, queda fijo. Los códigos de normas externas no se editan nunca. La única excepción son los dos códigos ISO del país (D-47): se validan contra la lista de ISO 3166 y se corrigen mientras el país no tenga nada colgado. Extender esa excepción a otro código externo —moneda, sigla, ubigeo— requiere una decisión nueva (D-48).
 
 ### 2.5 Separación de datos por empresa
 
@@ -112,7 +112,7 @@ Los campos que no pasan el filtro quedan listados como **candidatos**, con el cr
 
 ### 2.6 Fechas y horas
 
-Decisión D-40. Las reglas valen para la base, la API, los archivos exportados y la bitácora de cambios.
+Decisiones D-40 y D-49. Las reglas valen para la base, la API, los archivos exportados y la bitácora de cambios.
 
 | Regla | Fundamento |
 |---|---|
@@ -120,7 +120,8 @@ Decisión D-40. Las reglas valen para la base, la API, los archivos exportados y
 | Una fecha de calendario —la emisión de una factura, el ingreso de un colaborador— es `DATE` y termina en `_date` | No tiene hora ni zona: el 15 de marzo es el 15 de marzo en cualquier país. Guardada con hora, cambiaría de día al convertirla de zona |
 | Un período es un rango (`daterange` o `tstzrange`) en la columna `period`, con el inicio incluido y el fin excluido: `[inicio, fin)`. Fin vacío = sigue vigente | Un período termina exactamente donde empieza el siguiente, sin huecos ni cruces, y `WITHOUT OVERLAPS` lo valida. El GPS que se cambia el 04/07/2026 cierra el anterior en esa fecha y abre el nuevo en la misma |
 | Un mes es un `DATE` con día 1 y termina en `_month` | Septiembre de 2026 se guarda como `2026-09-01`, y así se compara y se ordena como cualquier fecha |
-| **Todo intercambio usa ISO 8601** —la API, los archivos exportados y los valores de fecha de la bitácora—: fechas `AAAA-MM-DD`, momentos `AAAA-MM-DDThh:mm:ssZ` en UTC | Es el único formato que no se presta a confusión: `01/03/2025` es 1 de marzo en Perú y 3 de enero en Estados Unidos. Además se ordena bien como texto |
+| **Todo intercambio usa ISO 8601** —la API, los archivos para otros sistemas y los valores de fecha de la bitácora—: fechas `AAAA-MM-DD`, momentos `AAAA-MM-DDThh:mm:ssZ` en UTC | Es el único formato que no se presta a confusión: `01/03/2025` es 1 de marzo en Perú y 3 de enero en Estados Unidos. Además se ordena bien como texto |
+| **En una hoja de cálculo exportada**, la fecha es una celda de fecha con formato `AAAA-MM-DD` y el momento una celda de fecha y hora con formato `AAAA-MM-DD hh:mm:ss`, en una sola zona por archivo, nombrada en el encabezado de la columna: `Último acceso (America/Lima)`. La zona sale de la regla de "hoy" aplicada al alcance de la exportación: la de la sede si el listado es de una sede; si no, la del país de la empresa si es de una empresa; si no, `America/Lima` (D-49) | Una celda de hoja de cálculo guarda el valor sin zona: en UTC no coincidiría con la hora que la persona ve en pantalla, y con zonas mezcladas en una columna dejaría de ordenarse por el momento real. Las celdas son de fecha y no texto, para que la hoja sume, filtre y ordene; quien prefiera otra máscara la cambia en la hoja sin alterar el valor |
 | En la API, un período viaja como dos campos, desde y hasta; hasta vacío = abierto | Cualquier cliente lo entiende sin conocer la notación de rangos de PostgreSQL |
 | Las zonas horarias se guardan con su nombre IANA: `America/Lima`, `America/Bogota` | Un nombre, a diferencia de un desfase fijo como `-05:00`, sigue los cambios de horario que decida cada país |
 | "Hoy" y las fechas de operación se calculan en la zona de la sede donde ocurre el hecho. Sin sede, en la del país de la empresa del registro; si el registro no pertenece a ninguna empresa —una cuenta, un bloqueo—, en `America/Lima` | Una factura registrada a las 11 de la noche en Lima es de ese día en Lima, aunque en UTC ya sea el siguiente. De esto dependen la antigüedad de 20 días de una factura, los vencimientos y los cortes del día |
@@ -133,7 +134,7 @@ Decisión D-40. Las reglas valen para la base, la API, los archivos exportados y
 
 El orden lo fijan las dependencias, no la importancia del negocio. Una tabla no puede escribirse antes que aquellas a las que referencia.
 
-Cada bloque pertenece a un contexto delimitado, que es la unidad de código: `location`, `iam`, `organization`, `vehiclecatalog`, `fleet`, `procurement` y `shared`. El mapa de contextos, con quién puede llamar a quién y la estructura de paquetes, todavía no tiene un documento propio. La regla que lo gobierna es una sola: un contexto usa a otro únicamente a través de su fachada, y nunca consulta ni escribe sus tablas; la única excepción son los modelos de lectura declarados como tales, que solo leen.
+Cada bloque pertenece a un contexto delimitado, que es la unidad de código: `location`, `iam`, `organization`, `vehiclecatalog`, `fleet`, `procurement` y `shared`. El mapa de contextos, con quién puede llamar a quién y la estructura de paquetes, se desarrolla en un documento aparte, como propuesta; lo que este diccionario no fija no está decidido. La regla que lo gobierna es una sola: un contexto usa a otro únicamente a través de su fachada, y nunca consulta ni escribe sus tablas; la única excepción son los modelos de lectura declarados como tales, que solo leen.
 
 | Bloque | Contenido | Depende de | Estado |
 |---|---|---|---|
@@ -1143,6 +1144,7 @@ Los locales de la empresa donde trabaja personal: oficinas, el patio propio, el 
 - La dirección registrada debe coincidir con la declarada ante esa autoridad.
 - Una sede pertenece siempre al país de su empresa; el sistema impide que apunte a otro.
 - Una sede que deja de funcionar se desactiva: los vehículos y accesos que la mencionan siguen siendo explicables.
+- La sede no lleva tipo (D-50). Hoy ninguna regla ni ningún reporte depende de la función del local, y la clase de lugar ya la dice `locations.location_type`. Lo que admitiría el campo está en §6.6.
 
 ### 6.5 `locations` — Ubicaciones de vehículos
 **Decisión cerrada (D-6):** los patios arrendados y las tiendas de los dealers donde se entregan las trimotos **no son sedes de la empresa**: son lugares donde puede haber vehículos. Por eso van en una tabla aparte.
@@ -1185,6 +1187,7 @@ Cuando el patio arrendado tenga un costo asociado —el flujograma menciona el i
 | `lei_code` | `companies` | Que un fondo internacional exija el identificador global de entidades legales. Se paga y se renueva cada año |
 | `parent_company_id` | `companies` | Que aparezca una holding con documento propio que consolide a las demás |
 | `logo_path` | `commercial_brands` | Que la marca se muestre en documentos o en la aplicación del cliente |
+| `branch_type` | `branches` | Que una regla dependa de la función del local —por ejemplo, que el rol `TALLER` solo se asigne a sedes que sean taller— o que un reporte agrupe sedes por función. No debe repetir `locations.location_type` (D-6): la sede principal se deriva de `tax_establishment_code = '0000'` y los patios y almacenes son ubicaciones. Si se admite, sus valores van en un solo idioma y no se solapan entre sí (D-50) |
 | `rental_cost` y período | `locations` | Que se implemente el indicador de costo por día paralizado |
 
 ---
@@ -2468,14 +2471,18 @@ No quedan decisiones de diseño abiertas. Lo que falta para construir son datos,
 | D-37 | Las líneas de una orden de compra admiten conceptos que no son vehículos, igual que las de factura: las órdenes de taller no compran modelos (§9.2) |
 | D-38 | Toda cuenta pertenece a un colaborador y nace vinculada a él: un administrador da acceso a un colaborador ya registrado —vinculándolo a su cuenta si la persona ya tiene una por otra empresa—, o el registro público crea el colaborador y la cuenta juntos (D-32). Para tener un rol en una empresa, la cuenta debe estar vinculada a un colaborador activo de esa empresa; al registrar su salida se retiran esos roles, y si no le queda ningún colaborador activo la cuenta se bloquea. Excepciones: `SYSTEM`, que no es una persona, y el primer superadministrador, que hasta vincularse a su perfil configura el sistema pero no puede dar acceso (§5.2, §5.3) |
 | D-39 | Vocabulario: **rol** es el conjunto de permisos de una cuenta; **puesto**, el trabajo del colaborador, informativo; **perfil**, sus datos personales. El documento no usa "cargo" (§5.1) |
-| D-40 | Fechas: los momentos son `TIMESTAMPTZ` en UTC (`_at`), las fechas de calendario `DATE` (`_date`) y los períodos rangos con fin excluido. Todo intercambio usa ISO 8601; "hoy" se calcula en la zona de la sede, o del país de la empresa, o `America/Lima`; `dd/mm/aaaa` solo en pantalla (§2.6) |
+| D-40 | Fechas: los momentos son `TIMESTAMPTZ` en UTC (`_at`), las fechas de calendario `DATE` (`_date`) y los períodos rangos con fin excluido. Todo intercambio usa ISO 8601, con los momentos en UTC; en una hoja de cálculo exportada, los momentos van en una sola zona nombrada en el encabezado (D-49); "hoy" se calcula en la zona de la sede, o del país de la empresa, o `America/Lima`; `dd/mm/aaaa` solo en pantalla (§2.6) |
 | D-41 | Un rol se retira con uno de cuatro motivos: `retiro`, `caducidad`, `baja_colaborador` o `baja_cuenta` (§5.7) |
 | D-42 | Las columnas de registro las llena el sistema: `created_at` y `updated_at` al guardar, y `created_by` y `updated_by` con la cuenta de la sesión. Cuando no hay sesión —el registro público, el arranque— el proceso registra a `SYSTEM` de forma explícita; el sistema nunca lo supone, para que un cambio que perdió su sesión por error no quede a nombre de nadie. Solo las llevan las tablas cuyo cuadro las pide: las seis tablas del bloque 1 —`currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses` y `tax_id_types`— registran fechas pero no autor (§2.2) |
 | D-43 | Los catálogos generales —monedas, países, divisiones territoriales, tipos de documento tributario— los lee cualquier cuenta con al menos un rol vigente, porque toda pantalla con un selector los necesita; solo el superadministrador los crea o modifica. Tener sesión sin rol no alcanza (§5.2). Cuando existan los permisos, la lectura pasa a un permiso propio |
 | D-44 | Los tipos de documento tributario son localización del país: pertenecen al bloque 1 y al contexto `location`, junto con los escalones y las divisiones territoriales. Los ERP que operan en varios países los tratan igual. Llevan `is_active` y fechas, sin autor (§4.7) |
 | D-45 | Los escalones territoriales forman parte del país: se guardan y se validan con él. Se declaran en orden, sin saltos, y no se borran ni se retiran; solo se corrige su nombre (§4.4) |
 | D-46 | Los tipos de cambio por día y la moneda de grupo quedan diseñados en §4.8 y se construyen cuando aparece quien los usa: los tipos de cambio justo antes de compras (paso 7) y la moneda de grupo con los reportes (paso 11). La moneda de grupo es USD |
-| D-47 | Los dos códigos ISO de un país nombran un mismo país de ISO 3166. Se corrigen mientras el país no tenga escalones, direcciones ni tipos de documento tributario, lo que también excluye divisiones y empresas; desde entonces quedan fijos. `location` lo decide sin consultar a `organization`, para no volver al ciclo que D-3 eliminó (§4.2) |
+| D-47 | Los dos códigos ISO de un país nombran un mismo país de ISO 3166. Se corrigen mientras el país no tenga escalones, direcciones ni tipos de documento tributario, lo que también excluye divisiones y empresas; desde entonces quedan fijos. `location` lo decide sin consultar a `organization`, para no volver al ciclo que D-3 eliminó. Es la única excepción con nombre a la regla de que los códigos de normas externas no se editan; extenderla requiere una decisión nueva (§2.4, §4.2, D-48) |
+| D-48 | El `code` de un catálogo queda fijo desde que algo lo usa: uno propio se corrige mientras nada dependa de él, y los de normas externas no se editan nunca. La única excepción son los dos códigos ISO del país (D-47), que se validan contra ISO 3166 y se corrigen mientras el país no tenga nada colgado. Extenderla a otro código externo —moneda, sigla, ubigeo— requiere una decisión nueva: la moneda, por ejemplo, la usa la empresa como moneda funcional aunque sea de otro país, y `location` no puede saberlo sin consultar a otro contexto (§2.2, §2.4) |
+| D-49 | En una hoja de cálculo exportada, la fecha es una celda de fecha con formato `AAAA-MM-DD` y el momento una celda de fecha y hora con formato `AAAA-MM-DD hh:mm:ss`, en una sola zona por archivo, nombrada en el encabezado de la columna. La zona sale de la regla de "hoy" aplicada al alcance de la exportación: la sede, si no el país de la empresa, si no `America/Lima`. Los archivos para otros sistemas usan ISO 8601 con los momentos en UTC y `Z` (§2.6) |
+| D-50 | La sede no lleva tipo: ninguna regla ni reporte depende hoy de la función del local, y la clase de lugar ya la dice `locations.location_type` (D-6). `branch_type` queda como candidato, con el criterio que lo admitiría (§6.4, §6.6) |
+| D-51 | El `public_id` sale por las direcciones web y las integraciones por API. Los archivos que genera el sistema llevan códigos de negocio y nombres, nunca el `id` interno ni el `public_id`. Excepción: un archivo diseñado para editarse y volver a subirse con el fin de actualizar registros existentes lleva además el `public_id` como llave estable. El criterio es el uso de ida y vuelta, no quién recibe el archivo (§2.4) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
