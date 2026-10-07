@@ -1,6 +1,6 @@
 # Mapa de contextos — ERP Millennium Mobility
 
-**Actualizado:** 02/10/2026 · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.12 (§3 y decisiones cerradas), [patrones de persistencia](patrones-de-persistencia-millennium-mobility.md), reglas de arquitectura de la skill `backend-module` y el documento *Contextos delimitados* escrito sobre la v1.8, que este reemplaza. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 06/10/2026 (direcciones con dueño, fachadas construidas, capa de lectura) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15 (§3, §4.6 y decisiones cerradas), [patrones de persistencia](patrones-de-persistencia-millennium-mobility.md), reglas de arquitectura de la skill `backend-module` y el documento *Contextos delimitados* escrito sobre la v1.8, que este reemplaza. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 El diccionario (§3) fija dos cosas: qué contexto es dueño de cada bloque, y que un contexto usa a otro únicamente a través de su fachada, sin consultar ni escribir sus tablas. Este documento propone cómo desarrollar esas reglas: qué posee cada contexto, quién puede llamar a quién, qué ofrece cada fachada y cómo se resuelven las fronteras delicadas.
 
@@ -34,7 +34,7 @@ El vocabulario de personas es el del diccionario (D-39): **rol** es el conjunto 
 | Cada contexto es dueño de sus tablas. Nadie escribe en las de otro (§3; regla 1.3) | Las escrituras pasan por la fachada del dueño, que es quien escribe |
 | Nadie consulta las tablas de otro (§3; regla 1.2) | Las lecturas pasan por la fachada del dueño. La única excepción es la capa de lectura (§7), que solo lee |
 | Las llaves foráneas entre contextos sí están permitidas (regla 1.2) | Es una sola base de datos y protegen la integridad |
-| Las dependencias entre contextos van en un solo sentido | `ModularityTests` falla ante un ciclo o ante el uso del interior de otro contexto. Además, cada `package-info.java` debe declarar sus `allowedDependencies` según §4; hoy lo hacen `location`, sin ninguna, y `organization`, con `location::acl` (§9) |
+| Las dependencias entre contextos van en un solo sentido | `ModularityTests` falla ante un ciclo o ante el uso del interior de otro contexto. Además, cada `package-info.java` debe declarar sus `allowedDependencies` según §4; hoy lo hacen `location` e `iam`, sin ninguna, y `organization`, con `location::acl` (§9) |
 | El dominio es solo dominio, en todos los contextos | Decisión del 01/10/2026: agregado en `domain`; entidad de persistencia, ensamblador y adaptador en `infrastructure`, también en los catálogos. El "camino corto" de la v1.8 quedó descartado |
 
 ---
@@ -137,9 +137,10 @@ Quien la consume lo hace desde `application.internal.outboundservices.acl`, con 
 | Contexto | Fachada | Qué ofrece | Estado |
 |---|---|---|---|
 | `iam` | `IamContextFacade` | Identificador interno de una cuenta a partir del público y al revés; cuenta de la petición actual | Construida |
-| `location` | `LocationContextFacade` | Identificador interno de una moneda por su identificador público; si existe una moneda activa con un código ISO; resumen de país (`CountrySummary`) por identificador público, ISO o interno; identificadores de una dirección; resumen de un tipo de documento tributario (`TaxIdTypeSummary`), con a quién cubre, su longitud y si está activo | Construida |
-| `location` | (misma fachada) **(propuesta)** | División territorial por identificador público; crear, corregir y reemplazar la dirección de un dueño (§6.3); zona horaria del país | Pendiente; ningún contexto lo pide todavía |
-| `organization` | `OrganizationContextFacade` **(propuesta)** | El colaborador está activo en la empresa; la cuenta tiene algún colaborador activo, en cualquier empresa (§5.3); registrar el colaborador del registro público con el autor que indica `iam` (D-42); vincular un colaborador a una cuenta; zona horaria de la sede o del país de la empresa (§2.6) | Pendiente |
+| `location` | `LocationContextFacade` | Identificador interno de una moneda por su identificador público; si existe una moneda activa con un código ISO; resumen de país (`CountrySummary`) por identificador público o ISO; resumen de un tipo de documento tributario (`TaxIdTypeSummary`) por identificador público, con a quién cubre, su longitud y si está activo. Las referencias de una lista se leen **en lote** (`fetchCurrencySummariesByIds`, `fetchCountrySummariesByIds`, `fetchTaxIdTypeSummariesByIds`): un método recibe todos los identificadores internos y responde un mapa, nunca una llamada por fila. Las direcciones de los dueños: `createAddress` en el país que fija el dueño, `correctAddress` y `replaceAddress`, que devuelven `Result` con el error de `location`, más `fetchAddressSummariesByIds` para leerlas (§6.3). Un solo registro se lee con el método en lote y un solo identificador | Construida |
+| `location` | (misma fachada) **(propuesta)** | División territorial por identificador público; zona horaria del país | Pendiente; ningún contexto lo pide todavía |
+| `organization` | `OrganizationContextFacade` | Resumen de una empresa (`CompanySummary`: país, documento tributario, razón social, nombre comercial, moneda funcional y si está activa) por su identificador público o por el país que opera; si un país tiene empresa que opera (D-3) | Construida; ningún contexto la consume todavía |
+| `organization` | (misma fachada) **(propuesta)** | El colaborador está activo en la empresa; la cuenta tiene algún colaborador activo, en cualquier empresa (§5.3); registrar el colaborador del registro público con el autor que indica `iam` (D-42); vincular un colaborador a una cuenta; zona horaria de la sede o del país de la empresa (§2.6) | Pendiente; llega con el paso 3 |
 | `vehiclecatalog` | `VehicleCatalogContextFacade` **(propuesta)** | El modelo existe y está activo; tipo de vehículo del modelo; si la unidad requiere pantalla: el equipo aplica a su tipo **y** el modelo no la trae de fábrica (§7.5) | Pendiente |
 | `fleet` | `FleetContextFacade` **(propuesta)** | Unidad por VIN; empresa propietaria; estado actual; anular la unidad cuando su valor llega a cero (§9.6); dar de alta la unidad desde la factura, solo si así se decide (decisión pendiente 5) | Pendiente |
 | `procurement` | — | Ningún contexto la necesita: costos y pagos se leen desde la capa de lectura | — |
@@ -190,10 +191,19 @@ Es la más delicada porque ambos hablan del vehículo.
 
 `addresses` es de `location` (§3), pero cada dirección pertenece a una empresa, una sede, una ubicación, un proveedor o una plantilla de orden de compra (§4.6).
 
-- La dirección se edita dentro del formulario de su dueño: no tiene pantalla ni menú propio (orden de implementación, paso 1).
-- **(propuesta)** El contexto dueño pide a `location` crear, corregir o reemplazar la dirección y guarda el `address_id` que le devuelve.
+- La dirección se edita dentro del formulario de su dueño: no tiene pantalla ni menú propio (orden de implementación, paso 1), y tampoco ruta propia en la API. Se escribe y se lee solo a través del dueño, así que su permiso es el del dueño ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §3.3). Decidido el 06/10/2026.
+- El contexto dueño pide a `location`, por su fachada y **dentro de su propia transacción**, una de tres operaciones, y guarda el `address_id` que le devuelve:
+
+| Operación | Cuándo | Qué hace `location` |
+|---|---|---|
+| Crear | Se registra el dueño con su dirección | Crea la fila en el país que fija el dueño y devuelve su identificador interno. El dueño comprueba sus propios conflictos antes de pedirla, así un fallo no deja direcciones sueltas |
+| Corregir | Se escribió mal (D-8) | Modifica la misma fila |
+| Reemplazar | El dueño se mudó o registra su primera dirección (D-8) | Crea una fila nueva y devuelve su identificador; la anterior se conserva para los documentos que la citan |
+
+- Para leer, la fachada devuelve el resumen de una dirección (país, división y los datos de la calle) por su identificador interno, y el de varias en una sola llamada. La lista de un dueño pide las de toda la página juntas, nunca una por fila.
+- El país no lo elige quien escribe la dirección: la de una empresa, una sede o una ubicación está en el país de la empresa **(propuesta: el diccionario todavía no lo registra)**. La base lo exige con una llave foránea compuesta (`fiscal_address_id`, `country_id`) hacia `addresses (id, country_id)`, como las demás referencias del mismo país. El proveedor, cuando exista, fijará su propio país.
 - Corregir modifica la fila; una mudanza crea una fila nueva (D-8). La fachada ofrece las dos operaciones por separado.
-- Las direcciones no se comparten entre entidades (§4.6): cada dueño tiene su propia fila aunque el texto coincida.
+- Las direcciones no se comparten entre entidades (§4.6): cada dueño tiene su propia fila aunque el texto coincida. La columna de la dirección en el dueño es `UNIQUE` (empresa, sede, ubicación). En los documentos que citan una dirección (contratos, órdenes) nunca lo es, porque D-8 los hace apuntar a la misma fila que su dueño.
 
 ### 6.4 `vehiclecatalog` y `fleet`
 
@@ -206,7 +216,7 @@ Entra a `shared` lo que cumple **las dos** condiciones: lo usan dos o más conte
 | Contiene | Ejemplos |
 |---|---|
 | Núcleo de aplicación | `Result`, `ApplicationError` |
-| Persistencia base | `AuditableAbstractPersistenceEntity`, `AuthoredAbstractPersistenceEntity`, estrategia de nombres |
+| Persistencia base | Las clases base de las columnas de registro (`AuditableAbstractPersistenceEntity` y sus hermanas, [patrones de persistencia](patrones-de-persistencia-millennium-mobility.md)), estrategia de nombres |
 | REST común | Manejador global de errores, `ErrorResource`, `@AnyRoleRequired` |
 | Plataforma | Bitácora de cambios (`change_log`), registro de las cargas de archivos (`import_batches`: archivo, filas totales, entradas y fallidas, archivo de errores) y almacenamiento de archivos |
 
@@ -229,6 +239,7 @@ Entra a `shared` lo que cumple **las dos** condiciones: lo usan dos o más conte
 
 Los indicadores calculados (§10.5) y el exportable de stock cruzan varios contextos. Se arman en una capa de lectura declarada como tal, que no pertenece a ningún contexto, consulta las tablas directamente y **nunca escribe** (regla 1.2).
 
+- No depende del código de ningún contexto de negocio: lee sus tablas por SQL (decisión pendiente 3).
 - Respeta los mismos permisos que el resto: un campo que el usuario no puede ver no sale de la base (§2.5; regla 5.4).
 - No guarda resultados: si un reporte mensual debe ser reproducible, se conserva el archivo del reporte, no un campo (§10.5).
 
@@ -239,25 +250,25 @@ Los indicadores calculados (§10.5) y el exportable de stock cruzan varios conte
 El frontend tiene los mismos contextos, con las mismas capas dentro de cada uno (skill `frontend-feature`):
 
 - La carpeta lleva el nombre del contexto; la URL del navegador, el mismo en kebab-case (`vehiclecatalog` → `/vehicle-catalog/...`).
-- Un contexto nunca importa el store ni el interior de otro: usa su fachada (`<contexto>.facade.ts`), que devuelve vistas mínimas, no entidades (frontend-rules 1.1 a 1.3).
+- Un contexto nunca importa el store ni el interior de otro: usa su fachada (`<contexto>.facade.ts`), que devuelve vistas mínimas, no entidades (frontend-rules 1.1 a 1.3). La única pieza de pantalla que un contexto presta a otros es `mm-address-fields`, que `location` publica en `presentation/public` (frontend-rules 1.2).
 - `app-shell` es el único que compone varios contextos: el marco, el menú y la sección de sesión.
 - **(propuesta)** Las pantallas de la plataforma y de la capa de lectura (`/change-log`, `/reports`) no llevan prefijo de contexto, como ya figuran en `app-navigation.ts`. En qué carpeta del frontend viven está pendiente (decisión pendiente 3).
 
 ---
 
-## 9. Estado del código frente a este mapa (05/10/2026)
+## 9. Estado del código frente a este mapa (06/10/2026)
 
 | Tema | Hoy | Según este mapa |
 |---|---|---|
 | `shared`, `iam` | Construidos; lo que falta de `iam` está en §5.13 del diccionario | — |
-| `location` | Monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con dominio y persistencia separados. Declara `allowedDependencies = {}` | Cumple (§3, §4, D-44, D-45) |
-| `organization` | Empresas. Consulta a `location` solo desde `ExternalLocationService`, y la regla del tipo de documento de la empresa (§6.2) es un objeto de valor de su dominio. Declara `location::acl` | Cumple. Ya no publica un evento para marcar el país como operativo: eso lo responde el filtro de empresas por país (D-3) |
+| `location` | Monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con dominio y persistencia separados. Las direcciones no tienen API propia: las crean, corrigen y reemplazan sus dueños por la fachada (§6.3). Declara `allowedDependencies = {}` | Cumple (§3, §4, D-44, D-45) |
+| `organization` | Empresas, con su dirección fiscal anidada. Consulta a `location` solo desde `ExternalLocationService`, en lote para las listas, y la regla del tipo de documento de la empresa (§6.2) es un objeto de valor de su dominio. Declara `location::acl` | Cumple. Ya no publica un evento para marcar el país como operativo: eso lo responde el filtro de empresas por país (D-3) |
 | Escalones y divisiones territoriales | En `location`, en el backend y en el frontend. Los escalones se guardan con el país, no tienen `DELETE` y se leen y declaran en `/countries/{id}/geo-division-levels` | Cumple. El contexto `geodivision` ya no existe |
-| Frontend de `location` | Ficha del país en `/location/countries/{id}` con sus datos, su estructura territorial y sus documentos tributarios. `LocationFacade` devuelve vistas mínimas (`CountryOption`, `CurrencyOption`, `AddressOption`, `TaxIdTypeOption`) | Cumple |
+| Frontend de `location` | Ficha del país en `/location/countries/{id}` con sus datos, su estructura territorial y sus documentos tributarios. `LocationFacade` devuelve vistas mínimas (`CountryOption`, `CurrencyOption`, `TaxIdTypeOption`). Los dueños llenan la dirección con `mm-address-fields` (`location/presentation/public`), un control de formulario que solo produce el valor: guardarla le toca al dueño | Cumple |
 | `OrganizationFacade` del frontend | Devuelve `CompanyOption`, una vista mínima | Cumple |
-| `iam` | Sin `package-info.java` con `allowedDependencies` | Declara `organization::acl` (y `organization::events` si se elige el evento) cuando exista `organization` |
-| `AbstractDomainAggregateRoot` | Extiende una clase de Spring Data, así que los agregados que la usan dependen de `org.springframework` | El dominio no depende del marco de trabajo (regla 2.1) |
-| Rutas de la API | Ninguna lleva prefijo de contexto | Ver [convenciones de la API](convenciones-de-la-api-millennium-mobility.md), decisión pendiente 1 |
+| `iam` | `package-info.java` con `allowedDependencies = {}`: hoy no depende de ningún contexto | Cumple. Cuando llegue el paso 3 declara `organization::acl` (y `organization::events` si se elige el evento, decisión pendiente 2) |
+| ~~`AbstractDomainAggregateRoot`~~ | Resuelto el 06/10/2026: la clase, que extendía una de Spring Data, ya no existe y `User` no hereda de ninguna. Un evento de integración lo publica el servicio de comandos después de guardar, dentro de la transacción (skill `backend-module`) | Cumple: el dominio no depende del marco de trabajo (regla 2.1) |
+| Rutas de la API | Ninguna lleva prefijo de contexto | Cumple: el prefijo se rechazó el 06/10/2026 ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §2.1) |
 
 ---
 
@@ -274,7 +285,7 @@ El frontend tiene los mismos contextos, con las mismas capas dentro de cada uno 
 | `fleet` pide costos a `procurement` | Sí | No **(propuesta)**; la anulación la ordena `procurement` y los costos los lee la capa de lectura | Evita el ciclo con `procurement` → `fleet` |
 | Adaptadores de archivos externos | `shared.dataimport` | En `fleet` **(propuesta)**; `shared` guarda el registro de la carga | La regla 1.3 y el ciclo con `fleet` (§6.5) |
 | Paquete raíz | `com.millennium.erp` | `ky.millennium.mobility.erp` | Dominio `millennium.ky` |
-| Rutas de la API | Prefijo por contexto | Propuesta pendiente; hoy ninguna ruta lo lleva | Ninguna decisión lo fija ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md)) |
+| Rutas de la API | Prefijo por contexto | Sin prefijo | Un solo despliegue y un solo cliente, sin recursos repetidos entre contextos; rechazado el 06/10/2026 ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §2.1) |
 | Fases y plazos | Tabla propia de 9 fases y costo en días-persona | El [orden de implementación](orden-de-implementacion-millennium-mobility.md) | Es el documento vigente del plan |
 
 ---
@@ -283,7 +294,7 @@ El frontend tiene los mismos contextos, con las mismas capas dentro de cada uno 
 
 1. **Un esquema de base de datos por contexto o uno solo.** La v1.8 proponía uno por contexto para que la frontera se vea también en la base; hoy todo está en el esquema `public`. Cambiarlo después obliga a mover tablas con migraciones.
 2. **Dónde se registra la salida de un colaborador y cómo se protege al último superadministrador** (§5.3, §5.9), sin que `organization` llame a `iam`. Opción A: la salida la registra un caso de uso de `iam`, que valida y luego pide a `organization` cerrar el colaborador. Opción B: `organization` publica `EmployeeTerminated` y el oyente síncrono de `iam` rechaza el evento y revierte la transacción cuando no quedaría ningún superadministrador; es más simple, pero convierte un fallo esperado en una excepción (regla 3.1).
-3. **Dónde viven la capa de lectura y las pantallas de la plataforma.** Propuesta: un módulo `reporting` declarado en Spring Modulith, con dependencias de solo lectura hacia todos, y una carpeta del frontend para la plataforma y los reportes.
+3. **Dónde viven la capa de lectura y las pantallas de la plataforma.** Propuesta: un módulo `reporting` declarado en Spring Modulith **sin ninguna dependencia de código hacia los contextos de negocio**: lee sus tablas por SQL y nunca escribe (regla 1.2). Si necesita el alcance por empresa de quien consulta, usa solo la interfaz publicada de `iam`, que nunca lo llama, así que no hay ciclo. Como Modulith no avisa si cambia una columna ajena, cada consulta tiene una prueba de integración contra el esquema de Flyway. `shared` solo escribe la bitácora y el registro de las cargas; sus pantallas (`/change-log`, `/imports`, `/reports`) las lee `reporting`. En el frontend, una carpeta `reporting`, espejo del backend. Se decide antes del paso 6, junto con la 6; hasta entonces esas rutas no se construyen y siguen como pendientes en el menú.
 4. **Tipo de cada contexto, límites de los agregados, reparto del bloque 3b y sentido de las dependencias** (§3, §4): son propuesta de este documento. Si se aceptan, el reparto del 3b (`employees` → `organization`, `user_roles` → `iam`) se registra en el diccionario; ya coincide con el código, donde `user_roles` está en `iam`. Lo mismo vale para los nombres `sales` y `customerportal`.
 5. **Dónde nace la unidad.** En Inventario antes de registrar la factura, y entonces `procurement` solo pregunta si el VIN existe; o al registrar la factura, y entonces `procurement` le pide a `fleet` crearla. Es la pregunta abierta 1 de [procesos y pantallas](procesos-y-pantallas-millennium-mobility.md).
 6. **Cómo se muestran las referencias a cuentas fuera de `iam`** (`changed_by`, `uploaded_by`, `imported_by` en `fleet`, `procurement` y `shared`). El `id` interno no sale del servidor; el identificador público lo traduce `iam` y el nombre de la persona está en `employees`, de `organization` (§5.4). Opción A: las resuelve la capa de lectura, sin dependencias de código; es la única que sirve para `change_log` e `import_batches`, que son de `shared`. Opción B: `fleet` y `procurement` agregan `iam` a sus dependencias, sin ciclo porque `iam` no los llama.
