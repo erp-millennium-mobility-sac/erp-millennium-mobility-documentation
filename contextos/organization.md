@@ -1,6 +1,6 @@
 # Contexto `organization` — ERP Millennium Mobility
 
-**Actualizado:** 14/10/2026 · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15 (§2.5, §3, §5.2, §5.3, §5.7, §5.9, §6 y §14), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), [orden de implementación](../orden-de-implementacion-millennium-mobility.md) y el código de la rama `feature/location` del backend y del frontend al 14/10/2026. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 15/10/2026 · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15 (§2.5, §3, §5.2, §5.3, §5.7, §5.9, §6 y §14), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), [orden de implementación](../orden-de-implementacion-millennium-mobility.md) y el código de la rama `feature/location` del backend y del frontend al 14/10/2026. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 Este documento junta lo que hace falta para entender `organization` sin recorrer los cuatro documentos por tema. Las secciones 1 a 3 están escritas para quien conoce el negocio; la 4 y la 6 son para el equipo de desarrollo.
 
@@ -91,10 +91,10 @@ En cada flujo, "el sistema revisa" es lo que el backend comprueba en ese orden. 
 - **Pantalla:** Configuración › Empresas (`/organization/companies`), diálogo de alta.
 - **Pasos:**
   1. Elige el país. La pantalla carga solo los tipos de documento de ese país que aplican a empresas.
-  2. Escribe el número, la razón social exacta, el nombre comercial y el teléfono, y elige la moneda funcional.
+  2. Escribe el número, la razón social exacta, el nombre comercial y el teléfono, y elige la moneda funcional. La pantalla ofrece solo monedas activas y, al editar, también la que la empresa ya tiene.
   3. Llena la dirección fiscal con el componente de direcciones de `location`. El país no se elige: es el de la empresa.
-  4. Guarda (`POST /companies`). El sistema revisa, en orden: que el país exista; que el país no tenga ya una empresa; que el número no esté usado en el país; que el tipo exista, sea del país, esté activo, aplique a empresas y que el número tenga su longitud; que la moneda exista; que los textos respeten sus largos. La dirección se crea al final, cuando todo lo anterior pasó.
-- **Errores visibles:** `COMPANY_COUNTRY_CONFLICT` y `COMPANY_TAX_ID_CONFLICT` (`409`); un tipo que no aplica o una longitud equivocada (`422`); país, tipo o moneda inexistentes (`404`); los de la dirección, que vienen de `location` (`GEODIVISION_NOT_FOUND`, código postal faltante, división que no sirve).
+  4. Guarda (`POST /companies`). El sistema revisa, en orden: que el país exista; que el país no tenga ya una empresa; que el número no esté usado en el país; que el tipo exista, sea del país, esté activo, aplique a empresas y que el número tenga su longitud; que la moneda exista y, si es nueva para la empresa, esté activa; que los textos respeten sus largos. La dirección se crea al final, cuando todo lo anterior pasó.
+- **Errores visibles:** `COMPANY_COUNTRY_CONFLICT` y `COMPANY_TAX_ID_CONFLICT` (`409`); `CURRENCY_INACTIVE` (`422`) si la moneda elegida está inactiva; un tipo que no aplica o una longitud equivocada (`422`); país, tipo o moneda inexistentes (`404`); los de la dirección, que vienen de `location` (`GEODIVISION_NOT_FOUND`, código postal faltante, división que no sirve).
 - **Resultado:** la empresa queda activa con su propia dirección fiscal. Si algo falla, no queda ni la empresa ni la dirección.
 - **Después:** editar nombres, teléfono y moneda; corregir la dirección (si no tiene, `422 COMPANY_FISCAL_ADDRESS_MISSING`) o mudarla; el diálogo pregunta cuál de las dos es (D-8). Activar o desactivar.
 
@@ -203,6 +203,7 @@ Solo existe en el frontend. La pantalla de Colaboradores ofrece "Suspender", "Ce
 | ORG-R32 | Un país opera si tiene una empresa activa; no se guarda | D-3 | Servicio: `GET /companies?countryId=…&active=true`. La fachada (`existsCompanyByCountryId`) no mira si la empresa está activa | `CompanyQueryServiceImplTests.searchingPassesTheTextTheStatusTheInternalCountryAndThePageToTheRepository` | ⚠️ |
 | ORG-R33 | Nada se borra: se desactiva o se registra la salida | §5.3, §6.2, §6.4, §6.5; convenciones §3.1 | Servicio: no hay `DELETE` | `405` en `BranchesIntegrationTests`, `CommercialBrandsIntegrationTests` y `EmployeesIntegrationTests`; empresas y ubicaciones, sin prueba | ⚠️ |
 | ORG-R34 | Columnas de registro: la empresa guarda quién la creó y quién la cambió; el colaborador, quién lo registró; marcas, sedes y ubicaciones, solo fechas | D-42; §5.3, §6.2 a §6.5 | Base y servicio: clases base compartidas y el auditor de `iam` (`Revised` en empresas, `Authored` en colaboradores, `Auditable` en el resto) | `EmployeeAuditTests` (autor); `CompanyAuditTests`, `BranchAuditTests`, `CommercialBrandAuditTests`, `LocationAuditTests` (fechas); el autor de la empresa, sin prueba | ⚠️ |
+| ORG-R35 | La moneda funcional nueva está activa; la que la empresa ya tiene se conserva aunque se haya desactivado | §4.1, §6.2 | Dominio: `FunctionalCurrency`, que recibe el estado de `location` por `CurrencySummary.isActive`. Servicio: `CompanyCommandServiceImpl`, que responde `CURRENCY_INACTIVE` (`422`). Frontend: el diálogo ofrece las activas más la actual (rama `feature/location-closure`) | `FunctionalCurrencyTests`, `CompanyCommandServiceImplTests`, `CompaniesControllerTests` | ✅ |
 
 ## 5. Relación con otros contextos
 

@@ -1,6 +1,6 @@
 # Contexto `location` — ERP Millennium Mobility
 
-**Actualizado:** 14/10/2026 · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15 (§2, §3, §4.1 a §4.8 y las decisiones D-2, D-3, D-8, D-13, D-40, D-42 a D-49 y D-51), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), [orden de implementación](../orden-de-implementacion-millennium-mobility.md), las revisiones del [30/09/2026](../retroalimentacion/2026-09-30-location.md) y del [05/10/2026](../retroalimentacion/2026-10-05-location.md), y el código de la rama `feature/location` del backend y del frontend al 14/10/2026. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 15/10/2026 · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15 (§2, §3, §4.1 a §4.8 y las decisiones D-2, D-3, D-8, D-13, D-40, D-42 a D-49 y D-51), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), [orden de implementación](../orden-de-implementacion-millennium-mobility.md), las revisiones del [30/09/2026](../retroalimentacion/2026-09-30-location.md) y del [05/10/2026](../retroalimentacion/2026-10-05-location.md), y el código de la rama `feature/location` del backend y del frontend al 14/10/2026. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 **Cómo leerlo.** Las secciones 1 a 3 están escritas para quien conoce el negocio. La 4 y la 6 nombran archivos del código para el equipo. Lo marcado **(propuesta)** no lo decide nadie todavía.
 
@@ -59,7 +59,7 @@ Ninguna fila de `location` se borra. Lo que deja de usarse se desactiva, salvo l
 | Alta | El superadministrador la crea en Catálogos › Monedas (D-43). Llegan sembradas PEN, USD, COP y MXN |
 | Qué cambia | El nombre, el símbolo y los decimales |
 | Qué queda fijo | El código ISO, desde el alta: es de una norma externa y no se edita nunca (§2.4, D-48). Los decimales deberían quedar fijos desde el primer monto que use la moneda (§4.1); **hoy no se aplica**: se pueden cambiar siempre. Está previsto antes del paso 7 (orden, pendientes) |
-| Retiro | Se desactiva. Una moneda inactiva no debería poder elegirse en operaciones nuevas (§4.1); **hoy sí se puede** (LOC-R06) |
+| Retiro | Se desactiva. Una moneda inactiva no se elige en operaciones nuevas, pero el país o la empresa que ya la tenía la conserva (§4.1, LOC-R06) |
 | Nunca | Se borra |
 
 ### País y su estructura territorial
@@ -151,11 +151,11 @@ Todos los flujos de escritura los hace el superadministrador (D-43), salvo F5, q
 
 **Rol:** superadministrador. **Pantallas:** Monedas, y la ficha del país para divisiones y documentos.
 
-1. Desactiva el registro desde su interruptor. **Hoy no se pide confirmación** (las pantallas de `organization` sí la piden).
+1. Elige "Desactivar" en el menú de la fila. El sistema pregunta antes de hacerlo, como en las pantallas de `organization`.
 2. El registro sigue en la lista, marcado como inactivo, y se puede volver a activar.
-3. Lo que ya lo usaba sigue válido: una dirección conserva su división y una empresa su tipo de documento.
+3. Lo que ya lo usaba sigue válido: una dirección conserva su división, un país o una empresa su moneda y una empresa su tipo de documento.
 
-**Resultado:** el registro deja de ofrecerse en los formularios nuevos. Para la moneda esto no se cumple todavía (LOC-R06).
+**Resultado:** el registro deja de ofrecerse en los formularios nuevos, y la API rechaza elegirlo como nuevo. Para la moneda, el error es `CURRENCY_INACTIVE` (LOC-R06).
 
 ### F5 · Capturar una dirección desde su dueño
 
@@ -177,19 +177,17 @@ flowchart TD
 ```
 
 1. El país de la dirección es el del dueño (el de la empresa). La persona no lo elige.
-2. La división es opcional. Si la elige, el formulario solo ofrece las divisiones activas del escalón más bajo del país.
+2. La división es opcional. Si la elige, va de arriba hacia abajo, un selector por escalón del país: Departamento, después Provincia, después Distrito. Cada selector ofrece solo las divisiones activas que cuelgan de lo elegido arriba, y cambiar un escalón borra los de abajo. Hay que llegar al último escalón o dejar la división sin elegir; quedarse a medio camino no deja guardar.
 3. La calle es obligatoria en cuanto se escribe algo. El código postal aparece y es obligatorio solo en los países que lo exigen (México).
 4. Al cambiar la dirección de un dueño ya guardado, los diálogos de empresa y de sede preguntan si es una corrección o una mudanza (D-8). El de ubicación envía la dirección dentro del registro y no pregunta. Quitar la dirección no se permite: solo corregirla o mudarla.
-5. Una división que ya tenía la dirección se acepta aunque se haya desactivado después; una que se elige ahora tiene que estar activa. **El frontend todavía no lo respeta**: rechaza la división desactivada que la dirección ya tenía (LOC-R26).
+5. Al editar un dueño, el formulario reconstruye la cadena de su división (Lima › Lima › Chorrillos). Una división que ya tenía la dirección se acepta aunque se haya desactivado después, y aparece marcada "(inactiva)"; una que se elige ahora tiene que estar activa (LOC-R26).
 
-**Errores que ve:** "Elija una división activa del último nivel del país"; "La dirección no es válida: revise la división territorial y el código postal"; "No se pudieron cargar las divisiones del país".
+**Errores que ve:** "Elija también Distrito, o deje la división sin elegir"; "Elija una división activa del último escalón del país"; "La división que tenía la dirección ya no encaja en los escalones del país: elija una nueva o deje la división sin elegir"; "No se pudieron cargar las divisiones del país"; y, desde el backend, "La dirección no es válida: revise la división territorial y el código postal".
 **Resultado:** el dueño apunta a su dirección. Si algo del dueño falla después, la dirección tampoco se guarda: las dos van en la misma transacción.
-
-**Límite actual.** El selector de división es una lista plana de todas las divisiones del escalón más bajo, sin búsqueda ni cascada. Con el ubigeo cargado serían cerca de 1 900 distritos en una sola lista, inusable. Ver la sección 6.
 
 ### F6 · Cargar el ubigeo
 
-**Pendiente.** La lista oficial de divisiones de Perú (ubigeo del INEI) se carga completa con una migración (D-2, procesos P1 paso 1). Esa migración no existe: hoy `geo_divisions` está vacía y ninguna dirección puede elegir distrito, salvo divisiones creadas a mano. Volver a cargar la lista desde la aplicación cuando se crean o fusionan distritos no tiene mecanismo (procesos, apartado 5, pregunta 7); mientras tanto, el superadministrador las mantiene una por una (F2, paso 3).
+**Pendiente del archivo oficial.** La lista oficial de divisiones de Perú (ubigeo del INEI) se carga completa con una migración (D-2, procesos P1 paso 1). El conversor está listo en el backend (`scripts/ubigeo/`): toma el archivo con una fila por distrito (`ubigeo,departamento,provincia,distrito`), lo valida y escribe la migración, que inserta departamentos, provincias y distritos en ese orden y falla entera si falta un superior. Falta el archivo, con su edición fijada, y reservar el número de la migración. Hasta entonces `geo_divisions` está vacía y ninguna dirección puede elegir distrito, salvo divisiones creadas a mano. Volver a cargar la lista desde la aplicación cuando se crean o fusionan distritos no tiene mecanismo (procesos, apartado 5, pregunta 7); mientras tanto, el superadministrador las mantiene una por una (F2, paso 3).
 
 ---
 
@@ -204,14 +202,14 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 | LOC-R03 | El código de una moneda no se edita nunca | §2.4, D-48 | Dominio: `Currency` (el código no tiene cambio). Frontend: campo bloqueado al editar | `CurrencyTest` | ✅ |
 | LOC-R04 | Una moneda tiene de 0 a 4 decimales | §4.1 | Base: `currencies_decimal_places_range_ck`. Dominio: `Currency`. Servicio: `@Min`/`@Max` del recurso. Frontend: `currency-form-dialog` | `CurrencyTest` | ✅ |
 | LOC-R05 | Los decimales quedan fijos desde el primer monto que usa la moneda | §4.1 | No se aplica: `Currency.update` los cambia siempre. Previsto como puerto de `location` antes del paso 7 (orden, pendientes) | Sin prueba | ❌ |
-| LOC-R06 | Una moneda inactiva no se usa en operaciones nuevas | §4.1 | No se aplica en el backend: `CountryCommandServiceImpl` acepta una moneda inactiva como sugerida, y `LocationContextFacadeImpl.fetchCurrencyIdByPublicId` la entrega como moneda funcional de una empresa (`CurrencySummary` no trae `isActive`). Frontend: el formulario del país pide solo activas cuando su lista está vacía; el de empresa recibe todas | Sin prueba | ❌ |
+| LOC-R06 | Una moneda inactiva no se usa en operaciones nuevas; quien ya la tenía la conserva | §4.1 | Servicio: `CountryCommandServiceImpl` para la moneda sugerida del país y, en `organization`, `FunctionalCurrency` para la moneda funcional de la empresa, que recibe el estado por `CurrencySummary.isActive`. Las dos responden `CURRENCY_INACTIVE` (`422`). Frontend: los formularios de país y de empresa ofrecen las activas más la actual, marcada "(inactiva)" | `CountryCommandServiceImplTest`, `CountriesControllerTests`, `FunctionalCurrencyTests`, `CompanyCommandServiceImplTests`, `CompaniesControllerTests`, e2e `country-profile` | ✅ |
 | LOC-R07 | Una moneda, un país, una división o un tipo de documento no se borran | §4.1, §4.5, §4.7 | Servicio: los controladores no tienen `DELETE` y los repositorios del dominio no tienen borrado | `CurrencyAuditTests`, `GeoDivisionCommandServiceImplTests`, `TaxIdTypeAuditTests` (desactivar conserva la fila) | ✅ |
 | LOC-R08 | Los dos códigos ISO de un país nombran un mismo país de ISO 3166 | §4.2, D-47 | Base: `countries_iso_alpha_2_format_ck` y `countries_iso_alpha_3_format_ck` (solo la forma). Dominio: `IsoCountryCodes`. Servicio: `CountryCommandServiceImpl`. Frontend: patrón en `country-data-form` | `IsoCountryCodesTests`, `CountryTest`, `CountryCommandServiceImplTest`, `CountriesControllerTests` | ✅ |
 | LOC-R09 | Dos países no comparten código ISO de dos ni de tres letras | §4.2 | Base: `UNIQUE` de cada código (V5). Servicio: `CountryCommandServiceImpl`, con un error propio para cada código | `CountryCommandServiceImplTest` | ✅ |
-| LOC-R10 | Los códigos ISO se corrigen solo mientras el país no tenga escalones, direcciones ni tipos de documento | §4.2, D-47 | Dominio: `CountryIsoCodesPolicy`, `Country.correctIsoCodes`. Servicio: `CountryCommandServiceImpl`. Frontend: `country-data-form` bloquea los campos con `isoCodesLocked` | `CountryIsoCodesPolicyTests`, `CountryCommandServiceImplTest`, `CountriesControllerTests`, e2e `country-profile` | ✅ |
+| LOC-R10 | Los códigos ISO se corrigen solo mientras el país no tenga escalones, direcciones ni tipos de documento | §4.2, D-47 | Dominio: `CountryIsoCodesPolicy`, `Country.correctIsoCodes`. Servicio: `CountryCommandServiceImpl`, que responde `COUNTRY_ISO_CODES_LOCKED` (`422`). Frontend: `country-data-form` bloquea los campos con `isoCodesLocked`, que la ficha vuelve a leer al declarar un escalón o crear una división o un tipo de documento | `CountryIsoCodesPolicyTests`, `CountryCommandServiceImplTest`, `CountriesControllerTests`, e2e `country-profile` | ✅ |
 | LOC-R11 | El código telefónico es `+` seguido de 1 a 5 dígitos | §4.2 | Base: `countries_calling_code_format_ck`. Dominio: `Country`. Servicio: `@Pattern` del recurso. Frontend: `country-data-form` | `CountryTest` | ✅ |
 | LOC-R12 | La zona horaria del país es un nombre IANA que existe | §4.2, §2.6 | Dominio: `Country`. Servicio: `@ValidTimezone` | `CountryTest` | ✅ |
-| LOC-R13 | La tasa del impuesto va de 0 a 1, con hasta cuatro decimales | §4.2 | Base: `countries_tax_rate_range_ck` y `NUMERIC(5,4)`. Dominio: `Country`. Servicio: `@DecimalMin`/`@DecimalMax`, sin `@Digits`, así que un quinto decimal no se rechaza: la base lo redondea. Frontend: 0 a 100 % | `CountryTest` | ⚠️ |
+| LOC-R13 | La tasa del impuesto va de 0 a 1, con hasta cuatro decimales | §4.2 | Base: `countries_tax_rate_range_ck` y `NUMERIC(5,4)`. Dominio: `Country`. Servicio: `@DecimalMin`, `@DecimalMax` y `@Digits(integer = 1, fraction = 4)`. Frontend: 0 a 100 % | `CountryTest`, `CountriesControllerTests` (un quinto decimal se rechaza) | ✅ |
 | LOC-R14 | Un país declara de 1 a 4 escalones | §4.4 | Base: `CHECK (level >= 1 AND level <= 4)` (V8). Dominio: `Country.canDeclareLevel`, `HierarchyTier`. Servicio: `CountryCommandServiceImpl` | `CountryTest`, `GeoDivisionLevelAuditTests`, `GeoDivisionLevelsControllerTests` | ✅ |
 | LOC-R15 | Los escalones se declaran en orden, sin saltos: el siguiente es siempre el que sigue al último | §4.4, D-45 | Dominio: `Country.declareLevel` pone el número. La base solo impide repetirlo (`geo_division_levels_country_level_uq`), no el salto | `CountryTest`, `GeoDivisionLevelsControllerTests` | ✅ |
 | LOC-R16 | Un escalón no se borra ni se retira; solo se renombra | §4.4, D-45 | Dominio: `Country` (solo declara y renombra). Servicio: no hay `DELETE`. Frontend: sin botón | `GeoDivisionLevelsControllerTests` (`levelsCannotBeDeleted`) | ✅ |
@@ -224,7 +222,7 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 | LOC-R23 | Una división retirada se desactiva y sigue existiendo | §4.5 | Dominio: `GeoDivision.deactivate` | `GeoDivisionCommandServiceImplTests`, `GeoDivisionsControllerTests` | ✅ |
 | LOC-R24 | Toda dirección tiene calle | §4.6 | Base: `CHECK` de `street_name` (V10). Dominio: `Address`. Frontend: `address-fields` en cuanto se escribe algo | `AddressTests`, `address-fields.spec` | ✅ |
 | LOC-R25 | La división de una dirección es del mismo país que la dirección | §4.6 | Base: `addresses_geo_division_same_country_fk` (V15). Dominio: `AddressDivisionPolicy` | `AddressDivisionPolicyTests` | ✅ |
-| LOC-R26 | La división de una dirección es del escalón más bajo del país, y está activa si se elige ahora; la que la dirección ya tenía se conserva aunque se haya desactivado | §4.6 | Dominio: `AddressDivisionPolicy`. Servicio: `AddressCommandServiceImpl`. Frontend: `address-options.store` ofrece solo activas del escalón más bajo, y `address-fields` (`divisionAvailable`) rechaza también la inactiva que la dirección ya tenía, al revés que el backend | `AddressDivisionPolicyTests`, `address-fields.spec`. El servicio no tiene prueba propia | ⚠️ |
+| LOC-R26 | La división de una dirección es del escalón más bajo del país, y está activa si se elige ahora; la que la dirección ya tenía se conserva aunque se haya desactivado | §4.6 | Dominio: `AddressDivisionPolicy`. Servicio: `AddressCommandServiceImpl`. Frontend: `mm-address-fields` elige en cascada, ofrece solo activas para elegir y conserva, marcada "(inactiva)", la que la dirección ya tenía | `AddressDivisionPolicyTests`, `AddressCommandServiceImplTests`, `address-fields.spec`, `address-options.store.spec`, e2e `companies` | ✅ |
 | LOC-R27 | El código postal es obligatorio en los países que lo exigen | §4.2, §4.6 | Dominio: `Address`. Servicio: `AddressCommandServiceImpl`. Frontend: `address-fields`. La base no lo cubre | `AddressTests`, `address-fields.spec` | ✅ |
 | LOC-R28 | La dirección está en el país de su dueño; quien la escribe no elige el país | Mapa §6.3 **(propuesta)** | Servicio: la fachada recibe el país del dueño (`createAddress`, `replaceAddress`) y `AddressData` no trae país. Base: `companies_fiscal_address_same_country_fk` (V18) y `branches_address_same_country_fk` (V20); `locations.address_id` no tiene esa llave (V21) | `LocationContextFacadeImplTest`, `BranchesIntegrationTests` | ⚠️ |
 | LOC-R29 | Una dirección no se comparte: cada dueño tiene su propia fila | §4.6 | Base: `companies_fiscal_address_id_uq` (V18), `uq_branches_address_id` (V20); `locations.address_id` no es único (V21). Servicio: los dueños solo crean, corrigen o reemplazan la suya | Sin prueba de la unicidad | ⚠️ |
@@ -236,8 +234,8 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 | LOC-R35 | El dígito de control se verifica al registrar el número | §4.7 | No se aplica: `has_check_digit` se guarda, pero ningún código calcula el dígito. No está decidido qué contexto lo hace | Sin prueba | ❌ |
 | LOC-R36 | Un tipo de documento inactivo no se elige en registros nuevos; quien ya lo usa sigue válido | §4.7 | Dominio: `TaxIdType.changeStatus`. El uso lo revisa `TaxIdTypeRules` en `organization` | `TaxIdTypeRulesTests`, `TaxIdTypesControllerTests` | ✅ |
 | LOC-R37 | Quien usa un tipo de documento es de su mismo país | §4.7 | Base: `companies_tax_id_type_same_country_fk` (V15); los colaboradores no tienen esa llave (V22). El uso lo revisa `TaxIdTypeRules` | `TaxIdTypeRulesTests` | ⚠️ |
-| LOC-R38 | Los catálogos los lee cualquier cuenta con un rol vigente; solo el superadministrador los crea o modifica | D-43 | Servicio: `@AnyRoleRequired` en los siete controladores y `hasRole('SUPERADMIN')` en cada escritura | Los cinco `*ControllerTests`. Falta el `403` de renombrar un escalón, editar o desactivar una división y editar un tipo de documento | ⚠️ |
-| LOC-R39 | Un archivo exportado lleva códigos y nombres, nunca el número interno ni el `public_id` | §2.4, D-51 | Servicio: las columnas de cada exportación en `CurrenciesController`, `CountriesController`, `CountryGeoDivisionsController` y `CountryTaxIdTypesController` | `CountriesControllerTests`, `TaxIdTypesControllerTests`. Sin prueba de exportación de monedas ni de divisiones | ⚠️ |
+| LOC-R38 | Los catálogos los lee cualquier cuenta con un rol vigente; solo el superadministrador los crea o modifica | D-43 | Servicio: `@AnyRoleRequired` en los siete controladores y `hasRole('SUPERADMIN')` en cada escritura | Los cinco `*ControllerTests`, con el `403` de cada escritura | ✅ |
+| LOC-R39 | Un archivo exportado lleva códigos y nombres, nunca el número interno ni el `public_id` | §2.4, D-51 | Servicio: las columnas de cada exportación en `CurrenciesController`, `CountriesController`, `CountryGeoDivisionsController` y `CountryTaxIdTypesController`. Las divisiones y los tipos de documento llevan el país, y las divisiones el código de su superior | Las cuatro exportaciones tienen prueba | ✅ |
 | LOC-R40 | Las seis tablas registran cuándo se creó y cambió cada fila, sin autor | D-42 | Base: V6 retira `created_by`. Las entidades extienden `AuditableAbstractPersistenceEntity` | Los seis `*AuditTests` | ✅ |
 
 ---
@@ -250,11 +248,10 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 
 | Miembro | Para qué | Quién lo usa |
 |---|---|---|
-| `fetchCurrencyIdByPublicId` | Resolver la moneda funcional de una empresa | Empresas (`CompanyCommandServiceImpl`) |
+| `fetchCurrencySummaryByPublicId` | Resolver la moneda funcional de una empresa, con si está activa | Empresas (`CompanyCommandServiceImpl`, por `FunctionalCurrency`) |
 | `fetchCurrencySummariesByIds` | Mostrar la moneda en listas, en lote | Vistas de empresas |
-| `existsActiveCurrencyByIsoCode` | Saber si una moneda activa tiene un código | **Nadie**; solo su prueba |
 | `fetchCountrySummaryByPublicId` | Resolver el país de una empresa | Empresas |
-| `fetchCountrySummaryByIsoAlpha2` | Buscar un país por su código | **Nadie en producción**; lo usan las pruebas de `organization` para preparar datos |
+| `fetchCountrySummaryByIsoAlpha2` | Buscar un país por su código | **Nadie en producción**; lo usan las pruebas de integración de `organization` para resolver los países sembrados. Su Javadoc lo dice, para que nadie lo retire sin revisarlas |
 | `fetchCountrySummariesByIds` | Mostrar el país en listas, en lote | Vistas de `organization` |
 | `fetchTaxIdTypeSummaryByPublicId` | Las reglas del tipo de documento de una empresa o un colaborador | Empresas y colaboradores (`TaxIdTypeRules`) |
 | `fetchTaxIdTypeSummariesByIds` | Mostrar el tipo de documento en listas, en lote | Vistas de empresas y colaboradores |
@@ -271,59 +268,40 @@ Lo que la fachada no ofrece y mapa §5.1 deja como propuesta: la división por s
 
 ## 6. Estado y pendientes para cerrar
 
-**Estado al 14/10/2026.** Backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, la ficha del país y el componente de dirección. El 14/10/2026 pasaron las 250 pruebas del backend de `location` (240 métodos, algunos con varios casos), corridas en una base aparte, además de `ModularityTests` y las pruebas e2e de `location`. El paso 1 **no está cerrado**: le faltan la carga del ubigeo y un selector de distrito usable.
+**Estado al 15/10/2026.** La rama `feature/location-closure` (backend y frontend, sin integrar todavía) cierra lo que dejó la auditoría del 14/10/2026: la dirección elige su división en cascada y conserva la inactiva que ya tenía, una moneda inactiva no se usa en operaciones nuevas, el país y la moneda viajan por su código (D-13), los errores de los ISO bloqueados y de la moneda inactiva tienen su propio código, desactivar pide confirmación, y el código muerto y los textos sin uso se retiraron. Sobre esa rama pasan las 621 pruebas del backend, las 667 unitarias del frontend y las e2e de `location`, corridas en una base y un servidor aparte. Las únicas e2e que fallan son las de Usuarios y Colaboradores, que ya fallaban antes y no son de este contexto.
+
+El paso 1 **no está cerrado**: falta cargar el ubigeo y decidir las longitudes de los documentos tributarios.
 
 ### a) Decisiones (responsable del diccionario y negocio)
 
 | Qué | Por qué importa | Bloquea |
 |---|---|---|
-| Cómo se modelan las longitudes de los documentos. Hoy un tipo tiene una sola longitud exacta. El RFC tiene 12 caracteres para empresas y 13 para personas, pero es un solo tipo que aplica a ambos. El NIT se guarda con 9 dígitos y el dígito de control aparte o dentro no está decidido; con el DNI pasa lo mismo. La CC exige exactamente 10, aunque hay cédulas más cortas | Con la regla actual, una persona con RFC de 13 o una cédula de 8 dígitos no se puede registrar | Sí, para México y Colombia |
-| Qué contexto calcula el dígito de control (LOC-R35) | Sin cálculo, un RUC mal escrito llega a una factura | No, mientras solo opere Perú con empresas sembradas |
+| Cómo se modelan las longitudes de los documentos. Hoy un tipo tiene una sola longitud exacta. El RFC tiene 12 caracteres para empresas y 13 para personas, pero es un solo tipo que aplica a ambos. El NIT se guarda con 9 dígitos y el dígito de control aparte o dentro no está decidido; con el DNI pasa lo mismo. La CC exige exactamente 10, aunque hay cédulas más cortas. **(propuesta)** Sin cambiar el esquema: partir el RFC en dos tipos (empresa 12, persona 13), dejar la CC sin longitud fija y ajustar el NIT y el DNI según se decida su dígito | Con la regla actual, una persona con RFC de 13 o una cédula de 8 dígitos no se puede registrar | Sí, para México y Colombia; la migración de las semillas se hace al decidir |
 | Validar en el diccionario que la dirección está en el país de su dueño (LOC-R28) | Hoy es propuesta del mapa, aunque la base ya lo exige en empresas y sedes | No |
+
+El dígito de control (LOC-R35) pasó a los pendientes transversales del orden de implementación, asignado al paso 3.
 
 ### b) Código
 
-**Bloqueante**
+No queda código de `location` pendiente para cerrar el paso. Lo que sigue abierto pertenece a otros contextos o a pasos posteriores:
 
-- **Selector de distrito.** `address-options.store.ts` carga todas las divisiones activas del escalón más bajo y `address-fields.html` las muestra en un `mat-select` plano, sin búsqueda ni división superior. Con cerca de 1 900 distritos no se puede usar. `GET /geo-divisions/{id}/children` existe en el backend y en `location-api.ts` (`getGeoDivisionChildren`), pero ninguna pantalla lo usa: falta la cascada Departamento › Provincia › Distrito o una búsqueda.
-- **Moneda inactiva (LOC-R06).** `CountryCommandServiceImpl` acepta una moneda inactiva al crear o editar un país, y `LocationContextFacadeImpl.fetchCurrencyIdByPublicId` la entrega como moneda funcional de una empresa. Falta rechazarla en operaciones nuevas y agregar `isActive` a `CurrencySummary` y a `CurrencyOption`.
-
-**Importante**
-
-- El frontend rechaza la división desactivada que una dirección ya tenía (`address-fields.ts`, `divisionAvailable`), mientras el backend la acepta (LOC-R26). Corregir el frontend para que la conserve.
-- El país y la moneda viajan por UUID (`countryId`, `defaultCurrencyId`) en vez de por código (D-13; convenciones §13, filas 4 y 5).
-- `CountriesController` arma `isoCodesLocked` con dos consultas; debería llegar resuelto en una vista del país desde el servicio de consultas.
-- El selector de moneda del formulario del país reusa el estado de la pantalla de Monedas (`currenciesStore.currencies()`): si esa pantalla dejó una página filtrada, la lista llega incompleta o vieja, y un fallo de carga no se muestra en el formulario.
-- Desactivar en Monedas y en la ficha del país no pide confirmación; `organization` sí la pide (frontend-rules 4.8, skill `frontend-feature`).
-- `AddressCommandServiceImpl` no tiene prueba propia (`AddressCommandServiceImplTests`).
-- El arreglo de fechas de "Antes del paso 1" sigue abierto. Es compartido: las pantallas de `location` no muestran fechas.
-
-**Menor**
-
-- Código muerto. Backend: los miembros de la fachada `existsActiveCurrencyByIsoCode` y `fetchCountrySummaryByIsoAlpha2` (este último lo usan pruebas de `organization`), `AddressPersistenceAssembler.toPersistenceFromDomain` y `GeoDivisionRepository.findById`. Frontend: `getCurrencyById` en `location-api.ts`, `loadCountries` de `countries.store.ts`, `activeCurrencies` de `currencies.store.ts` y `deepestLevel` de `geo-division-levels.store.ts`.
-- Claves de traducción sin uso: unas 35 en `es.json` según la auditoría (sin recontar aquí) y `error.address-postal-code-required` en los `messages*.properties` del backend.
-- `es.json` dice "último nivel" en `addresses.form.geo-division-unavailable` y `companies.notifications.error-rule`; debe decir "escalón".
-- `taxRate` no tiene `@Digits(integer = 1, fraction = 4)` (LOC-R13).
-- Las listas de escalones y `/geo-divisions/{id}/children` no siguen convenciones §6.2 (búsqueda, orden y página).
-- Las exportaciones de divisiones y de tipos de documento no traen el país, y la de divisiones nombra la superior sin su código.
-- Faltan pruebas: el `403` de algunas escrituras (LOC-R38) y la exportación de monedas y de divisiones (LOC-R39).
-- Fuera de `location` pero de sus reglas: `locations.address_id` no es único ni tiene la llave del mismo país (LOC-R28, LOC-R29), y `employees.document_type_id` no tiene la llave del mismo país (LOC-R37). Le toca a `organization`.
+- `locations.address_id` no es único ni tiene la llave del mismo país (LOC-R28, LOC-R29), y `employees.document_type_id` no tiene la llave del mismo país (LOC-R37). Son migraciones de `organization`.
+- Los decimales de una moneda quedan fijos desde el primer monto (LOC-R05): es el puerto que `location` publica antes del paso 7.
+- Integrar `feature/location-closure`: sale de `feature/location`, que también trae trabajo de `organization` e `iam` sin revisar (ver [organization.md](organization.md) e [iam.md](iam.md), sección 6).
 
 ### c) Datos
 
-- **Carga del ubigeo (bloqueante).** Falta la migración con la lista oficial del INEI (D-2). Hoy `geo_divisions` está vacía.
+- **Carga del ubigeo (bloqueante).** El conversor está listo (`scripts/ubigeo/` del backend, con su README). Falta el archivo oficial del INEI con su edición fijada, reservar el número de la migración con el equipo y probarla primero en `erp_mm_db_verify`.
 - Las listas de Colombia (DANE) y México (INEGI) se cargan cuando esos países operen.
 
 ### d) Documentación
 
 | Documento | Qué actualizar |
 |---|---|
-| Orden de implementación | El estado del paso 1 (no solo falta el ubigeo: también el selector) y el del paso 2; en los pendientes, la migración de permisos es V19, no V17 |
-| Diccionario (lo decide quien es responsable del diccionario) | La regla de la dirección en el país de su dueño; la decisión sobre NIT y RFC; las semillas CE, PAS, CURP y CC, que no están en §4.7; que la base exige la raíz de las divisiones (`geo_divisions_root_parent_ck`), que §4.5 no menciona; y que el orden de los escalones lo protege solo la aplicación (§4.4) |
-| Convenciones | `isoCodesLocked` en el recurso del país; las listas de escalones e hijos en §6.2; los tipos de documento en la tabla de §9.2, que hoy nombra solo monedas, países y divisiones |
-| Mapa §5.1 (línea 140) | Si se retira el miembro sin uso, quitar la búsqueda de país por código ISO de lo que ofrece la fachada |
-| Revisión del 05/10/2026 | Poner los hashes de las correcciones (`987c3bd`, `b5fc956`, `7b5c66a` y los demás de la rama) |
-| README del backend | Dice que `location` está completo para el bloque 1 y que `organization` solo tiene empresas |
+| Diccionario (lo decide quien es responsable del diccionario) | La regla de la dirección en el país de su dueño; la decisión sobre RFC, NIT, DNI y CC; las semillas CE, PAS, CURP y CC, que no están en §4.7; que la base exige la raíz de las divisiones (`geo_divisions_root_parent_ck`), que §4.5 no menciona; y que el orden de los escalones lo protege solo la aplicación (§4.4) |
+| Orden de implementación | Marcar el paso 1 como construido cuando se cargue el ubigeo |
+
+Ya se actualizaron el 14/10/2026: convenciones (§4.2 `isoCodesLocked`, §6.2 las dos listas cortas, §9.2 los catálogos, §13 filas 4 y 5), el mapa (§5.1, la moneda con su estado), la revisión del 05/10/2026 (sus hashes), el orden de implementación (estado de los pasos 1 y 2, V19, las fechas en los pendientes transversales) y el README del backend.
 
 ---
 
