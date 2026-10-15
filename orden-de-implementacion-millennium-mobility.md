@@ -189,5 +189,6 @@ Corregir cómo muestra las fechas el frontend, para que todas las pantallas nuev
 - El frontend tiene sus pantallas y las opciones del menú del paso ya no llevan `pending: true`.
 - Pasan las pruebas del backend, las unitarias del frontend y las de extremo a extremo, con las capturas de referencia revisadas.
 - Si la implementación se apartó del diccionario a propósito, el diccionario lo registra.
+- El documento de su contexto en [contextos/](contextos/README.md) tiene sus reglas al día, y su sección 6 queda sin pendientes de código o con cada pendiente asignado a un paso posterior.
 - Este documento actualiza el estado del paso.
 
