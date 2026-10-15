@@ -1,6 +1,6 @@
 # Procesos y pantallas — ERP Millennium Mobility
 
-**Actualizado:** 06/10/2026 (Empresas construida; todo formulario pregunta antes de descartar cambios) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15, [orden de implementación](orden-de-implementacion-millennium-mobility.md) (pantallas de cada paso), menú del frontend (`app-shell/app-navigation.ts`) y los diagramas escritos sobre la v1.8. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 14/10/2026 (Sedes, Marcas comerciales, Ubicaciones y Colaboradores construidas; la dirección elige su división en cascada) · 06/10/2026 (Empresas construida; todo formulario pregunta antes de descartar cambios) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15, [orden de implementación](orden-de-implementacion-millennium-mobility.md) (pantallas de cada paso), menú del frontend (`app-shell/app-navigation.ts`) y los diagramas escritos sobre la v1.8. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 El diccionario documenta los datos y sus reglas, pero no los procesos ni las pantallas (§1). Este documento cubre ese hueco: qué hace la empresa con el sistema, en qué orden, quién lo hace y en qué pantalla.
 
@@ -257,10 +257,10 @@ Las rutas siguen la regla del frontend: el nombre del contexto en kebab-case y l
 | Logística | Cargas de archivos | **(propuesta)** `/fleet/imports` | Pendiente (mapa, decisión 8); propuesta: `fleet` | 9 | Lista con carga de archivo | Pendiente |
 | Logística | Reportes | `/reports` | Capa de lectura | 11 | Filtros y exportación | Pendiente |
 | Configuración | Empresas | `/organization/companies` | `organization` | 2 | Lista con diálogo; solo `SUPERADMIN`. La dirección fiscal se llena en el mismo diálogo; al cambiarla en una empresa ya registrada, el diálogo pregunta si es una corrección o una mudanza (D-8) | Construida |
-| Configuración | Sedes | `/organization/branches` | `organization` | 2 | Lista con diálogo; la dirección, como en Empresas | Pendiente: la vista existe en el frontend, sin ruta, hasta que exista su backend |
-| Configuración | Colaboradores | `/organization/employees` | `organization` | 3 | Lista y ficha | Pendiente |
-| Configuración | Marcas comerciales | `/organization/commercial-brands` | `organization` | 2 | Lista con diálogo | Pendiente: la vista existe en el frontend, sin ruta, hasta que exista su backend |
-| Configuración | Ubicaciones | `/organization/locations` | `organization` | 2 | Lista con diálogo | Pendiente |
+| Configuración | Sedes | `/organization/branches` | `organization` | 2 | Lista con diálogo; la dirección, como en Empresas | Construida |
+| Configuración | Colaboradores | `/organization/employees` | `organization` | 3 | Lista y ficha | Construida, adelantada del paso 3. Sus suspensiones no tienen backend ([contextos/organization.md](contextos/organization.md), F9) |
+| Configuración | Marcas comerciales | `/organization/commercial-brands` | `organization` | 2 | Lista con diálogo | Construida |
+| Configuración | Ubicaciones | `/organization/locations` | `organization` | 2 | Lista con diálogo; la dirección viaja dentro del registro | Construida |
 | Configuración | Proveedores | `/procurement/suppliers` | `procurement` | 7 | Lista con diálogo | Pendiente |
 | Configuración | Plantillas de OC | `/procurement/purchase-order-templates` | `procurement` | 7 | Lista con formulario de página; los tipos de orden se gestionan dentro | Pendiente |
 | Configuración | Fondos | `/fleet/funds` | `fleet` | 10 | Lista con diálogo | Pendiente |
@@ -316,7 +316,7 @@ Las direcciones no tienen pantalla ni opción de menú: se llenan dentro del for
 | Tema | Hoy | Según el diccionario y este documento |
 |---|---|---|
 | Nuevo usuario | Pantalla `/iam/users/new` con correo, contraseña y roles | Toda cuenta pertenece a un colaborador (D-38). **(propuesta)** Desde el paso 3, el acceso se da desde la ficha del colaborador |
-| Fechas en pantalla | Formato del locale fijo `es-PE` (`date: 'short'` en Usuarios), siempre en la zona del navegador | Apartado 3.4; el orden de implementación lo pide antes del paso 1 |
+| Fechas en pantalla | Formato del locale fijo `es-PE` (`date: 'short'` en Usuarios), siempre en la zona del navegador | Apartado 3.4; el orden de implementación lo lleva en sus pendientes transversales |
 
 ---
 

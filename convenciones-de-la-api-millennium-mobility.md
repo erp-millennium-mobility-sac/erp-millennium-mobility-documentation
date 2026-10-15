@@ -1,6 +1,6 @@
 # Convenciones de la API REST — ERP Millennium Mobility
 
-**Actualizado:** 06/10/2026 (direcciones anidadas en su dueño, errores elegidos por `code`, fechas del Excel en ISO, rutas sin prefijo de contexto) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15 (§2.4 identificadores, §2.6 fechas, §4.6 direcciones, §5.12 sesiones, D-8, D-13, D-38, D-40, D-42, D-43, D-49, D-51), reglas de arquitectura de la skill `backend-module`, [mapa de contextos](mapa-de-contextos-millennium-mobility.md) y el backend construido. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 14/10/2026 (`location` nombra el país y la moneda por su código; escalones e hijos de una división como listas cortas; campos derivados del dueño) · 06/10/2026 (direcciones anidadas en su dueño, errores elegidos por `code`, fechas del Excel en ISO, rutas sin prefijo de contexto) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15 (§2.4 identificadores, §2.6 fechas, §4.6 direcciones, §5.12 sesiones, D-8, D-13, D-38, D-40, D-42, D-43, D-49, D-51), reglas de arquitectura de la skill `backend-module`, [mapa de contextos](mapa-de-contextos-millennium-mobility.md) y el backend construido. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 La API es REST: expone **recursos** con sustantivos, los manipula con los **métodos de HTTP** según su semántica y responde con **códigos de estado** que dicen qué pasó. El único cliente hoy es el frontend del ERP, que se sirve desde el mismo origen.
 
@@ -183,6 +183,7 @@ Las sedes siguen el mismo contrato cuando se construyan: `POST /companies/{compa
 
 - El `id` interno no aparece nunca en una respuesta, una ruta ni un archivo exportado, tampoco en las referencias (diccionario §2.4).
 - Una respuesta puede acompañar la referencia con lo que la pantalla necesita mostrar, para no obligar a otra petición: `"companyId"` con `"companyName"`, `"parentId"` con `"parentName"`.
+- Una respuesta también puede traer un dato derivado que la pantalla necesita para decidir, calculado por el dueño del recurso y nunca guardado. Hoy hay uno: `isoCodesLocked` del país dice si sus códigos ISO todavía se pueden corregir (diccionario §4.2, D-47). La pantalla lo usa para bloquear los campos; la API rechaza la corrección igual.
 
 ---
 
@@ -266,6 +267,8 @@ Lo que busca y ordena cada lista construida:
 | `GET /countries/{id}/tax-id-types` | `code`, `name` | `isActive`, `appliesTo` | `code`, `name`, `appliesTo`, `length`, `hasCheckDigit`, `isActive` | `code` |
 | `GET /companies` | `legalName`, `tradeName`, `taxId` | `active`, `countryId` | `legalName`, `tradeName`, `taxId`, `phone`, `isActive` | `tradeName` |
 | `GET /users` | `email` | — | `email`, `lastLoginAt`, `mustChangePassword` | `email` |
+
+**Dos listas cortas, como excepción** (registrada el 14/10/2026). `GET /countries/{id}/geo-division-levels`, que tiene a lo sumo cuatro escalones, y `GET /geo-divisions/{id}/children`, que trae las divisiones hijas de una para el selector en cascada de la dirección, responden siempre el arreglo completo, sin `q`, `sort` ni `page`. Son cortas por naturaleza y solo pueblan un select. Los escalones llegan por número y los hijos por `code`; los hijos aceptan el filtro `isActive`.
 
 Una columna que nombra un registro de otro contexto —el país y la moneda de una empresa, los roles de una cuenta— no se ordena: el dueño de la lista no lee las tablas ajenas (mapa de contextos).
 
@@ -381,8 +384,8 @@ El archivo lo arma siempre el backend, con fastexcel (`org.dhatim:fastexcel`: es
 |---|---|
 | `sign-in`, `sign-up`, `sign-up/status`, `sign-up/companies`, documentación de la API, `actuator/health` | Público. `sign-up/companies` responde solo mientras el registro está encendido, y solo nombres (diccionario §5.2). Las listas de sedes y de tipos de documento del registro: pendiente (§14.16) |
 | `me`, `change-password` | Con sesión, aunque la contraseña sea provisional |
-| Lectura de catálogos generales (monedas, países, divisiones) | Cualquier cuenta con al menos un rol vigente. Cuando existan los permisos, la lectura pasa a un permiso propio (D-43) |
-| Escritura de catálogos generales (monedas, países, divisiones) | Solo `SUPERADMIN` (D-43) |
+| Lectura de catálogos generales (monedas, países, escalones, divisiones y tipos de documento tributario) | Cualquier cuenta con al menos un rol vigente. Cuando existan los permisos, la lectura pasa a un permiso propio (D-43) |
+| Escritura de catálogos generales (monedas, países, escalones, divisiones y tipos de documento tributario) | Solo `SUPERADMIN` (D-43) |
 | Escritura de catálogos de flota | `SUPERADMIN` (diccionario §7, D-15). Qué permiso exigirá se define con la matriz de permisos por rol (diccionario §14) |
 | Lectura de recursos de empresa (empresas, sedes, marcas comerciales, ubicaciones y todo lo que lleve `company_id`) | Cualquier cuenta con al menos un rol vigente, como piso, **más** el filtro obligatorio por las asignaciones de la cuenta dentro de la consulta (diccionario §5.8). Un rol de alcance sistema ve todo; una cuenta sin asignación en la empresa recibe una lista vacía, y una empresa ajena responde `404`. Cuando existan los permisos, cada lectura pasa a su permiso propio |
 | Administración de cuentas y accesos (`iam`) | El rol, con `@PreAuthorize` |
@@ -461,8 +464,8 @@ La columna "Pendiente de" indica la propuesta de §14 que debe validarse antes d
 | 1 | ~~Rutas sin prefijo de contexto: `/api/v1/currencies`, `/countries`, `/users`, `/roles`, `/geo-division-levels`, `/geo-divisions`~~ | Resuelto el 06/10/2026: se rechazó el prefijo (§2.1, §14.1), así que las rutas construidas ya cumplen | — |
 | 2 | ~~`/countries/{countryId}/levels` y `/divisions` aceptan el código ISO además del UUID~~ | Resuelto el 05/10/2026: solo el UUID, en `/countries/{id}/geo-division-levels`, `/geo-divisions` y `/tax-id-types` | — |
 | 3 | ~~`DELETE /geo-division-levels/{id}`~~ | Resuelto el 05/10/2026: no hay `DELETE` y los escalones no se retiran (D-45) | — |
-| 4 | Las respuestas de escalones, divisiones y tipos de documento ya usan `id`, `countryId` y `parentId`, pero nombran el país con `countryId` (UUID) más `countryIsoAlpha2` | `country: "PE"` (§4.2, D-13) | — |
-| 5 | El país referencia su moneda con `defaultCurrencyId` (UUID) y la repite en `defaultCurrencyIsoCode` | `defaultCurrency: "PEN"` (D-13) | — |
+| 4 | ~~Las respuestas de escalones, divisiones y tipos de documento ya usan `id`, `countryId` y `parentId`, pero nombran el país con `countryId` (UUID) más `countryIsoAlpha2`~~ | Resuelto el 14/10/2026 en la rama `feature/location-closure`: nombran el país con `country: "PE"` (§4.2, D-13) | — |
+| 5 | ~~El país referencia su moneda con `defaultCurrencyId` (UUID) y la repite en `defaultCurrencyIsoCode`~~ | Resuelto el 14/10/2026 en la rama `feature/location-closure`: el país responde y recibe `defaultCurrency: "PEN"` (D-13); un código inexistente responde `404 CURRENCY_NOT_FOUND` | — |
 | 6 | `RoleResource.system` | `isSystem` (§4.1) | — |
 | 7 | `taxRate` viaja como número | Texto decimal (§5.2) | §14.2 |
 | 8 | Las altas de monedas, países y divisiones responden `201` sin `Location` | `201` con `Location` (§3) | §14.9 |

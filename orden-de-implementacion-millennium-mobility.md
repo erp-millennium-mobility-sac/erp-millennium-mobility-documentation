@@ -1,6 +1,6 @@
 # Orden de implementación — ERP Millennium Mobility
 
-**Actualizado:** 06/10/2026 · **Fuente:** diccionario de datos v1.15, §3. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 14/10/2026 · **Fuente:** diccionario de datos v1.15, §3. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 El orden lo fijan las dependencias entre tablas: nada se construye antes de lo que referencia. Cada paso entrega su contexto completo, del backend (migraciones, dominio y API) al frontend (pantallas y opciones del menú).
 
@@ -52,7 +52,7 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 ### Paso 1 · Geografía y localización — en curso
 
-- **Estado (06/10/2026):** backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, sus pruebas y la ficha del país. Las direcciones no tienen API propia: las escribe y las lee su dueño, por la fachada de `location` ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §3.3). Solo falta la carga del ubigeo.
+- **Estado (14/10/2026):** backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, sus pruebas y la ficha del país. Las direcciones no tienen API propia: las escribe y las lee su dueño, por la fachada de `location` ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §3.3). La rama `feature/location-closure` cierra lo que dejó la auditoría del 14/10/2026: la dirección elige su división en cascada, una moneda inactiva no se usa en operaciones nuevas, el país y la moneda viajan por su código (D-13) y el conversor del ubigeo está listo. Faltan dos cosas que esperan datos: la carga del ubigeo, con el archivo oficial, y la decisión sobre las longitudes del RFC, el NIT, el DNI y la CC. El detalle está en [contextos/location.md](contextos/location.md), sección 6.
 - **Tablas:** `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses`, `tax_id_types` (D-44).
 - **Pantallas:** Catálogos › Monedas y Países. Cada país abre su ficha, con sus datos, su estructura territorial (escalones y divisiones, D-45) y sus documentos tributarios, una sección bajo otra; la misma ficha registra el país y corrige sus datos. Las direcciones se llenan dentro de cada formulario que las usa; no tienen opción propia.
 - **Datos:** el archivo oficial de divisiones territoriales (ubigeo del INEI). Se carga completo (D-2).
@@ -61,7 +61,7 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 ### Paso 2 · Empresas — en curso
 
-- **Estado (06/10/2026):** Empresas está construida en el backend y en el frontend, con su dirección fiscal anidada: se registra con la empresa y se corrige o se muda desde su subrecurso. El frontend tiene además las vistas de Sedes y Marcas comerciales, sin ruta y con su opción del menú pendiente hasta que exista su backend. En el backend faltan `commercial_brands`, `branches`, `locations` y `roles.company_id`; Ubicaciones falta en los dos. Las sedes y las ubicaciones nacen con la dirección anidada, igual que la empresa.
+- **Estado (14/10/2026):** Empresas, Marcas comerciales, Sedes y Ubicaciones están construidas en el backend y en el frontend, con su opción del menú. La empresa, la sede y la ubicación llevan su dirección anidada. Falta `roles.company_id`. Los colaboradores del paso 3 ya se adelantaron en la misma rama. Lo que falta para cerrar el paso, con los hallazgos de seguridad, está en [contextos/organization.md](contextos/organization.md), sección 6.
 - **Tablas:** `companies`, `commercial_brands`, `branches`, `locations`. Además se agrega `roles.company_id`, que esperaba a que existieran las empresas. `tax_id_types` pasó al paso 1 (D-44).
 - **Pantallas:** Configuración › Empresas (solo superadministrador), Sedes, Marcas comerciales y Ubicaciones. Qué países operan lo muestra Empresas filtrada por país (D-3).
 - **Datos:** razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales.
@@ -154,12 +154,6 @@ El diccionario ordena los bloques por sus dependencias. La implementación lo si
 
 
 
-## Antes del paso 1
-
-Corregir cómo muestra las fechas el frontend, para que todas las pantallas nuevas nazcan siguiendo la regla (§2.6):
-
-- **Zona:** hoy se muestran en la del navegador. Deben mostrarse en la zona de la sede; sin sede, en la del país de la empresa; sin empresa, en `America/Lima`.
-- **Formato:** hoy aparecen como `27/09/26, 9:05 a. m.`. Deben verse como `dd/mm/aaaa hh:mm`.
 
 
 
@@ -171,12 +165,14 @@ Corregir cómo muestra las fechas el frontend, para que todas las pantallas nuev
 | La sesión guarda el hash de la contraseña | Media |
 | Un correo de más de 255 caracteres devuelve error 500 en vez de 400 | Baja |
 | Cerrar como "caducidad" las asignaciones vencidas | Con la pantalla de roles y usuarios |
-| Separar la cuenta de Flyway, dueña de las tablas, de la cuenta de la aplicación, que lee, inserta y actualiza, y solo borra en `spring_session*`. El backend ya trae los scripts (`scripts/database/create-roles.sql`, una vez por clúster, y `hand-over-database.sql`, una vez por base ya migrada) y la migración V17 de permisos, que no otorga nada mientras no exista la cuenta `erp_mm_app`; la aplicación arranca como antes. Falta correr los scripts en cada entorno y fijar `FLYWAY_USER`, `FLYWAY_PASSWORD`, `DATABASE_USER` y `DATABASE_PASSWORD` (README del backend, "Cuentas de la base"). En desarrollo se deja de usar `postgres` | Antes de la primera migración con `company_id` (paso 2) |
+| Separar la cuenta de Flyway, dueña de las tablas, de la cuenta de la aplicación, que lee, inserta y actualiza, y solo borra en `spring_session*`. El backend ya trae los scripts (`scripts/database/create-roles.sql`, una vez por clúster, y `hand-over-database.sql`, una vez por base ya migrada) y la migración V19 de permisos, que no otorga nada mientras no exista la cuenta `erp_mm_app`; la aplicación arranca como antes. Falta correr los scripts en cada entorno y fijar `FLYWAY_USER`, `FLYWAY_PASSWORD`, `DATABASE_USER` y `DATABASE_PASSWORD` (README del backend, "Cuentas de la base"). En desarrollo se deja de usar `postgres` | Antes de la primera migración con `company_id` (paso 2) |
 | Aislamiento entre empresas en la base: políticas RLS sobre `company_id`, un punto central que fija con `set_config` las empresas de la cuenta en cada transacción (`SYSTEM` para el superadministrador, el arranque y los procesos automáticos) y pruebas de integración contra PostgreSQL 18 (Testcontainers), conectadas con la cuenta de la aplicación. Hasta entonces solo se otorgan roles de alcance sistema: el bloqueo de `UserCommandServiceImpl` se quita en este mismo cambio, nunca antes | Primera rebanada del paso 3 |
 | Filtro de alcance por asignaciones en el listado, la exportación y la consulta por id de `/companies` y sus rutas anidadas; `/users` abierto al administrador de empresa; una prueba de que una empresa ajena responde `404` ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §9.2) | En el mismo cambio que habilite los roles de empresa (paso 3) |
 | Zona de los momentos en las exportaciones con alcance de empresa o de sede: cada controlador le pasa a `SpreadsheetExporter` la zona de ese alcance ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §8.1) | Paso 3 |
 | Clases base de las cinco formas de columnas de registro: faltan la raíz `CreatedAbstractPersistenceEntity` y `CreatedByAbstractPersistenceEntity` (D-42; [patrones de persistencia](patrones-de-persistencia-millennium-mobility.md)) | Paso 3, con `user_access_suspensions`, su primera tabla |
 | Fijar los decimales de una moneda cuando un monto ya la usa (§4.1): `location` publica un puerto (SPI) que implementan los contextos con montos, para saber si alguno usa la moneda sin depender de ellos | Antes del paso 7 |
+| Fechas en pantalla (§2.6): hoy se muestran en la zona del navegador y como `27/09/26, 9:05 a. m.`. Deben verse en la zona de la sede; sin sede, en la del país de la empresa; sin empresa, en `America/Lima`, y como `dd/mm/aaaa hh:mm`. Estaba antes del paso 1; se movió aquí el 14/10/2026 porque las pantallas de `location` no muestran fechas | Media. Antes de la próxima pantalla que muestre fechas; Usuarios ya las muestra |
+| Verificar el dígito de control de los documentos tributarios (§4.7): decidir qué contexto lo calcula. Hoy `has_check_digit` se guarda y nadie lo verifica | Paso 3, con los colaboradores |
 | Listados de usuarios: quitar el N+1 de los roles de cada cuenta (colección `EAGER` en `UserPersistenceEntity`), con una lectura en lote o con `default_batch_fetch_size` | Baja |
 
 
