@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.16 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
+**Versión:** 1.17 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
 
 > **Cómo leer los cuadros.** En cada tabla, las columnas *Descripción* y *Por qué importa* están escritas para que las entienda cualquier persona, sin conocimientos técnicos: sirven para que quien conoce el negocio pueda revisar si el dato es el correcto. Las columnas *Tipo* y *Nulo*, las restricciones y el código SQL son para el equipo de desarrollo.
 
@@ -359,7 +359,7 @@ Cada división concreta del territorio. Se carga desde las listas oficiales de c
 - Solo las divisiones del primer escalón no pertenecen a ninguna otra.
 - Una división que se fusiona o desaparece se desactiva, nunca se borra: las direcciones ya registradas siguen apuntando a ella.
 
-**Qué protege la base y qué la aplicación.** La base impide que una división cuelgue de otra de un país distinto: la llave hacia la división superior incluye el país. También impide usar un escalón que el país no declaró. Lo que no puede impedir sola es que la división superior sea exactamente del escalón inmediato: nada en la base evita que un distrito cuelgue directo del departamento, saltándose la provincia. Esa regla la valida la aplicación al registrar la división. La base impide además que una división del primer escalón tenga superior y que una de otro escalón no lo tenga (`geo_divisions_root_parent_ck`).
+**Qué protege la base y qué la aplicación.** La base impide que una división cuelgue de otra de un país distinto: la llave hacia la división superior incluye el país. También impide usar un escalón que el país no declaró. Desde V25 impide también que la división superior sea de otro escalón que el inmediato: la llave hacia la superior incluye su escalón, que la base calcula como el de la división menos uno en la columna generada `parent_level` (D-54). Un distrito no puede colgar directo del departamento, ni desde la aplicación ni desde una carga en SQL de una lista oficial. La base impide además que una división del primer escalón tenga superior y que una de otro escalón no lo tenga (`geo_divisions_root_parent_ck`).
 
 ### 4.6 `addresses` — Direcciones
 Una dirección física, separada en sus partes. La usan empresas, sedes, proveedores y clientes.
@@ -367,7 +367,7 @@ Una dirección física, separada en sus partes. La usan empresas, sedes, proveed
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
 | `country_id` | BIGINT FK → `countries` | No | El país de la dirección | Es el único dato geográfico que siempre se conoce. El distrito puede faltar, por ejemplo en la dirección de un proveedor extranjero |
-| `geo_division_id` | BIGINT FK → `geo_divisions` | Sí | El distrito, municipio o colonia donde está la dirección | Guardando solo el más específico, el sistema deduce solo la provincia y el departamento, sin que nadie tenga que escribirlos |
+| `geo_division_id` | BIGINT FK → `geo_divisions` | Sí | El distrito, municipio o colonia donde está la dirección. Obligatorio cuando el país de la dirección tiene sus divisiones cargadas (D-53) | Guardando solo el más específico, el sistema deduce solo la provincia y el departamento, sin que nadie tenga que escribirlos |
 | `street_name` | VARCHAR(180) | No | La calle o avenida escrita completa: Av. Defensores del Morro | Se guarda junto con el "Av." o "Jr." porque separarlos genera tres formas de escribir lo mismo —Av., Avenida, AV— sin ninguna utilidad |
 | `street_number` | VARCHAR(20) | Sí | El número de la puerta | Se guarda como texto y no como número porque existen casos reales como "S/N" o "Km 12.5". Si fuera numérico, habría que inventar un valor para poder grabar |
 | `unit` | VARCHAR(50) | Sí | Interior, departamento, piso, oficina, manzana o lote | En Lima buena parte de las direcciones tiene interior. Sin un campo propio termina pegado al número de puerta y ya no se puede separar |
@@ -401,6 +401,8 @@ La segunda fila muestra por qué el número de puerta se guarda como texto.
 Así el contrato conserva el domicilio con el que se firmó sin necesidad de copiarlo dentro, y la dirección actual del cliente queda siempre disponible. Es la opción de menor costo: no agrega campos ni tablas, solo exige que la pantalla distinga una corrección de una mudanza.
 
 **La división de una dirección es del mismo país y del escalón más bajo que ese país declaró.** Es lo que permite deducir la provincia y el departamento subiendo por la cadena (§4.3). Una dirección de Perú no puede apuntar a un municipio colombiano ni quedarse en la provincia cuando el país declara distritos. Para una dirección nueva, la división debe estar activa. Que la división sea del mismo país lo impide la base, porque la llave hacia la división incluye el país; que sea del escalón más bajo y que esté activa lo valida la aplicación.
+
+**La división es obligatoria donde el país tiene sus divisiones cargadas (D-53).** Una empresa, una sede o una ubicación en Perú no se registra sin su distrito: sin él, el sistema no puede deducir la provincia ni el departamento. Solo puede faltar en la dirección de un país cuyas divisiones no están cargadas, como la de un proveedor extranjero. Lo valida la aplicación, porque depende de qué países tienen su lista cargada.
 
 **La dirección está en el país de su dueño.** Quien la escribe no elige el país: lo fija el dueño, que es una empresa, una sede o una ubicación. Una empresa peruana no puede tener su domicilio fiscal en Colombia. La base lo exige en empresas y sedes, porque la llave hacia `addresses` incluye el país; en las demás, lo valida la aplicación.
 
@@ -2492,6 +2494,8 @@ Queda una decisión abierta, con su momento fijado: las longitudes de los docume
 | D-50 | La sede no lleva tipo: ninguna regla ni reporte depende hoy de la función del local, y la clase de lugar ya la dice `locations.location_type` (D-6). `branch_type` queda como candidato, con el criterio que lo admitiría (§6.4, §6.6) |
 | D-51 | El `public_id` sale por las direcciones web y las integraciones por API. Los archivos que genera el sistema llevan códigos de negocio y nombres, nunca el `id` interno ni el `public_id`. Excepción: un archivo diseñado para editarse y volver a subirse con el fin de actualizar registros existentes lleva además el `public_id` como llave estable. El criterio es el uso de ida y vuelta, no quién recibe el archivo (§2.4) |
 | D-52 | Un paso se cierra con el alcance de los países que operan. Hoy opera solo Perú (D-5), así que el bloque 1 se cerró con su ubigeo cargado. Lo que es propio de otro país —su lista oficial de divisiones (D-2) y las longitudes de sus documentos tributarios (§4.7)— se resuelve antes de registrar su primera empresa |
+| D-53 | La división de una dirección es obligatoria cuando el país de la dirección tiene sus divisiones cargadas; solo puede faltar en un país sin ellas, como la dirección de un proveedor extranjero (§4.6) |
+| D-54 | `geo_divisions.parent_level` es una columna que calcula la base (el escalón menos uno) y no guarda un dato del negocio: existe solo para que la llave hacia la división superior incluya su escalón (§4.5). Es la única excepción a la regla de no guardar lo derivable, y la aplicación nunca la escribe |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
