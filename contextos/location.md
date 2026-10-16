@@ -1,6 +1,6 @@
 # Contexto `location` — ERP Millennium Mobility
 
-**Actualizado:** 15/10/2026 · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15 (§2, §3, §4.1 a §4.8 y las decisiones D-2, D-3, D-8, D-13, D-40, D-42 a D-49 y D-51), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), [orden de implementación](../orden-de-implementacion-millennium-mobility.md), las revisiones del [30/09/2026](../retroalimentacion/2026-09-30-location.md) y del [05/10/2026](../retroalimentacion/2026-10-05-location.md), y el código de la rama `feature/location` del backend y del frontend al 14/10/2026. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 15/10/2026 (paso 1 construido para Perú) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15 (§2, §3, §4.1 a §4.8 y las decisiones D-2, D-3, D-8, D-13, D-40, D-42 a D-49 y D-51), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), [orden de implementación](../orden-de-implementacion-millennium-mobility.md), las revisiones del [30/09/2026](../retroalimentacion/2026-09-30-location.md) y del [05/10/2026](../retroalimentacion/2026-10-05-location.md), y el código de la rama `feature/location` del backend y del frontend al 14/10/2026. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 **Cómo leerlo.** Las secciones 1 a 3 están escritas para quien conoce el negocio. La 4 y la 6 nombran archivos del código para el equipo. Lo marcado **(propuesta)** no lo decide nadie todavía.
 
@@ -78,7 +78,7 @@ El país incluye sus escalones: se guardan y se validan con él (D-45).
 
 | Momento | Qué pasa |
 |---|---|
-| Alta | La migración inicial carga la lista oficial completa (D-2): el ubigeo del INEI en Perú. **Esa carga no existe todavía.** Después, el superadministrador crea divisiones una por una en la ficha del país, sección Estructura territorial |
+| Alta | La migración V24 carga la lista oficial completa de Perú (D-2): el ubigeo del INEI, edición 2022, con 25 departamentos, 196 provincias y 1 891 distritos. Las de Colombia y México se cargan antes de registrar su primera empresa. Después, el superadministrador crea divisiones una por una en la ficha del país, sección Estructura territorial |
 | Qué cambia | Solo el nombre |
 | Qué queda fijo | El código oficial, el escalón, la división superior y el país, desde el alta |
 | Retiro | Se desactiva cuando se fusiona o desaparece. Las direcciones ya registradas siguen apuntando a ella |
@@ -187,7 +187,10 @@ flowchart TD
 
 ### F6 · Cargar el ubigeo
 
-**Pendiente del archivo oficial.** La lista oficial de divisiones de Perú (ubigeo del INEI) se carga completa con una migración (D-2, procesos P1 paso 1). El conversor está listo en el backend (`scripts/ubigeo/`): toma el archivo con una fila por distrito (`ubigeo,departamento,provincia,distrito`), lo valida y escribe la migración, que inserta departamentos, provincias y distritos en ese orden y falla entera si falta un superior. Falta el archivo, con su edición fijada, y reservar el número de la migración. Hasta entonces `geo_divisions` está vacía y ninguna dirección puede elegir distrito, salvo divisiones creadas a mano. Volver a cargar la lista desde la aplicación cuando se crean o fusionan distritos no tiene mecanismo (procesos, apartado 5, pregunta 7); mientras tanto, el superadministrador las mantiene una por una (F2, paso 3).
+**Hecho para Perú.** La lista oficial de divisiones de Perú (ubigeo del INEI, edición 2022) se carga completa con la migración `V24__load_peru_ubigeo.sql` (D-2, procesos P1 paso 1). La genera `scripts/ubigeo/` del backend desde el archivo tal como lo publica el INEI, que se guarda byte por byte en `scripts/ubigeo/fuente/` con su fuente y su SHA-256: así se puede volver a generar y comparar con una edición nueva. La migración inserta departamentos, provincias y distritos en ese orden y falla entera si falta un superior; `PeruUbigeoMigrationTests` comprueba los conteos y la cadena. Los nombres quedan como los publica el INEI: en mayúsculas, sin tildes y con la Ñ.
+
+Una edición nueva no reemplaza a V24, porque una migración aplicada no se edita: los distritos que se creen se agregan con una migración nueva o desde la ficha del país, y los que se fusionen se desactivan. Volver a cargar la lista desde la aplicación no tiene mecanismo (procesos, apartado 5, pregunta 7).
+
 
 ---
 
@@ -268,40 +271,29 @@ Lo que la fachada no ofrece y mapa §5.1 deja como propuesta: la división por s
 
 ## 6. Estado y pendientes para cerrar
 
-**Estado al 15/10/2026.** La rama `feature/location-closure` (backend y frontend, sin integrar todavía) cierra lo que dejó la auditoría del 14/10/2026: la dirección elige su división en cascada y conserva la inactiva que ya tenía, una moneda inactiva no se usa en operaciones nuevas, el país y la moneda viajan por su código (D-13), los errores de los ISO bloqueados y de la moneda inactiva tienen su propio código, desactivar pide confirmación, y el código muerto y los textos sin uso se retiraron. Sobre esa rama pasan las 621 pruebas del backend, las 667 unitarias del frontend y las e2e de `location`, corridas en una base y un servidor aparte. Las únicas e2e que fallan son las de Usuarios y Colaboradores, que ya fallaban antes y no son de este contexto.
+**Estado al 15/10/2026: construido para Perú**, el único país que opera hoy (D-5). En `feature/location` están las monedas, los países con sus escalones, las divisiones con el ubigeo del INEI cargado (V24), las direcciones con su división en cascada y los tipos de documento tributario, con su API, sus pantallas y sus pruebas: 625 del backend, 667 unitarias del frontend, 15 del conversor del ubigeo y las e2e de `location`, todas en verde. Las únicas e2e que fallan son las de Usuarios y Colaboradores, que no son de este contexto. El detalle está en la [revisión de cierre](../retroalimentacion/2026-10-15-location.md).
 
-El paso 1 **no está cerrado**: falta cargar el ubigeo y decidir las longitudes de los documentos tributarios.
+### a) Decisiones (responsable del diccionario)
 
-### a) Decisiones (responsable del diccionario y negocio)
-
-| Qué | Por qué importa | Bloquea |
-|---|---|---|
-| Cómo se modelan las longitudes de los documentos. Hoy un tipo tiene una sola longitud exacta. El RFC tiene 12 caracteres para empresas y 13 para personas, pero es un solo tipo que aplica a ambos. El NIT se guarda con 9 dígitos y el dígito de control aparte o dentro no está decidido; con el DNI pasa lo mismo. La CC exige exactamente 10, aunque hay cédulas más cortas. **(propuesta)** Sin cambiar el esquema: partir el RFC en dos tipos (empresa 12, persona 13), dejar la CC sin longitud fija y ajustar el NIT y el DNI según se decida su dígito | Con la regla actual, una persona con RFC de 13 o una cédula de 8 dígitos no se puede registrar | Sí, para México y Colombia; la migración de las semillas se hace al decidir |
-| Validar en el diccionario que la dirección está en el país de su dueño (LOC-R28) | Hoy es propuesta del mapa, aunque la base ya lo exige en empresas y sedes | No |
-
-El dígito de control (LOC-R35) pasó a los pendientes transversales del orden de implementación, asignado al paso 3.
+| Qué | Bloquea |
+|---|---|
+| Registrar en el diccionario las cuatro reglas que el código ya cumple: el orden de los escalones solo en la aplicación (§4.4), el `CHECK` de raíz de las divisiones y la edición del ubigeo cargada (§4.5), la dirección en el país de su dueño (§4.6, LOC-R28) y las semillas CE, PAS, CC y CURP (§4.7). El texto propuesto está en la revisión de cierre | Es el último criterio del paso; no cambia código |
 
 ### b) Código
 
-No queda código de `location` pendiente para cerrar el paso. Lo que sigue abierto pertenece a otros contextos o a pasos posteriores:
+No queda código de `location` pendiente. Lo que sigue abierto tiene su momento asignado:
 
-- `locations.address_id` no es único ni tiene la llave del mismo país (LOC-R28, LOC-R29), y `employees.document_type_id` no tiene la llave del mismo país (LOC-R37). Son migraciones de `organization`.
-- Los decimales de una moneda quedan fijos desde el primer monto (LOC-R05): es el puerto que `location` publica antes del paso 7.
-- Integrar `feature/location-closure`: sale de `feature/location`, que también trae trabajo de `organization` e `iam` sin revisar (ver [organization.md](organization.md) e [iam.md](iam.md), sección 6).
-
-### c) Datos
-
-- **Carga del ubigeo (bloqueante).** El conversor está listo (`scripts/ubigeo/` del backend, con su README). Falta el archivo oficial del INEI con su edición fijada, reservar el número de la migración con el equipo y probarla primero en `erp_mm_db_verify`.
-- Las listas de Colombia (DANE) y México (INEGI) se cargan cuando esos países operen.
-
-### d) Documentación
-
-| Documento | Qué actualizar |
+| Qué | Cuándo |
 |---|---|
-| Diccionario (lo decide quien es responsable del diccionario) | La regla de la dirección en el país de su dueño; la decisión sobre RFC, NIT, DNI y CC; las semillas CE, PAS, CURP y CC, que no están en §4.7; que la base exige la raíz de las divisiones (`geo_divisions_root_parent_ck`), que §4.5 no menciona; y que el orden de los escalones lo protege solo la aplicación (§4.4) |
-| Orden de implementación | Marcar el paso 1 como construido cuando se cargue el ubigeo |
+| Longitudes del RFC, el NIT, el DNI y la CC, y las listas oficiales de Colombia (DANE) y México (INEGI) | Antes de registrar la primera empresa de Colombia o México (orden, pendientes transversales) |
+| Verificar el dígito de control (LOC-R35) | Paso 3 |
+| Fijar los decimales de una moneda desde su primer monto (LOC-R05) | Antes del paso 7 |
+| `locations.address_id` único y con la llave del mismo país, y `employees.document_type_id` con la llave del mismo país (LOC-R28, R29, R37) | Con los pendientes de `organization` |
 
-Ya se actualizaron el 14/10/2026: convenciones (§4.2 `isoCodesLocked`, §6.2 las dos listas cortas, §9.2 los catálogos, §13 filas 4 y 5), el mapa (§5.1, la moneda con su estado), la revisión del 05/10/2026 (sus hashes), el orden de implementación (estado de los pasos 1 y 2, V19, las fechas en los pendientes transversales) y el README del backend.
+### c) Integración
+
+`feature/location` también trae trabajo de `organization` e `iam` que no está revisado, con hallazgos críticos (ver [organization.md](organization.md) e [iam.md](iam.md), sección 6). La rama va a `develop` cuando esos estén corregidos; el paso 1 no depende de eso.
+
 
 ---
 

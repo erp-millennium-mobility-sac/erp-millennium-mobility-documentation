@@ -1,6 +1,6 @@
 # Orden de implementación — ERP Millennium Mobility
 
-**Actualizado:** 14/10/2026 · **Fuente:** diccionario de datos v1.15, §3. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 15/10/2026 · **Fuente:** diccionario de datos v1.15, §3. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 El orden lo fijan las dependencias entre tablas: nada se construye antes de lo que referencia. Cada paso entrega su contexto completo, del backend (migraciones, dominio y API) al frontend (pantallas y opciones del menú).
 
@@ -10,7 +10,7 @@ El orden lo fijan las dependencias entre tablas: nada se construye antes de lo q
 | Paso | Bloque del diccionario                                | Contexto              | Depende de                       | Estado                   |
 | ---- | ----------------------------------------------------- | --------------------- | -------------------------------- | ------------------------ |
 | 0    | 2 · Seguridad, en parte, y el núcleo común            | `shared`, `iam`       | —                                | Construido               |
-| 1    | 1 · Geografía                                         | `location`            | —                                | En curso                 |
+| 1    | 1 · Geografía                                         | `location`            | —                                | Construido (Perú)        |
 | 2    | 3 · Empresas                                          | `organization`        | 1 y 2                            | En curso                 |
 | 3    | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | 2 y 3                            | Pendiente                |
 | 4    | 4 · Catálogos de flota                                | `vehiclecatalog`      | 3                                | Pendiente                |
@@ -50,12 +50,12 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 
 
-### Paso 1 · Geografía y localización — en curso
+### Paso 1 · Geografía y localización — construido para Perú
 
-- **Estado (14/10/2026):** backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, sus pruebas y la ficha del país. Las direcciones no tienen API propia: las escribe y las lee su dueño, por la fachada de `location` ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §3.3). La rama `feature/location-closure` cierra lo que dejó la auditoría del 14/10/2026: la dirección elige su división en cascada, una moneda inactiva no se usa en operaciones nuevas, el país y la moneda viajan por su código (D-13) y el conversor del ubigeo está listo. Faltan dos cosas que esperan datos: la carga del ubigeo, con el archivo oficial, y la decisión sobre las longitudes del RFC, el NIT, el DNI y la CC. El detalle está en [contextos/location.md](contextos/location.md), sección 6.
+- **Estado (15/10/2026):** construido para Perú, el único país que opera (D-5). Backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, sus pruebas y la ficha del país; la dirección elige su división en cascada. V24 carga el ubigeo del INEI, edición 2022, con 1 891 distritos. Falta que el diccionario registre cuatro reglas que el código ya cumple ([revisión de cierre](retroalimentacion/2026-10-15-location.md), "Propuestas para el diccionario"). Las longitudes de los documentos de Colombia y México y sus listas oficiales quedan en los pendientes transversales, para antes de registrar su primera empresa.
 - **Tablas:** `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses`, `tax_id_types` (D-44).
 - **Pantallas:** Catálogos › Monedas y Países. Cada país abre su ficha, con sus datos, su estructura territorial (escalones y divisiones, D-45) y sus documentos tributarios, una sección bajo otra; la misma ficha registra el país y corrige sus datos. Las direcciones se llenan dentro de cada formulario que las usa; no tienen opción propia.
-- **Datos:** el archivo oficial de divisiones territoriales (ubigeo del INEI). Se carga completo (D-2).
+- **Datos:** el archivo oficial de divisiones territoriales (ubigeo del INEI), cargado completo (D-2) por V24 desde `scripts/ubigeo/` del backend.
 
 
 
@@ -173,6 +173,7 @@ El diccionario ordena los bloques por sus dependencias. La implementación lo si
 | Fijar los decimales de una moneda cuando un monto ya la usa (§4.1): `location` publica un puerto (SPI) que implementan los contextos con montos, para saber si alguno usa la moneda sin depender de ellos | Antes del paso 7 |
 | Fechas en pantalla (§2.6): hoy se muestran en la zona del navegador y como `27/09/26, 9:05 a. m.`. Deben verse en la zona de la sede; sin sede, en la del país de la empresa; sin empresa, en `America/Lima`, y como `dd/mm/aaaa hh:mm`. Estaba antes del paso 1; se movió aquí el 14/10/2026 porque las pantallas de `location` no muestran fechas | Media. Antes de la próxima pantalla que muestre fechas; Usuarios ya las muestra |
 | Verificar el dígito de control de los documentos tributarios (§4.7): decidir qué contexto lo calcula. Hoy `has_check_digit` se guarda y nadie lo verifica | Paso 3, con los colaboradores |
+| Longitudes de los documentos de Colombia y México (§4.7): el RFC tiene 12 caracteres para empresas y 13 para personas con un solo tipo; el NIT y el DNI, decidir si el dígito de control va dentro del número; la CC exige exactamente 10. **(propuesta)** Partir el RFC en dos tipos, dejar la CC sin longitud fija y ajustar el NIT. Además, cargar la lista oficial de divisiones del país (DANE, INEGI) | Antes de registrar la primera empresa de Colombia o México |
 | Listados de usuarios: quitar el N+1 de los roles de cada cuenta (colección `EAGER` en `UserPersistenceEntity`), con una lectura en lote o con `default_batch_fetch_size` | Baja |
 
 
