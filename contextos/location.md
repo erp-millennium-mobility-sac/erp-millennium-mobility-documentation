@@ -1,6 +1,6 @@
 # Contexto `location` — ERP Millennium Mobility
 
-**Actualizado:** 15/10/2026 (paso 1 construido para Perú) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.16 (§2, §3, §4.1 a §4.8 y las decisiones D-2, D-3, D-8, D-13, D-40, D-42 a D-49 y D-51), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), [orden de implementación](../orden-de-implementacion-millennium-mobility.md), las revisiones del [30/09/2026](../retroalimentacion/2026-09-30-location.md) y del [05/10/2026](../retroalimentacion/2026-10-05-location.md), y el código de la rama `feature/location` del backend y del frontend al 14/10/2026. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 15/10/2026 (paso 1 construido para Perú) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.17 (§2, §3, §4.1 a §4.8 y las decisiones D-2, D-3, D-8, D-13, D-40, D-42 a D-49 y D-51), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), [orden de implementación](../orden-de-implementacion-millennium-mobility.md), las revisiones del [30/09/2026](../retroalimentacion/2026-09-30-location.md) y del [05/10/2026](../retroalimentacion/2026-10-05-location.md), y el código de la rama `feature/location` del backend y del frontend al 14/10/2026. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 **Cómo leerlo.** Las secciones 1 a 3 están escritas para quien conoce el negocio. La 4 y la 6 nombran archivos del código para el equipo. Lo marcado **(propuesta)** no lo decide nadie todavía.
 
@@ -177,12 +177,12 @@ flowchart TD
 ```
 
 1. El país de la dirección es el del dueño (el de la empresa). La persona no lo elige.
-2. La división es opcional. Si la elige, va de arriba hacia abajo, un selector por escalón del país: Departamento, después Provincia, después Distrito. Cada selector ofrece solo las divisiones activas que cuelgan de lo elegido arriba, y cambiar un escalón borra los de abajo. Hay que llegar al último escalón o dejar la división sin elegir; quedarse a medio camino no deja guardar.
+2. La división es obligatoria cuando el país tiene sus divisiones cargadas, como Perú, y opcional en un país sin ellas (D-53). Se elige de arriba hacia abajo, un selector por escalón del país: Departamento, después Provincia, después Distrito. Cada selector ofrece solo las divisiones activas que cuelgan de lo elegido arriba, y cambiar un escalón borra los de abajo. Hay que llegar al último escalón; donde la división es opcional, también se puede dejar sin elegir. Una dirección vacía del todo sigue permitida si el dueño no la exige.
 3. La calle es obligatoria en cuanto se escribe algo. El código postal aparece y es obligatorio solo en los países que lo exigen (México).
 4. Al cambiar la dirección de un dueño ya guardado, los diálogos de empresa y de sede preguntan si es una corrección o una mudanza (D-8). El de ubicación envía la dirección dentro del registro y no pregunta. Quitar la dirección no se permite: solo corregirla o mudarla.
 5. Al editar un dueño, el formulario reconstruye la cadena de su división (Lima › Lima › Chorrillos). Una división que ya tenía la dirección se acepta aunque se haya desactivado después, y aparece marcada "(inactiva)"; una que se elige ahora tiene que estar activa (LOC-R26).
 
-**Errores que ve:** "Elija también Distrito, o deje la división sin elegir"; "Elija una división activa del último escalón del país"; "La división que tenía la dirección ya no encaja en los escalones del país: elija una nueva o deje la división sin elegir"; "No se pudieron cargar las divisiones del país"; y, desde el backend, "La dirección no es válida: revise la división territorial y el código postal".
+**Errores que ve:** "Elija la división hasta Distrito, el último escalón del país" (donde es obligatoria); "Elija también Distrito, o deje la división sin elegir" (donde es opcional); "Elija una división activa del último escalón del país"; "La división que tenía la dirección ya no encaja en los escalones del país: elija una nueva o deje la división sin elegir"; "No se pudieron cargar las divisiones del país"; y, desde el backend, "La dirección no es válida: revise la división territorial y el código postal".
 **Resultado:** el dueño apunta a su dirección. Si algo del dueño falla después, la dirección tampoco se guarda: las dos van en la misma transacción.
 
 ### F6 · Cargar el ubigeo
@@ -221,7 +221,7 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 | LOC-R19 | El código, el escalón, la división superior y el país de una división no cambian | §2.4, §4.5 | Dominio: `GeoDivision` (campos fijos; solo se renombra y se activa). Servicio: la edición solo recibe el nombre | No hace falta: la API no recibe esos campos al editar | ✅ |
 | LOC-R20 | Solo las divisiones del escalón 1 no tienen división superior | §4.5 | Base: `geo_divisions_root_parent_ck`. Dominio: `GeoDivision`. Servicio: `GeoDivisionCommandServiceImpl` | `GeoDivisionTests`, `GeoDivisionCommandServiceImplTests` | ✅ |
 | LOC-R21 | La división superior es del mismo país | §4.5 | Base: `geo_divisions_parent_same_country_fk` (V15). Servicio: `GeoDivisionCommandServiceImpl` | `GeoDivisionCommandServiceImplTests` | ✅ |
-| LOC-R22 | La división superior es del escalón inmediato superior: un distrito no cuelga directo del departamento | §4.5 | Servicio: `GeoDivisionCommandServiceImpl` con `HierarchyTier.isImmediateChildOf`. Frontend: `geo-division-form-dialog` solo ofrece el escalón de arriba. La base no lo puede impedir | `GeoDivisionCommandServiceImplTests`, `GeoDivisionsControllerTests`, `HierarchyTierTests` | ✅ |
+| LOC-R22 | La división superior es del escalón inmediato superior: un distrito no cuelga directo del departamento | §4.5, D-54 | Base: `geo_divisions_parent_immediate_level_fk` sobre la columna generada `parent_level` (V25), que protege también las cargas en SQL. Servicio: `GeoDivisionCommandServiceImpl` con `HierarchyTier.isImmediateChildOf`. Frontend: `geo-division-form-dialog` solo ofrece el escalón de arriba | `GeoDivisionParentLevelMigrationTests`, `GeoDivisionCommandServiceImplTests`, `GeoDivisionsControllerTests`, `HierarchyTierTests` | ✅ |
 | LOC-R23 | Una división retirada se desactiva y sigue existiendo | §4.5 | Dominio: `GeoDivision.deactivate` | `GeoDivisionCommandServiceImplTests`, `GeoDivisionsControllerTests` | ✅ |
 | LOC-R24 | Toda dirección tiene calle | §4.6 | Base: `CHECK` de `street_name` (V10). Dominio: `Address`. Frontend: `address-fields` en cuanto se escribe algo | `AddressTests`, `address-fields.spec` | ✅ |
 | LOC-R25 | La división de una dirección es del mismo país que la dirección | §4.6 | Base: `addresses_geo_division_same_country_fk` (V15). Dominio: `AddressDivisionPolicy` | `AddressDivisionPolicyTests` | ✅ |
@@ -240,12 +240,13 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 | LOC-R38 | Los catálogos los lee cualquier cuenta con un rol vigente; solo el superadministrador los crea o modifica | D-43 | Servicio: `@AnyRoleRequired` en los siete controladores y `hasRole('SUPERADMIN')` en cada escritura | Los cinco `*ControllerTests`, con el `403` de cada escritura | ✅ |
 | LOC-R39 | Un archivo exportado lleva códigos y nombres, nunca el número interno ni el `public_id` | §2.4, D-51 | Servicio: las columnas de cada exportación en `CurrenciesController`, `CountriesController`, `CountryGeoDivisionsController` y `CountryTaxIdTypesController`. Las divisiones y los tipos de documento llevan el país, y las divisiones el código de su superior | Las cuatro exportaciones tienen prueba | ✅ |
 | LOC-R40 | Las seis tablas registran cuándo se creó y cambió cada fila, sin autor | D-42 | Base: V6 retira `created_by`. Las entidades extienden `AuditableAbstractPersistenceEntity` | Los seis `*AuditTests` | ✅ |
+| LOC-R41 | Una dirección tiene su división cuando su país tiene divisiones cargadas; solo puede faltar en un país sin ellas | §4.6, D-53 | Servicio: `AddressCommandServiceImpl` (crear, corregir y mudar) responde `400 VALIDATION_ERROR`, igual que el código postal faltante. Frontend: `mm-address-fields` la exige cuando la lista del primer escalón del país no está vacía. La base no lo cubre: depende de qué países tienen su lista cargada | `AddressCommandServiceImplTests`, `CompaniesControllerTests`, `address-fields.spec`, `address-options.store.spec`, e2e `companies` | ✅ |
 
 ---
 
 ## 5. Relación con otros contextos
 
-`location` no depende de ningún contexto: declara `allowedDependencies = {}` y `ModularityTests` lo verifica. Los demás lo usan por su fachada, nunca por sus tablas (§3).
+`location` no depende de ningún contexto: declara `allowedDependencies = {}` y `ModularityTests` lo verifica. Dentro del contexto, los agregados se referencian por su identificador: la división y el tipo de documento guardan el país, y el país guarda su moneda sugerida por identificador; el código ISO de la moneda lo agrega la vista del país. Los demás lo usan por su fachada, nunca por sus tablas (§3).
 
 **Fachada del backend: `LocationContextFacade`.** El detalle de lo que ofrece está en mapa §5.1. Hoy su único consumidor es `organization`, a través de `ExternalLocationService`.
 
@@ -271,7 +272,7 @@ Lo que la fachada no ofrece y mapa §5.1 deja como propuesta: la división por s
 
 ## 6. Estado y pendientes para cerrar
 
-**Estado al 15/10/2026: construido para Perú**, el único país que opera hoy (D-5). En `feature/location` están las monedas, los países con sus escalones, las divisiones con el ubigeo del INEI cargado (V24), las direcciones con su división en cascada y los tipos de documento tributario, con su API, sus pantallas y sus pruebas: 625 del backend, 667 unitarias del frontend, 15 del conversor del ubigeo y las e2e de `location`, todas en verde. Las únicas e2e que fallan son las de Usuarios y Colaboradores, que no son de este contexto. El detalle está en la [revisión de cierre](../retroalimentacion/2026-10-15-location.md).
+**Estado al 15/10/2026: construido para Perú**, el único país que opera hoy (D-5). En `feature/location` están las monedas, los países con sus escalones, las divisiones con el ubigeo del INEI cargado (V24), las direcciones con su división en cascada y los tipos de documento tributario, con su API, sus pantallas y sus pruebas: 634 del backend, 672 unitarias del frontend, 15 del conversor del ubigeo y las e2e de `location`, todas en verde. Las únicas e2e que fallan son las de Usuarios y Colaboradores, que no son de este contexto. El detalle está en la [revisión de cierre](../retroalimentacion/2026-10-15-location.md).
 
 ### a) Decisiones
 
