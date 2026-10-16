@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.15 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
+**Versión:** 1.16 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
 
 > **Cómo leer los cuadros.** En cada tabla, las columnas *Descripción* y *Por qué importa* están escritas para que las entienda cualquier persona, sin conocimientos técnicos: sirven para que quien conoce el negocio pueda revisar si el dato es el correcto. Las columnas *Tipo* y *Nulo*, las restricciones y el código SQL son para el equipo de desarrollo.
 
@@ -161,8 +161,8 @@ El código se construye en este orden. Respeta las dependencias del cuadro anter
 | Paso | Bloque | Contexto | Qué incluye | Datos que hacen falta | Código |
 |---|---|---|---|---|---|
 | 0 | 2 · Seguridad, en parte, y el núcleo común | `shared`, `iam` | Cuentas, roles, sesiones y asignaciones reducidas | — | Construido; lo que falta está en §5.13 |
-| 1 | 1 · Geografía y localización | `location` | Monedas, países con sus escalones, divisiones territoriales, direcciones y tipos de documento tributario | Archivo oficial de divisiones territoriales (ubigeo del INEI) | Construido, salvo la carga del ubigeo |
-| 2 | 3 · Empresas | `organization` | Empresas, marcas comerciales, sedes y ubicaciones; `roles.company_id` | Razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales | En curso: empresas |
+| 1 | 1 · Geografía y localización | `location` | Monedas, países con sus escalones, divisiones territoriales, direcciones y tipos de documento tributario | Archivo oficial de divisiones territoriales (ubigeo del INEI) | Construido para Perú: V24 carga el ubigeo del INEI, edición 2022. Colombia y México se completan antes de su primera empresa (D-52) |
+| 2 | 3 · Empresas | `organization` | Empresas, marcas comerciales, sedes y ubicaciones; `roles.company_id` | Razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales | En curso: empresas, marcas comerciales, sedes y ubicaciones construidas; falta `roles.company_id` |
 | 3 | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | Colaboradores; asignaciones por empresa, sede y marca; bloqueos de cuenta; permisos; dar acceso; registro público con perfil | Colaboradores reales y la matriz de permisos por rol | Pendiente |
 | 4 | 4 · Catálogos de flota | `vehiclecatalog` | Tipos de vehículo, marcas y modelos, colores, equipamiento y a qué tipos aplica | Modelos reales, conciliados entre los dos catálogos que advierte §7.3 | Pendiente |
 | 5 | 6 · Vehículo y estados | `fleet` | Estados, caminos y motivos, vehículos, historial de estados, kilometraje | — | Pendiente |
@@ -334,9 +334,10 @@ Cada país divide su territorio de forma distinta y con nombres distintos. Perú
 - **Los escalones se declaran en orden, sin saltos** (D-45). El siguiente escalón es siempre el que sigue al último declarado. Un escalón 3 sin escalón 2 no podría tener divisiones, porque cada división cuelga de una del escalón inmediato superior.
 - **Un escalón declarado no se borra ni se retira** (D-45). Se corrige su nombre. Las divisiones y las direcciones dependen de él, y retirarlo dejaría divisiones colgando de un escalón que ya no existe.
 - Los escalones forman parte del país: se guardan y se validan junto con él (D-45).
+- Que los escalones vayan en orden lo protege solo la aplicación: la base impide declarar dos veces el mismo escalón (`UNIQUE` de país y escalón), pero no un salto.
 
 ### 4.5 `geo_divisions` — Departamentos, provincias y distritos
-Cada división concreta del territorio. Se carga desde las listas oficiales de cada país: INEI en Perú, DANE en Colombia, INEGI en México.
+Cada división concreta del territorio. Se carga desde las listas oficiales de cada país: INEI en Perú, DANE en Colombia, INEGI en México. La de Perú es la edición 2022 del INEI, con 25 departamentos, 196 provincias y 1 891 distritos, y la cargó la migración V24 tal como la publica el INEI. Las de Colombia y México se cargan antes de registrar la primera empresa de cada país (D-52).
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
@@ -358,7 +359,7 @@ Cada división concreta del territorio. Se carga desde las listas oficiales de c
 - Solo las divisiones del primer escalón no pertenecen a ninguna otra.
 - Una división que se fusiona o desaparece se desactiva, nunca se borra: las direcciones ya registradas siguen apuntando a ella.
 
-**Qué protege la base y qué la aplicación.** La base impide que una división cuelgue de otra de un país distinto: la llave hacia la división superior incluye el país. También impide usar un escalón que el país no declaró. Lo que no puede impedir sola es que la división superior sea exactamente del escalón inmediato: nada en la base evita que un distrito cuelgue directo del departamento, saltándose la provincia. Esa regla la valida la aplicación al registrar la división.
+**Qué protege la base y qué la aplicación.** La base impide que una división cuelgue de otra de un país distinto: la llave hacia la división superior incluye el país. También impide usar un escalón que el país no declaró. Lo que no puede impedir sola es que la división superior sea exactamente del escalón inmediato: nada en la base evita que un distrito cuelgue directo del departamento, saltándose la provincia. Esa regla la valida la aplicación al registrar la división. La base impide además que una división del primer escalón tenga superior y que una de otro escalón no lo tenga (`geo_divisions_root_parent_ck`).
 
 ### 4.6 `addresses` — Direcciones
 Una dirección física, separada en sus partes. La usan empresas, sedes, proveedores y clientes.
@@ -401,6 +402,8 @@ Así el contrato conserva el domicilio con el que se firmó sin necesidad de cop
 
 **La división de una dirección es del mismo país y del escalón más bajo que ese país declaró.** Es lo que permite deducir la provincia y el departamento subiendo por la cadena (§4.3). Una dirección de Perú no puede apuntar a un municipio colombiano ni quedarse en la provincia cuando el país declara distritos. Para una dirección nueva, la división debe estar activa. Que la división sea del mismo país lo impide la base, porque la llave hacia la división incluye el país; que sea del escalón más bajo y que esté activa lo valida la aplicación.
 
+**La dirección está en el país de su dueño.** Quien la escribe no elige el país: lo fija el dueño, que es una empresa, una sede o una ubicación. Una empresa peruana no puede tener su domicilio fiscal en Colombia. La base lo exige en empresas y sedes, porque la llave hacia `addresses` incluye el país; en las demás, lo valida la aplicación.
+
 ### 4.7 `tax_id_types` — Tipos de documento tributario
 Con qué documento se identifica una empresa o una persona ante el Estado, en cada país. Es localización del país, igual que sus escalones territoriales, y por eso pertenece a este bloque (D-44).
 
@@ -427,14 +430,19 @@ El único identificador realmente mundial de empresas es el **LEI** (una clave d
 |---|---|---|---|---|---|
 | PE | RUC | Registro Único de Contribuyentes | ambos | 11 | Sí |
 | PE | DNI | Documento Nacional de Identidad | persona | 8 | Sí |
+| PE | CE | Carné de Extranjería | persona | — | No |
+| PE | PAS | Pasaporte | persona | — | No |
 | CO | NIT | Número de Identificación Tributaria | ambos | 9 | Sí |
+| CO | CC | Cédula de Ciudadanía | persona | 10 | No |
 | MX | RFC | Registro Federal de Contribuyentes | ambos | 12 | Sí |
+| MX | CURP | Clave Única de Registro de Población | persona | 18 | Sí |
 
 **Reglas de negocio**
 
 - La sigla no se repite dentro del mismo país y no se edita: se corrige el nombre, el alcance, la longitud y el dígito de control.
 - Un tipo de documento no se borra: se desactiva. Los registros que ya lo usan siguen siendo válidos.
 - Quien registra una empresa, un proveedor o un colaborador elige un tipo activo, de su mismo país y que aplique a lo que registra. Cuando el tipo declara una longitud, el número la respeta.
+- Las longitudes de Colombia y México del ejemplo están por confirmar: el RFC tiene 12 caracteres para empresas y 13 para personas, con un solo tipo que aplica a ambos; falta decidir si el dígito de control del NIT va dentro del número, y la CC no siempre tiene 10 dígitos. Se resuelve antes de registrar la primera empresa de cada país (D-52).
 
 **Nota técnica:** aquí se guardan la longitud y la existencia de dígito de control en vez de un patrón de validación, por el mismo motivo por el que se eliminó el del código postal. La diferencia es que estos dos son datos estables —la longitud del RUC no cambia por decreto— y el cálculo del dígito de control vive en el programa, no en la base.
 
@@ -2447,7 +2455,7 @@ La primera fila es el caso que más importa: la placa es la llave con que se cru
 
 ## 14. Decisiones
 
-No quedan decisiones de diseño abiertas. Lo que falta para construir son datos, no definiciones: la matriz de permisos por rol, los datos maestros reales —razón social y documento tributario de la empresa, sedes con su código de establecimiento, marcas, proveedores, colaboradores— y el archivo oficial de divisiones territoriales.
+Queda una decisión abierta, con su momento fijado: las longitudes de los documentos tributarios de Colombia y México (§4.7), antes de registrar la primera empresa de cada país (D-52). Lo que falta para construir son datos, no definiciones: la matriz de permisos por rol, los datos maestros reales —razón social y documento tributario de la empresa, sedes con su código de establecimiento, marcas, proveedores, colaboradores—. El archivo oficial de divisiones territoriales de Perú ya está cargado (§4.5).
 
 ### Decisiones ya cerradas
 
@@ -2483,6 +2491,7 @@ No quedan decisiones de diseño abiertas. Lo que falta para construir son datos,
 | D-49 | En una hoja de cálculo exportada, la fecha es una celda de fecha con formato `AAAA-MM-DD` y el momento una celda de fecha y hora con formato `AAAA-MM-DD hh:mm:ss`, en una sola zona por archivo, nombrada en el encabezado de la columna. La zona sale de la regla de "hoy" aplicada al alcance de la exportación: la sede, si no el país de la empresa, si no `America/Lima`. Los archivos para otros sistemas usan ISO 8601 con los momentos en UTC y `Z` (§2.6) |
 | D-50 | La sede no lleva tipo: ninguna regla ni reporte depende hoy de la función del local, y la clase de lugar ya la dice `locations.location_type` (D-6). `branch_type` queda como candidato, con el criterio que lo admitiría (§6.4, §6.6) |
 | D-51 | El `public_id` sale por las direcciones web y las integraciones por API. Los archivos que genera el sistema llevan códigos de negocio y nombres, nunca el `id` interno ni el `public_id`. Excepción: un archivo diseñado para editarse y volver a subirse con el fin de actualizar registros existentes lleva además el `public_id` como llave estable. El criterio es el uso de ida y vuelta, no quién recibe el archivo (§2.4) |
+| D-52 | Un paso se cierra con el alcance de los países que operan. Hoy opera solo Perú (D-5), así que el bloque 1 se cerró con su ubigeo cargado. Lo que es propio de otro país —su lista oficial de divisiones (D-2) y las longitudes de sus documentos tributarios (§4.7)— se resuelve antes de registrar su primera empresa |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
