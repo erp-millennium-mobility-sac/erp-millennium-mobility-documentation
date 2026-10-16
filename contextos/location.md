@@ -1,6 +1,6 @@
 # Contexto `location` — ERP Millennium Mobility
 
-**Actualizado:** 15/10/2026 (paso 1 construido para Perú) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15 (§2, §3, §4.1 a §4.8 y las decisiones D-2, D-3, D-8, D-13, D-40, D-42 a D-49 y D-51), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), [orden de implementación](../orden-de-implementacion-millennium-mobility.md), las revisiones del [30/09/2026](../retroalimentacion/2026-09-30-location.md) y del [05/10/2026](../retroalimentacion/2026-10-05-location.md), y el código de la rama `feature/location` del backend y del frontend al 14/10/2026. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 15/10/2026 (paso 1 construido para Perú) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.16 (§2, §3, §4.1 a §4.8 y las decisiones D-2, D-3, D-8, D-13, D-40, D-42 a D-49 y D-51), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), [orden de implementación](../orden-de-implementacion-millennium-mobility.md), las revisiones del [30/09/2026](../retroalimentacion/2026-09-30-location.md) y del [05/10/2026](../retroalimentacion/2026-10-05-location.md), y el código de la rama `feature/location` del backend y del frontend al 14/10/2026. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 **Cómo leerlo.** Las secciones 1 a 3 están escritas para quien conoce el negocio. La 4 y la 6 nombran archivos del código para el equipo. Lo marcado **(propuesta)** no lo decide nadie todavía.
 
@@ -102,7 +102,7 @@ La dirección no tiene pantalla, menú ni ruta propia. Vive dentro de su dueño 
 |---|---|
 | Alta | La crea el dueño al registrarse o al poner su primera dirección: hoy empresas, sedes y ubicaciones; después proveedores y plantillas de orden |
 | Qué cambia | En una corrección, la calle, el número, el interior, la referencia, el código postal y la división, sobre la misma fila (D-8) |
-| Qué queda fijo | El país: es el del dueño, y quien escribe la dirección no lo elige **(propuesta: el diccionario todavía no lo registra)** |
+| Qué queda fijo | El país: es el del dueño, y quien escribe la dirección no lo elige (§4.6) |
 | Retiro | No tiene. En una mudanza el dueño pasa a apuntar a una fila nueva y la anterior queda para los documentos que la citan |
 | Nunca | Se comparte entre dos dueños, aunque el texto coincida; se borra |
 
@@ -227,7 +227,7 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 | LOC-R25 | La división de una dirección es del mismo país que la dirección | §4.6 | Base: `addresses_geo_division_same_country_fk` (V15). Dominio: `AddressDivisionPolicy` | `AddressDivisionPolicyTests` | ✅ |
 | LOC-R26 | La división de una dirección es del escalón más bajo del país, y está activa si se elige ahora; la que la dirección ya tenía se conserva aunque se haya desactivado | §4.6 | Dominio: `AddressDivisionPolicy`. Servicio: `AddressCommandServiceImpl`. Frontend: `mm-address-fields` elige en cascada, ofrece solo activas para elegir y conserva, marcada "(inactiva)", la que la dirección ya tenía | `AddressDivisionPolicyTests`, `AddressCommandServiceImplTests`, `address-fields.spec`, `address-options.store.spec`, e2e `companies` | ✅ |
 | LOC-R27 | El código postal es obligatorio en los países que lo exigen | §4.2, §4.6 | Dominio: `Address`. Servicio: `AddressCommandServiceImpl`. Frontend: `address-fields`. La base no lo cubre | `AddressTests`, `address-fields.spec` | ✅ |
-| LOC-R28 | La dirección está en el país de su dueño; quien la escribe no elige el país | Mapa §6.3 **(propuesta)** | Servicio: la fachada recibe el país del dueño (`createAddress`, `replaceAddress`) y `AddressData` no trae país. Base: `companies_fiscal_address_same_country_fk` (V18) y `branches_address_same_country_fk` (V20); `locations.address_id` no tiene esa llave (V21) | `LocationContextFacadeImplTest`, `BranchesIntegrationTests` | ⚠️ |
+| LOC-R28 | La dirección está en el país de su dueño; quien la escribe no elige el país | §4.6 | Servicio: la fachada recibe el país del dueño (`createAddress`, `replaceAddress`) y `AddressData` no trae país. Base: `companies_fiscal_address_same_country_fk` (V18) y `branches_address_same_country_fk` (V20); `locations.address_id` no tiene esa llave (V21) | `LocationContextFacadeImplTest`, `BranchesIntegrationTests` | ⚠️ |
 | LOC-R29 | Una dirección no se comparte: cada dueño tiene su propia fila | §4.6 | Base: `companies_fiscal_address_id_uq` (V18), `uq_branches_address_id` (V20); `locations.address_id` no es único (V21). Servicio: los dueños solo crean, corrigen o reemplazan la suya | Sin prueba de la unicidad | ⚠️ |
 | LOC-R30 | Corregir modifica la misma fila; mudarse crea una fila nueva y conserva la anterior | §4.6, D-8 | Servicio: `LocationContextFacadeImpl` (`correctAddress`, `replaceAddress`). Frontend: los diálogos de empresa y de sede preguntan cuál de las dos es | `LocationContextFacadeImplTest`, `BranchesIntegrationTests` | ✅ |
 | LOC-R31 | La sigla de un tipo de documento no se repite en el país | §4.7 | Base: `tax_id_types_country_code_uq`. Servicio: `TaxIdTypeCommandServiceImpl` | `TaxIdTypeCommandServiceImplTests`, `TaxIdTypesControllerTests` | ✅ |
@@ -273,11 +273,9 @@ Lo que la fachada no ofrece y mapa §5.1 deja como propuesta: la división por s
 
 **Estado al 15/10/2026: construido para Perú**, el único país que opera hoy (D-5). En `feature/location` están las monedas, los países con sus escalones, las divisiones con el ubigeo del INEI cargado (V24), las direcciones con su división en cascada y los tipos de documento tributario, con su API, sus pantallas y sus pruebas: 625 del backend, 667 unitarias del frontend, 15 del conversor del ubigeo y las e2e de `location`, todas en verde. Las únicas e2e que fallan son las de Usuarios y Colaboradores, que no son de este contexto. El detalle está en la [revisión de cierre](../retroalimentacion/2026-10-15-location.md).
 
-### a) Decisiones (responsable del diccionario)
+### a) Decisiones
 
-| Qué | Bloquea |
-|---|---|
-| Registrar en el diccionario las cuatro reglas que el código ya cumple: el orden de los escalones solo en la aplicación (§4.4), el `CHECK` de raíz de las divisiones y la edición del ubigeo cargada (§4.5), la dirección en el país de su dueño (§4.6, LOC-R28) y las semillas CE, PAS, CC y CURP (§4.7). El texto propuesto está en la revisión de cierre | Es el último criterio del paso; no cambia código |
+Ninguna pendiente para el paso 1. El diccionario v1.16 registra las reglas que el código ya cumplía (§4.4, §4.5, §4.6, §4.7) y el alcance del cierre (D-52). La única decisión abierta del contexto, las longitudes de los documentos de Colombia y México, tiene su momento fijado (abajo).
 
 ### b) Código
 
