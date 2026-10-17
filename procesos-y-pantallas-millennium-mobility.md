@@ -1,6 +1,6 @@
 # Procesos y pantallas — ERP Millennium Mobility
 
-**Actualizado:** 14/10/2026 (Sedes, Marcas comerciales, Ubicaciones y Colaboradores construidas; la dirección elige su división en cascada) · 06/10/2026 (Empresas construida; todo formulario pregunta antes de descartar cambios) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15, [orden de implementación](orden-de-implementacion-millennium-mobility.md) (pantallas de cada paso), menú del frontend (`app-shell/app-navigation.ts`) y los diagramas escritos sobre la v1.8. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 16/10/2026 (modelo de acceso del paso 3: el administrador de accesos da acceso y maneja cuentas, el de empresa registra a su gente) · 14/10/2026 (Sedes, Marcas comerciales, Ubicaciones y Colaboradores construidas; la dirección elige su división en cascada) · 06/10/2026 (Empresas construida; todo formulario pregunta antes de descartar cambios) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15, la propuesta de diccionario v1.18 (D-55 a D-72) y la política de acceso de [convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §9.2, [orden de implementación](orden-de-implementacion-millennium-mobility.md) (pantallas de cada paso), menú del frontend (`app-shell/app-navigation.ts`) y los diagramas escritos sobre la v1.8. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 El diccionario documenta los datos y sus reglas, pero no los procesos ni las pantallas (§1). Este documento cubre ese hueco: qué hace la empresa con el sistema, en qué orden, quién lo hace y en qué pantalla.
 
@@ -13,18 +13,19 @@ El diccionario documenta los datos y sus reglas, pero no los procesos ni las pan
 
 ## 1. Quién usa el sistema
 
-El diccionario fija los seis roles que trae el sistema, con su código, su nombre y su alcance (§5.5). Lo que puede hacer cada uno lo deciden sus permisos (§5.6), y la matriz de permisos por rol todavía es un dato pendiente (§14). Por eso, salvo las tareas de `SUPERADMIN` y `ADMIN_EMPRESA`, que vienen del arranque (§5.2), la última columna es una propuesta (pregunta abierta 5).
+El diccionario fija seis roles del sistema, con su código, su nombre y su alcance (§5.5), y la propuesta v1.18 agrega el séptimo, `ADMIN_ACCESOS` (D-55). Lo que puede hacer cada uno lo deciden sus permisos (§5.6), y la matriz de permisos por rol todavía es un dato pendiente (§14). Por eso, salvo las tareas de `SUPERADMIN`, `ADMIN_ACCESOS` y `ADMIN_EMPRESA`, que vienen del arranque (§5.2) y de la política de acceso ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §9.2; D-55, D-57), la última columna es una propuesta (pregunta abierta 5).
 
 | Rol (`code`) | Alcance | Qué hace |
 |---|---|---|
-| `SUPERADMIN` | Todo el sistema | Crea las empresas y sus sedes, configura los catálogos que el diccionario le reserva (D-43, §7) y da acceso a los administradores de cada empresa (§5.2, pasos 4 a 7) |
-| `ADMIN_EMPRESA` | Una empresa | Registra a los colaboradores de su empresa y da acceso a quienes usan el sistema, con los roles de su puesto y su sede (§5.2, paso 8) |
+| `SUPERADMIN` | Todo el sistema | Todo lo que hacen los otros dos administradores, en todas las empresas. Crea las empresas, sus sedes, marcas y ubicaciones, y configura los catálogos que el diccionario le reserva (D-43, §7). Es el único que otorga y retira `SUPERADMIN`, `ADMIN_ACCESOS` y `ADMIN_EMPRESA`, y el único que maneja las cuentas que los tienen (§5.2, pasos 4 a 7; D-55) |
+| `ADMIN_ACCESOS` | Todo el sistema | Da acceso a los colaboradores de cualquier empresa, otorga y retira los roles operativos, bloquea cuentas y restablece contraseñas (D-55). No otorga los tres roles reservados ni actúa sobre una cuenta que tenga uno, y no registra colaboradores: quien da acceso no crea a quien lo recibe (D-57). Lee los datos de todas las empresas |
+| `ADMIN_EMPRESA` | Una empresa | Registra y modifica a los colaboradores de su empresa y registra sus salidas y regresos (§5.2, paso 8; D-57). Lee las cuentas de su empresa, pero no da acceso, no otorga roles y no bloquea cuentas |
 | `OPERACIONES` | Una empresa | **(propuesta)** Compras y alta de unidades (el ejemplo de `role_permissions` le da registrar facturas y crear vehículos, §5.6); habilitación |
 | `CONTABILIDAD` | Una empresa | **(propuesta)** Facturas, también las de más de 20 días (ejemplo de §5.6); notas de crédito y pagos |
 | `ASESOR_VENTAS` | Una sede | **(propuesta)** Venta de unidades; la entrega depende de la pregunta abierta 4 |
 | `TALLER` | Una sede | **(propuesta)** Mantenimiento y puesta a punto |
 
-Además existe la cuenta `SYSTEM`. No es una persona ni un rol: firma las cargas masivas y los procesos automáticos, y no puede iniciar sesión (§5.9). No hay que confundirla con el alcance `SYSTEM` de `scope_level`, que es el del rol `SUPERADMIN` (§5.5).
+Además existe la cuenta `SYSTEM`. No es una persona ni un rol: firma las cargas masivas y los procesos automáticos, y no puede iniciar sesión (§5.9). No hay que confundirla con el alcance `SYSTEM` de `scope_level`, que es el de los roles `SUPERADMIN` y `ADMIN_ACCESOS` (§5.5, D-55).
 
 ---
 
@@ -41,24 +42,27 @@ Cada proceso lista sus pasos, las reglas del diccionario que lo gobiernan y las 
 | 3 | Se crean `SYSTEM` y el primer superadministrador, con contraseña provisional, que debe cambiar en su primer ingreso | Migración (`SYSTEM`) y la aplicación al arrancar (superadministrador, D-34) | Cambio de contraseña |
 | 4 | El superadministrador crea las empresas, una por país (D-5) | Superadministrador | Configuración › Empresas |
 | 5 | Crea las sedes de cada empresa | Superadministrador | Configuración › Sedes |
-| 6 | Se registra como colaborador de la empresa para la que trabaja y vincula su cuenta a ese perfil | Superadministrador | Configuración › Colaboradores |
-| 7 | Registra al administrador de cada empresa como colaborador, le da acceso y le asigna `ADMIN_EMPRESA` sobre esa empresa | Superadministrador | Configuración › Colaboradores |
-| 8 | Cada administrador registra a sus colaboradores y da acceso a quienes usan el sistema, con los roles de su puesto y su sede | Administrador de empresa | Configuración › Colaboradores |
+| 6 | Se registra como colaborador de la empresa para la que trabaja y vincula su cuenta a ese perfil: da acceso a su propio colaborador con su propio correo | Superadministrador | Configuración › Colaboradores |
+| 7 | Registra como colaboradores al administrador de cada empresa y al administrador de accesos, que son personas distintas (D-71), y les da acceso. Cuando cada uno cambió su contraseña provisional (D-72), le otorga `ADMIN_EMPRESA` sobre su empresa o `ADMIN_ACCESOS` | Superadministrador | Configuración › Colaboradores |
+| 8 | Cada administrador de empresa registra a los colaboradores de su empresa | Administrador de empresa | Configuración › Colaboradores |
+| 9 | El administrador de accesos da acceso a quienes usan el sistema y les otorga los roles de su puesto y su sede | Administrador de accesos | Configuración › Colaboradores |
 
-**Reglas.** Hasta vincularse a su perfil (paso 6), el primer superadministrador configura el sistema (empresas, sedes, catálogos y su propio perfil) pero no puede dar acceso a nadie ni otorgar roles (§5.2, §5.9).
+**Reglas.** Hasta vincularse a su perfil (paso 6), el primer superadministrador configura el sistema (empresas, sedes, catálogos y su propio perfil) pero no puede dar acceso a nadie ni otorgar roles (§5.2, §5.9). Es la única cuenta que se vincula a sí misma, y solo mientras no tiene un colaborador activo (D-70). Lo mismo vale después para todos: quien no está vinculado a un colaborador activo no maneja cuentas.
 
 ### P2 · Acceso de las personas (§5.2 a §5.9, §5.12)
 
-**Dar acceso a un colaborador (D-38).** Un administrador da acceso a un colaborador ya registrado, con un correo y una contraseña provisional. Si ese correo ya tiene cuenta, porque la persona trabaja para otra empresa del grupo, se vincula a esa cuenta en vez de crear otra. **(propuesta)** Se hace desde la ficha del colaborador y reemplaza a la pantalla actual "Nuevo usuario" (apartado 4).
+**Dar acceso a un colaborador (D-38, D-58).** El administrador de accesos o un superadministrador da acceso a un colaborador activo ya registrado, en cualquier empresa, con su correo. El sistema genera la contraseña provisional y la muestra una sola vez. Si ese correo ya tiene cuenta, porque la persona trabaja para otra empresa del grupo, se vincula a esa cuenta en vez de crear otra, sin cambiarle los roles ni la contraseña; una cuenta protegida solo la vincula un superadministrador. Dar acceso no otorga roles. Se hace desde la fila del colaborador en Configuración › Colaboradores; la pantalla "Nuevo usuario" ya no existe. El administrador de empresa no da acceso (D-57).
 
 **Asignar y retirar roles (§5.5 a §5.8).**
-- Nadie otorga un rol con permisos que no tiene, tampoco a sí mismo (§5.5, reglas 1 y 2).
+- Otorgan y retiran roles el superadministrador, cualquiera, y el administrador de accesos, cualquiera salvo los reservados: `SUPERADMIN`, `ADMIN_ACCESOS` y `ADMIN_EMPRESA`, que solo otorga y retira un superadministrador (D-55). El administrador de empresa no otorga roles (D-57).
+- Una cuenta con un rol reservado vigente es protegida: solo la maneja un superadministrador. Nadie actúa sobre su propia cuenta, tampoco un superadministrador (D-70).
 - Un rol de empresa o de sede exige que la cuenta esté vinculada a un colaborador activo de esa empresa (D-38).
+- Una cuenta nunca tiene `ADMIN_ACCESOS` y `ADMIN_EMPRESA` a la vez (D-71), y un rol reservado solo va a una cuenta que ya cambió su contraseña provisional (D-72).
 - Un rol se retira, no se borra, con uno de cuatro motivos: `retiro`, `caducidad`, `baja_colaborador` o `baja_cuenta` (D-41). Un acceso vencido se cierra con motivo `caducidad`.
 
-**Bloquear y reactivar una cuenta (§5.4).** Por vacaciones, licencia, baja o seguridad, como un período que se abre y se cierra. Bloquear cierra las sesiones de la cuenta (D-33). Una baja revoca además todos sus roles (D-12, §5.9); las vacaciones y las licencias no los tocan.
+**Bloquear y reactivar una cuenta (§5.4).** Un superadministrador o el administrador de accesos la bloquea por vacaciones, licencia o seguridad, como un período que se abre y se cierra; la baja la abre solo la salida del colaborador (D-69). Un bloqueo que empieza cierra las sesiones de la cuenta (D-33). La salida que deja la cuenta sin colaborador activo retira además todos sus roles (D-12, §5.9); las vacaciones y las licencias no los tocan.
 
-**Salida de un colaborador (D-38).** Se registra la fecha de salida. En la misma operación se retiran los roles de su cuenta en esa empresa, y si no le queda ningún colaborador activo, la cuenta se bloquea. No se puede registrar la salida del último superadministrador activo (§5.9). Dónde se registra la salida es la decisión pendiente 2 del [mapa de contextos](mapa-de-contextos-millennium-mobility.md).
+**Salida y regreso de un colaborador (D-38, D-60).** Los registran un superadministrador o el administrador de la empresa del colaborador; el administrador de accesos no, y nadie registra su propia salida ni su propio regreso (D-57, D-70). La fecha de salida no es posterior a hoy. En la misma operación se retiran los roles de su cuenta en esa empresa, y si no le queda ningún colaborador activo, la cuenta se bloquea con una baja, también si es protegida. No se puede registrar la salida del último superadministrador activo (§5.9). El regreso, que tampoco es posterior a hoy, cierra esa baja; los roles no vuelven solos. La salida y el regreso los orquesta `iam` (decisión 2 del [mapa de contextos](mapa-de-contextos-millennium-mobility.md), opción A).
 
 **Registro público (D-32).** Solo si está encendido. La persona elige su empresa y, si corresponde, su sede: se listan sin sesión, solo por nombre y solo mientras el registro está encendido. Completa los mismos datos obligatorios del registro de un colaborador, incluidos su tipo y número de documento, además de su correo y su contraseña. Se crean el perfil y la cuenta juntos, sin roles, a nombre de `SYSTEM`. Se rechaza si el documento ya está registrado en esa empresa o si el correo ya tiene cuenta. Cómo obtiene el formulario, sin sesión, las sedes y los tipos de documento está pendiente ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md), §14.16).
 
@@ -230,9 +234,9 @@ El menú tiene cuatro grupos (skill `frontend-feature`, §6). Cada opción es un
 | Grupo | Qué va ahí | Quién lo ve **(propuesta)** |
 |---|---|---|
 | Logística | La operación diaria | Cualquier rol de la empresa |
-| Configuración | Datos propios de cada empresa (tablas con `company_id`) | `SUPERADMIN` y `ADMIN_EMPRESA` |
+| Configuración | Datos propios de cada empresa (tablas con `company_id`) | `SUPERADMIN` y `ADMIN_EMPRESA`; Colaboradores, también `ADMIN_ACCESOS` |
 | Catálogos | Datos del sistema, iguales para todas las empresas | `SUPERADMIN` |
-| Seguridad | Quién entra, qué puede hacer y quién cambió qué | `SUPERADMIN` y `ADMIN_EMPRESA` |
+| Seguridad | Quién entra, qué puede hacer y quién cambió qué | `SUPERADMIN` y `ADMIN_EMPRESA`; Usuarios, solo `SUPERADMIN` y `ADMIN_ACCESOS` |
 
 El menú solo decide qué se muestra; el backend autoriza cada petición. Quién ve cada grupo depende de la matriz de permisos (pregunta abierta 5).
 
@@ -258,7 +262,7 @@ Las rutas siguen la regla del frontend: el nombre del contexto en kebab-case y l
 | Logística | Reportes | `/reports` | Capa de lectura | 11 | Filtros y exportación | Pendiente |
 | Configuración | Empresas | `/organization/companies` | `organization` | 2 | Lista con diálogo; solo `SUPERADMIN`. La dirección fiscal se llena en el mismo diálogo; al cambiarla en una empresa ya registrada, el diálogo pregunta si es una corrección o una mudanza (D-8) | Construida |
 | Configuración | Sedes | `/organization/branches` | `organization` | 2 | Lista con diálogo; la dirección, como en Empresas | Construida |
-| Configuración | Colaboradores | `/organization/employees` | `organization` | 3 | Lista y ficha | Construida, adelantada del paso 3. Sus suspensiones no tienen backend ([contextos/organization.md](contextos/organization.md), F9) |
+| Configuración | Colaboradores | `/organization/employees` | `organization` | 3 | Lista con diálogo. Donde la sesión administra la empresa (`SUPERADMIN`, `ADMIN_EMPRESA`), alta, edición, salida y regreso; a quien maneja cuentas (`SUPERADMIN`, `ADMIN_ACCESOS`), las acciones de cuenta de cada fila: dar acceso, roles, bloqueos y restablecer contraseña ([contextos/organization.md](contextos/organization.md), F5 a F9) | Construida |
 | Configuración | Marcas comerciales | `/organization/commercial-brands` | `organization` | 2 | Lista con diálogo | Construida |
 | Configuración | Ubicaciones | `/organization/locations` | `organization` | 2 | Lista con diálogo; la dirección viaja dentro del registro | Construida |
 | Configuración | Proveedores | `/procurement/suppliers` | `procurement` | 7 | Lista con diálogo | Pendiente |
@@ -273,8 +277,8 @@ Las rutas siguen la regla del frontend: el nombre del contexto en kebab-case y l
 | Catálogos | Equipamiento | `/vehicle-catalog/equipment-types` | `vehiclecatalog` | 4 | Lista con diálogo, con los tipos de vehículo a los que aplica | Pendiente |
 | Catálogos | Estados y motivos | `/fleet/vehicle-statuses` | `fleet` | 5 | Maestro-detalle: estados y los motivos que salen de cada uno, más una entrada fija «Alta de la unidad» al inicio para los motivos sin estado de origen (`from_status_id` vacío, §8.3) | Pendiente |
 | Catálogos | Tipos de documento | `/fleet/document-types` | `fleet` | 9 | Lista con diálogo | Pendiente |
-| Seguridad | Usuarios | `/iam/users` | `iam` | 0 y 3 | Lista; desde el paso 3 también para `ADMIN_EMPRESA` | Construida para `SUPERADMIN` |
-| Seguridad | Roles y permisos | `/iam/roles` | `iam` | 3 | Maestro-detalle: roles y los permisos que incluye cada uno | Pendiente |
+| Seguridad | Usuarios | `/iam/users` | `iam` | 0 y 3 | Lista de todas las cuentas, con los diálogos de roles, bloqueos y restablecer contraseña; para `SUPERADMIN` y `ADMIN_ACCESOS` ([contextos/iam.md](contextos/iam.md), F6 a F8) | Construida |
+| Seguridad | Roles y permisos | `/iam/roles` | `iam` | 3 | Maestro-detalle: roles y los permisos que incluye cada uno | Frontend construido, fuera del menú hasta que el backend sirva la matriz |
 | Seguridad | Bitácora de cambios | `/change-log` | `shared` | 6 | Lista con filtros; cada empresa ve la suya | Pendiente |
 
 Las direcciones no tienen pantalla ni opción de menú: se llenan dentro del formulario de su dueño (empresa, sede, ubicación, proveedor, plantilla), según el orden de implementación (paso 1).
@@ -292,7 +296,7 @@ Las direcciones no tienen pantalla ni opción de menú: se llenan dentro del for
 
 **Factura de compra** (Logística › Facturas). Es un formulario de página porque una factura de motos trae ochenta líneas. El total de las líneas contra el total del comprobante se muestra mientras se cargan, para encontrar la línea olvidada antes de guardar. Ver la pregunta abierta 3.
 
-**Ficha del colaborador** (Configuración › Colaboradores). Perfil, puesto, sede, fecha de ingreso y salida; desde aquí se da acceso (P2) y se registra la salida.
+**Ficha del colaborador** (Configuración › Colaboradores). Perfil, puesto, sede, fecha de ingreso y salida. Hoy no hay ficha: la lista reúne, en las acciones de cada fila, dar acceso, los roles, los bloqueos y el restablecimiento de contraseña (P2), y la salida y el regreso, cada uno para el rol que puede hacerlo (apartado 1).
 
 **Roles y permisos** (Seguridad). Solo se pueden marcar los permisos que quien edita ya tiene (§5.5, regla 1). Los roles del sistema no se editan ni se borran (§5.5).
 
@@ -315,8 +319,8 @@ Las direcciones no tienen pantalla ni opción de menú: se llenan dentro del for
 
 | Tema | Hoy | Según el diccionario y este documento |
 |---|---|---|
-| Nuevo usuario | Pantalla `/iam/users/new` con correo, contraseña y roles | Toda cuenta pertenece a un colaborador (D-38). **(propuesta)** Desde el paso 3, el acceso se da desde la ficha del colaborador |
-| Fechas en pantalla | Formato del locale fijo `es-PE` (`date: 'short'` en Usuarios), siempre en la zona del navegador | Apartado 3.4; el orden de implementación lo lleva en sus pendientes transversales |
+| ~~Nuevo usuario~~ | Resuelto el 16/10/2026: la pantalla `/iam/users/new` ya no existe; el acceso se da desde la fila del colaborador en Configuración › Colaboradores (P2) | Toda cuenta pertenece a un colaborador (D-38) |
+| Fechas en pantalla | Las pantallas de cuentas ya siguen el apartado 3.4: las fechas de una cuenta y de un bloqueo, en `America/Lima`; la caducidad de un rol, en la zona de su sede o de su empresa; y los diálogos de salida y regreso, en la zona del colaborador. Las demás todavía usan la zona del navegador | Apartado 3.4; el orden de implementación lo lleva en sus pendientes transversales |
 
 ---
 
