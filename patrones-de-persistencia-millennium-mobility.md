@@ -1,6 +1,6 @@
 # Patrones de persistencia — ERP Millennium Mobility
 
-**Actualizado:** 06/10/2026 (clases base por forma de las columnas de registro; el adaptador carga y copia también en `iam`) · **Fuente:** skill `backend-module` (§1 y pasos de construcción; `module-template.md`), `architecture-rules.md` (reglas 2.1 y 3.1) y diccionario de datos v1.15 (D-42). Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 16/10/2026 (bloquear antes de leer lo que se va a cambiar; tablas de empresa bajo Row Level Security; las cinco clases base existen) · 06/10/2026 (clases base por forma de las columnas de registro; el adaptador carga y copia también en `iam`) · **Fuente:** skill `backend-module` (§1 y pasos de construcción; `module-template.md`), `architecture-rules.md` (reglas 2.1 y 3.1) y diccionario de datos v1.15 (D-42). Si este documento y el diccionario no coinciden, manda el diccionario.
 
 Todos los agregados del backend se guardan de la misma manera: el modelo de negocio en `domain`, la tabla en `infrastructure`. Este documento explica qué hace cada pieza, cómo se guarda una edición sin perder datos y por qué no hay excepciones para los catálogos.
 
@@ -95,9 +95,35 @@ Los escalones de un país viven dentro de `Country` (D-45). El país decide si a
 
 `GeoDivisionLevelAuditTests` prueba que un escalón se guarda a través de su país y conserva su fecha de creación al renombrarse.
 
+## Leer y después cambiar: primero se bloquea
+
+Una operación que lee un estado y decide con él, y después lo cambia, puede correr al mismo tiempo que otra que decide con el mismo estado. Las dos pasan sus revisiones y la segunda pisa a la primera. Pasó en el paso 3, y los hallazgos de la revisión eran reales: dos bloqueos de la misma cuenta que se cruzaban, un acceso que se otorgaba durante la salida del colaborador, dos salidas de la misma persona en dos empresas que no cerraban la cuenta.
+
+La regla:
+
+- **Se bloquea la fila antes de leer.** El repositorio del dominio ofrece la lectura que bloquea, con el sufijo `ForUpdate` (`findByIdForUpdate`, `findByPublicIdForUpdate`): primero un `SELECT … FOR NO KEY UPDATE` sobre la fila, que dura hasta que termina la transacción, y después la lectura del agregado. `NO KEY` deja pasar a quien solo inserta filas que apuntan a ella, como un período nuevo de otra cuenta. La segunda operación espera a la primera y decide con lo que la primera dejó.
+- **Se bloquea la fila que representa lo que se protege, aunque se vaya a cambiar otra tabla.** Los bloqueos de una cuenta viven en `user_access_suspensions`, pero se bloquea la fila de la cuenta en `users` y después se leen sus períodos. Lo mismo para otorgar y retirar roles, dar acceso, restablecer la contraseña y la salida y el regreso.
+- **Siempre en el mismo orden.** Una operación que toca un colaborador y su cuenta bloquea primero `employees` y después `users`. Con un orden fijo, dos operaciones no se esperan la una a la otra para siempre.
+- **Lo que se lee es la fila de después del bloqueo.** Si la transacción ya había leído esa fila antes, Hibernate la devuelve de su memoria, con los valores de antes. La lectura que bloquea refresca la entidad, o la lee sin pasar por la memoria de la transacción, para que la decisión se tome con lo que hay en la base. Se prueba con una operación en la que quien pide es también el afectado, que es cuando la transacción ya tenía la fila.
+- **Cuando lo protegido no es una fila, se usa un bloqueo consultivo de la transacción** (`pg_advisory_xact_lock`). La protección del último superadministrador cuenta cuentas: no hay una fila que bloquear para que dos retiros de dos superadministradores distintos no pasen a la vez. El bloqueo consultivo con una llave fija hace que esas operaciones vayan de a una y se suelta solo al terminar la transacción.
+- **La base sigue siendo la última línea.** Si una restricción de la base rechaza igual lo que una carrera dejó pasar, el adaptador traduce la violación a una excepción del dominio (`AccessSuspensionOverlapException`) y el servicio responde el mismo fallo esperado que su propia revisión (`409 ACCESS_SUSPENSION_CONFLICT`), nunca un `500`.
+
+`AccountLockTests`, `EmployeeLockTests` y `SuperadministratorsLockTests` prueban que una segunda transacción espera a la primera.
+
+## Las tablas de empresa y Row Level Security
+
+Toda tabla con `company_id`, y `companies` por su propio `id`, tiene Row Level Security activada y forzada (V29): la base deja ver y escribir solo las filas de las empresas que alcanza quien actúa. Para la persistencia eso significa:
+
+- **El alcance se fija al comenzar cada transacción, desde un solo punto.** `AccessScopeJpaTransactionManager` llama a `set_config(…, true)` sobre la conexión de la transacción con lo que `DatabaseAccessScope` tiene para el hilo: `app.access_scope`, `app.company_ids` y `app.user_id`. Nunca al abrir la conexión. Un `JdbcTemplate` dentro de la misma transacción comparte la conexión y sus valores.
+- **Sin alcance no se ve nada.** Una lectura fuera de toda transacción, o de un hilo que nadie preparó, devuelve cero filas de empresa. Por eso los servicios de consultas leen en una transacción de solo lectura.
+- **`SYSTEM` siempre es explícito.** El arranque, los procesos programados y las migraciones de datos lo fijan para su propio trabajo. Una comprobación que necesita ver más allá de las empresas de quien llama lo pide con `SystemAccessScope`, que devuelve solo datos sueltos y vuelve al alcance anterior; antes de cambiar de alcance escribe lo pendiente y no deja en memoria nada leído con el otro.
+- **La aplicación no es dueña de las tablas.** Se conecta como `erp_mm_app`, que no puede saltarse la regla ni borrar filas de negocio; Flyway migra como `erp_mm_owner`. Las pruebas se conectan igual, así que un camino que olvide fijar el alcance falla en las pruebas y no en producción.
+
+El filtro de la aplicación sigue siendo obligatorio: cada consulta filtra por el alcance de quien llama. La base es la defensa de abajo, para que una consulta que olvidó su filtro devuelva menos filas, nunca las de otra empresa (reglas 5.1 a 5.3 y 5.7 de la skill `backend-module`). Las instrucciones para correr la aplicación y las pruebas con las dos cuentas están en el README del backend.
+
 ## Por qué también los catálogos
 
-Entre el 30/09 y el 01/10/2026, `location`, `vehiclecatalog` y `organization` usaron un camino corto: el modelo era la entidad de JPA y el repositorio extendía `JpaRepository`. Se eligió porque un catálogo no tiene reglas que proteger y el patrón completo duplica campos.
+Entre el 30/09/2026 y el 01/10/2026, `location`, `vehiclecatalog` y `organization` usaron un camino corto: el modelo era la entidad de JPA y el repositorio extendía `JpaRepository`. Se eligió porque un catálogo no tiene reglas que proteger y el patrón completo duplica campos.
 
 Se descartó porque el dominio quedaba atado a la persistencia: el modelo llevaba anotaciones de JPA y la interfaz del repositorio dependía de Spring Data, con métodos como `delete` que el dominio no debe tener. El error de `createdAt` no venía de separar las capas, sino de reconstruir la fila al guardar, y eso se corrige cargándola. Con esa corrección, el costo de separar es una entidad y un ensamblador por tabla, a cambio de un dominio que se prueba sin nada alrededor y de una regla sin excepciones.
 
@@ -146,7 +172,7 @@ Un objeto de valor que solo valida su formato, como `Vin`, `Plate` o un código 
   - Las fechas las pone la auditoría de Spring Data (`@CreatedDate`, `@LastModifiedDate`). Nadie las calcula con `Instant.now()`.
   - `created_by` y `updated_by` los toma de la cuenta de la sesión el auditor que aporta `iam` (`CurrentUserAuditorAware`).
   - Un proceso sin sesión asigna `SYSTEM` de forma explícita.
-- **La clase base se elige por las columnas que pide el cuadro del diccionario, nunca por el nombre.** Todas viven en `shared/infrastructure/persistence/jpa/entities` y forman una sola cadena, con `id` y `created_at` en la raíz. `CreatedAbstractPersistenceEntity` y `CreatedByAbstractPersistenceEntity` todavía no existen (ver el pendiente de abajo):
+- **La clase base se elige por las columnas que pide el cuadro del diccionario, nunca por el nombre.** Todas viven en `shared/infrastructure/persistence/jpa/entities` y forman una sola cadena, con `id` y `created_at` en la raíz:
 
 | Columnas de registro del cuadro | Clase base | Ejemplos |
 |---|---|---|
@@ -159,7 +185,7 @@ Un objeto de valor que solo valida su formato, como `Vin`, `Plate` o un código 
 
   - `CreatedAbstractPersistenceEntity` es la raíz: `id`, `created_at` y el oyente de auditoría. `Auditable` la extiende y agrega `updated_at`; `Authored` agrega `created_by` y `Revised`, `updated_by`. `CreatedBy` extiende la raíz y agrega `created_by`, con las mismas anotaciones que `Authored`: es la única duplicación aceptada.
   - Extender una clase que trae una columna que el cuadro no pide es una violación: con `ddl-auto: validate`, la aplicación no arranca.
-  - **Pendiente para el paso 3:** `CreatedAbstractPersistenceEntity` y `CreatedByAbstractPersistenceEntity` todavía no existen. Se escriben en el mismo cambio que `user_access_suspensions`, su primera tabla, sin tocar las entidades actuales ni Flyway. Que `purchase_orders`, que se edita mientras es borrador, lleve `updated_at` lo decide el diccionario; si lo lleva, pasa a la clase con autor sin cambiar ninguna clase.
+  - `CreatedAbstractPersistenceEntity` y `CreatedByAbstractPersistenceEntity` llegaron en el paso 3, con `user_access_suspensions`, su primera tabla. Que `purchase_orders`, que se edita mientras es borrador, lleve `updated_at` lo decide el diccionario; si lo lleva, pasa a la clase con autor sin cambiar ninguna clase.
 - **Las filas no se borran**: se desactivan, se cierran o se anulan. Por eso las interfaces de repositorio no tienen `delete`.
 - **Solo el `public_id` sale por la API**; el `id` interno nunca aparece en rutas ni respuestas.
 - **El dominio no importa nada de otro contexto**: lo que necesite de él lo pide por su fachada ACL.
