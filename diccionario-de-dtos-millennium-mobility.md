@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.18 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
+**Versión:** 1.19 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
 
 > **Cómo leer los cuadros.** En cada tabla, las columnas *Descripción* y *Por qué importa* están escritas para que las entienda cualquier persona, sin conocimientos técnicos: sirven para que quien conoce el negocio pueda revisar si el dato es el correcto. Las columnas *Tipo* y *Nulo*, las restricciones y el código SQL son para el equipo de desarrollo.
 
@@ -1298,6 +1298,7 @@ Clasifica la unidad y activa las reglas que dependen del tipo.
 | `name` | VARCHAR(50) | No | Cómo se llama el tipo: Automóvil, Motocicleta, Trimoto | — |
 | `commercial_name` | VARCHAR(50) | No | El nombre con que la operación lo conoce: Leasing Car, Leasing Bike, Leasing Tuk Tuk | Es el que exige el exportable de stock y el que usa el fondo al que se reporta. Va aparte porque puede cambiar sin que cambie el tipo de vehículo |
 | `is_active` | BOOLEAN | No | Si se siguen registrando unidades de este tipo | — |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | No lleva autor: es un catálogo general, como los del bloque 1 (D-42, D-73) |
 
 **Relaciones.** Le apuntan `vehicle_models` y la tabla que dice a qué tipos de vehículo aplica cada equipamiento.
 
@@ -1323,6 +1324,7 @@ La marca del vehículo: Chevrolet, TVS, Bajaj, Hyundai. Es la columna `MARCA` de
 |---|---|---|---|---|
 | `name` | VARCHAR(80) UNIQUE | No | Nombre oficial de la marca | Sin catálogo, la misma marca aparece como `TVS`, `Tvs` y `T.V.S.`, y contar unidades por marca deja de ser posible |
 | `is_active` | BOOLEAN | No | Si se siguen comprando unidades de esta marca | Permite retirarla sin tocar las unidades ya registradas |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | No lleva autor: es un catálogo general (D-42, D-73) |
 
 **Relaciones.** Le apunta `vehicle_models`.
 
@@ -1353,6 +1355,7 @@ La combinación de marca y modelo determina el tipo de vehículo y las reglas es
 | `fuel_type` | VARCHAR(20) | Sí | Combustible: gasolina, GNV, GLP, diésel, eléctrico, híbrido | Determina si la unidad necesita certificado de gas. Sin este dato, esa exigencia habría que recordarla a mano modelo por modelo |
 | `has_factory_screen` | BOOLEAN | No | Si el modelo ya viene con pantalla instalada de fábrica | Es la regla de la pantalla convertida en dato. Hoy está escrita como una comparación de texto —"Chevrolet más Sail Sedan"— y por eso agregar un modelo obliga a tocar el programa |
 | `is_active` | BOOLEAN | No | Si se siguen comprando unidades de este modelo | — |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | No lleva autor: es un catálogo general (D-42, D-73) |
 
 **Relaciones.** Apunta a `vehicle_brands` y a `vehicle_types`. Le apuntarán los vehículos y las tarifas de costo por kilómetro del bloque de ventas.
 
@@ -1383,6 +1386,7 @@ La primera fila es el único modelo de auto que hoy requiere instalar pantalla; 
 |---|---|---|---|---|
 | `name` | VARCHAR(50) UNIQUE | No | Nombre del color | Es un campo que hoy se escribe libre y termina con `Blanco`, `BLANCO` y `blanco perlado` como tres colores distintos. En un inventario, agrupar por color deja de funcionar |
 | `is_active` | BOOLEAN | No | Si se sigue usando | — |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | No lleva autor: es un catálogo general (D-42, D-73) |
 
 **Relaciones.** Le apuntarán los vehículos.
 
@@ -1411,6 +1415,7 @@ Lo que se instala en la unidad: GPS, pantalla multimedia y lo que venga.
 | `blocks_availability` | BOOLEAN | No | Si sin este equipo la unidad no puede pasar a disponible | El GPS bloquea; la pantalla solo en los modelos que la necesitan. Escrito así, cambiar esa política es marcar una casilla y no modificar el programa |
 | `requires_serial` | BOOLEAN | No | Si al instalarlo hay que registrar un número de serie o identificador | El GPS tiene un identificador que después hace falta para ubicar la unidad. Sin este dato, quedaría al criterio de quien carga |
 | `is_active` | BOOLEAN | No | Si se sigue instalando | — |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | No lleva autor: es un catálogo general (D-42, D-73) |
 
 #### `equipment_type_vehicle_types` — A qué vehículos aplica cada equipo
 
@@ -1418,6 +1423,7 @@ Lo que se instala en la unidad: GPS, pantalla multimedia y lo que venga.
 |---|---|---|---|---|
 | `equipment_type_id` | BIGINT FK → `equipment_types` | No | El equipo. Parte de la llave | — |
 | `vehicle_type_id` | BIGINT FK → `vehicle_types` | No | El tipo de vehículo. Parte de la llave | La pantalla solo tiene sentido en autos; en motos y trimotos no corresponde. Como tabla se puede validar y consultar, cosa que una lista escrita dentro de una columna no permite |
+| `is_active` | BOOLEAN | No | Si el equipo sigue aplicando a ese tipo de vehículo | Quitar un tipo de la aplicabilidad desactiva su fila en vez de borrarla, porque nada se borra (§2.5); volver a marcarlo la reactiva. Así se corrige una aplicabilidad mal cargada sin perder que existió (D-73) |
 
 **Ejemplo**
 
@@ -1439,7 +1445,7 @@ Lo que se instala en la unidad: GPS, pantalla multimedia y lo que venga.
 
 - Sin GPS instalado, la unidad no pasa a disponible. Es una de las tres condiciones que el cliente enumeró.
 - La pantalla solo bloquea en los modelos que no la traen de fábrica. En motos y trimotos no corresponde.
-- Un equipo no se instala en un tipo de vehículo al que no aplica.
+- Un equipo no se instala en un tipo de vehículo al que no aplica. Solo cuenta la aplicabilidad activa: una desactivada es como si no existiera, salvo para la historia.
 
 **La pantalla usa dos datos que responden preguntas distintas y conviene no confundir.** La aplicabilidad dice si el equipo *tiene sentido* en ese tipo de vehículo; `has_factory_screen` dice si ese modelo *ya la trae puesta*. Una moto no es un auto sin pantalla: es un vehículo donde la pregunta no corresponde. La regla, escrita una sola vez:
 
@@ -2594,6 +2600,7 @@ Quedan dos decisiones abiertas. Una tiene su momento fijado: las longitudes de l
 | D-70 | Nadie actúa sobre lo suyo. Ninguna cuenta, tampoco la de un superadministrador, se otorga ni se retira roles, se bloquea, levanta sus bloqueos ni se restablece la contraseña por las operaciones de administración: cambiar la propia contraseña tiene su operación. Nadie registra su propia salida ni su propio regreso. La única cuenta que se vincula a sí misma es la del primer superadministrador, mientras no tiene un colaborador activo (§5.2, §5.3, §5.4, §5.7) |
 | D-71 | Separación estática de funciones: una cuenta nunca tiene `ADMIN_ACCESOS` y `ADMIN_EMPRESA` vigentes a la vez, para que quien registra los colaboradores de una empresa no sea también quien les da acceso. Lo valida la aplicación al otorgar cualquiera de los dos, porque la base no ve dos asignaciones a la vez (§5.5, §5.7) |
 | D-72 | Un rol privilegiado —`SUPERADMIN`, `ADMIN_ACCESOS` o `ADMIN_EMPRESA`, los que hacen protegida una cuenta— se otorga solo a una cuenta que ya cambió su contraseña provisional, para que quien la entregó nunca termine con una cuenta privilegiada en sus manos. El primer superadministrador no se otorga así: lo crea el arranque (§5.2, §5.4, §5.7) |
+| D-73 | Los cinco catálogos del bloque 4 —`vehicle_types`, `vehicle_brands`, `vehicle_models`, `colors` y `equipment_types`— registran fechas pero no autor, como los del bloque 1: son catálogos generales (D-42). La aplicabilidad de un equipo a un tipo de vehículo se retira desactivándola, no borrándola, y se reactiva al volver a marcarla (§2.5, §7.5) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
