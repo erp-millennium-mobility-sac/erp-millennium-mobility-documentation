@@ -1,6 +1,6 @@
 # Procesos y pantallas — ERP Millennium Mobility
 
-**Actualizado:** 16/10/2026 (modelo de acceso del paso 3: el administrador de accesos da acceso y maneja cuentas, el de empresa registra a su gente) · 14/10/2026 (Sedes, Marcas comerciales, Ubicaciones y Colaboradores construidas; la dirección elige su división en cascada) · 06/10/2026 (Empresas construida; todo formulario pregunta antes de descartar cambios) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15, la propuesta de diccionario v1.18 (D-55 a D-72) y la política de acceso de [convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §9.2, [orden de implementación](orden-de-implementacion-millennium-mobility.md) (pantallas de cada paso), menú del frontend (`app-shell/app-navigation.ts`) y los diagramas escritos sobre la v1.8. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 16/10/2026 (modelo de acceso del paso 3: el administrador de accesos da acceso y maneja cuentas, el de empresa registra a su gente) · 14/10/2026 (Sedes, Marcas comerciales, Ubicaciones y Colaboradores construidas; la dirección elige su división en cascada) · 06/10/2026 (Empresas construida; todo formulario pregunta antes de descartar cambios) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15 y, para el modelo de acceso, la v1.18 (D-55 a D-72) y la política de acceso de [convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §9.2, [orden de implementación](orden-de-implementacion-millennium-mobility.md) (pantallas de cada paso), menú del frontend (`app-shell/app-navigation.ts`) y los diagramas escritos sobre la v1.8. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 El diccionario documenta los datos y sus reglas, pero no los procesos ni las pantallas (§1). Este documento cubre ese hueco: qué hace la empresa con el sistema, en qué orden, quién lo hace y en qué pantalla.
 
@@ -13,7 +13,7 @@ El diccionario documenta los datos y sus reglas, pero no los procesos ni las pan
 
 ## 1. Quién usa el sistema
 
-El diccionario fija seis roles del sistema, con su código, su nombre y su alcance (§5.5), y la propuesta v1.18 agrega el séptimo, `ADMIN_ACCESOS` (D-55). Lo que puede hacer cada uno lo deciden sus permisos (§5.6), y la matriz de permisos por rol todavía es un dato pendiente (§14). Por eso, salvo las tareas de `SUPERADMIN`, `ADMIN_ACCESOS` y `ADMIN_EMPRESA`, que vienen del arranque (§5.2) y de la política de acceso ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §9.2; D-55, D-57), la última columna es una propuesta (pregunta abierta 5).
+El diccionario fija siete roles del sistema, con su código, su nombre y su alcance (§5.5); el séptimo, `ADMIN_ACCESOS`, lo agregó la v1.18 (D-55). Lo que puede hacer cada uno lo deciden sus permisos (§5.6), y la matriz de permisos por rol todavía es un dato pendiente (§14). Por eso, salvo las tareas de `SUPERADMIN`, `ADMIN_ACCESOS` y `ADMIN_EMPRESA`, que vienen del arranque (§5.2) y de la política de acceso ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §9.2; D-55, D-57), la última columna es una propuesta (pregunta abierta 5).
 
 | Rol (`code`) | Alcance | Qué hace |
 |---|---|---|

@@ -179,7 +179,8 @@ El diccionario ordena los bloques por sus dependencias. La implementación lo si
 | Qué | Prioridad |
 | --- | --- |
 | La matriz de permisos por rol: `permissions` y `role_permissions` (§5.6), qué lee un rol global y quién crea los roles de una empresa. Hasta entonces, el superadministrador y el administrador de accesos leen los datos de todas las empresas, y la opción Seguridad › Roles y permisos queda fuera del menú: sus pantallas existen en el frontend y llaman a rutas que el backend todavía no sirve | Antes del paso 5 (ajuste 3) |
-| Historia de los reingresos: hoy el regreso de un colaborador reemplaza su fecha de ingreso y borra la de salida, y el período anterior se pierde. Necesita un diseño en el diccionario (§5.3; propuesta v1.18, §5.13) | Cuando el diccionario lo diseñe, antes del primer reingreso real |
+| Historia de los reingresos: hoy el regreso de un colaborador reemplaza su fecha de ingreso y borra la de salida, y el período anterior se pierde. Necesita un diseño en el diccionario (§5.3, §5.13 y §14) | Cuando el diccionario lo diseñe, antes de cargar los colaboradores reales: desde entonces, cada regreso borraría un período que ya no se recupera |
+| La marca de una asignación acota dónde se otorga un rol, pero todavía no lo que se lee: la frontera de la aplicación y de la base es la empresa (§5.13) | Antes del paso 5: los vehículos son el primer dato que pertenece a una marca |
 | Restablecer la contraseña con un enlace de un solo uso al correo de la persona, en vez de mostrarle la provisional al administrador | Cuando exista el envío de correos |
 | Registro público con perfil (D-32): elegir empresa y sede sin sesión y crear el colaborador y la cuenta juntos; hoy crea solo la cuenta y viene apagado | Cuando se decida [convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §14.16, antes de encender el registro |
 | La sesión guarda el hash de la contraseña | Media |

@@ -421,7 +421,7 @@ El archivo lo arma siempre el backend, con fastexcel (`org.dhatim:fastexcel`: es
 | Cuentas, accesos y colaboradores | Según la tabla de abajo: el rol con `@PreAuthorize` en la ruta, y el servicio decide además sobre qué cuenta o empresa |
 | Toda operación de negocio | Un rol o un permiso. Tener sesión no alcanza (diccionario §5.2) |
 
-**Cuentas, accesos y colaboradores** (decidido el 15/10/2026 y el 16/10/2026; propuesta del diccionario v1.18, D-55 a D-72). Una cuenta **protegida** es la que tiene `SUPERADMIN`, `ADMIN_ACCESOS` o `ADMIN_EMPRESA` vigente, en cualquier empresa; la lista de cuentas lo dice en `managedBySuperadmin` (§6.2). Esos tres son los roles **reservados**, que solo otorga y retira un superadministrador. `ADMIN_EMPRESA` (C) es el administrador de la empresa C.
+**Cuentas, accesos y colaboradores** (decidido el 15/10/2026 y el 16/10/2026; diccionario v1.18, D-55 a D-72). Una cuenta **protegida** es la que tiene `SUPERADMIN`, `ADMIN_ACCESOS` o `ADMIN_EMPRESA` vigente, en cualquier empresa; la lista de cuentas lo dice en `managedBySuperadmin` (§6.2). Esos tres son los roles **reservados**, que solo otorga y retira un superadministrador. `ADMIN_EMPRESA` (C) es el administrador de la empresa C.
 
 | Operación | `SUPERADMIN` | `ADMIN_ACCESOS` | `ADMIN_EMPRESA` (C) | Otro rol |
 |---|---|---|---|---|
