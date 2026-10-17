@@ -1,8 +1,8 @@
 # Contexto `iam` — ERP Millennium Mobility
 
-**Actualizado:** 16/10/2026 (paso 3: modelo de acceso) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.17 (§2.5, §2.6, §3, §5.1 a §5.13, D-32 a D-34, D-38 a D-43), la propuesta de diccionario v1.18 (D-55 a D-72), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md) §4, §5, §6.2 y §11, [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md) §2.2, §7.2, §9 y §14, [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md) P1 y P2, [orden de implementación](../orden-de-implementacion-millennium-mobility.md), los contratos del modelo de acceso (rondas 1 a 5, del 15/10/2026 y el 16/10/2026) y el código de la rama `feature/access-model` del backend (`6a7d9b1`) y del frontend (`1a341ab`) al 16/10/2026, con la ronda 6. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 17/10/2026 (diccionario v1.18; quién retiró un rol, V33) · 16/10/2026 (paso 3: modelo de acceso) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.18 (§2.5, §2.6, §3, §5.1 a §5.13, D-32 a D-34, D-38 a D-43 y D-55 a D-72), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md) §4, §5, §6.2 y §11, [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md) §2.2, §7.2, §9 y §14, [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md) P1 y P2, [orden de implementación](../orden-de-implementacion-millennium-mobility.md), los contratos del modelo de acceso (rondas 1 a 5, del 15/10/2026 y el 16/10/2026, [archivados](../retroalimentacion/2026-10-16-iam/)) y el código de la rama `feature/access-model` del backend (`6a7d9b1`) y del frontend (`1a341ab`) al 16/10/2026, con la ronda 6. Si este documento y el diccionario no coinciden, manda el diccionario.
 
-**Cómo leerlo.** Lo que cita una sección (§n) o una decisión (D-n) del diccionario está decidido. Las decisiones del modelo de acceso que el usuario aprobó el 15/10/2026 y el 16/10/2026 se citan con el número que les da la propuesta del diccionario v1.18 (D-55 a D-72); hasta que el diccionario las registre, la fuente es esa propuesta. "Hoy" describe el código de `feature/access-model`.
+**Cómo leerlo.** Lo que cita una sección (§n) o una decisión (D-n) del diccionario está decidido. Las decisiones del modelo de acceso que el usuario aprobó el 15/10/2026 y el 16/10/2026 están en el diccionario desde la v1.18 (D-55 a D-72). "Hoy" describe el código de `feature/access-model`.
 
 ---
 
@@ -16,7 +16,7 @@
 |---|---|---|
 | `users` | La cuenta: correo, contraseña cifrada, si debe cambiarla, último acceso (§5.4) | Construida (V1) |
 | `roles` | Los siete roles del sistema con su alcance (§5.5, D-55) | Construida (V1; `ADMIN_ACCESOS` en V30), sin `company_id` |
-| `user_roles` | Qué rol tiene cada cuenta, sobre qué empresa, sede y marca, desde cuándo, hasta cuándo y, si se retiró, cuándo y por qué (§5.7) | Construida (V1; alcance en V27) |
+| `user_roles` | Qué rol tiene cada cuenta, sobre qué empresa, sede y marca, desde cuándo, hasta cuándo y, si se retiró, cuándo, por qué y quién (§5.7) | Construida (V1; alcance en V27; quién la retiró en V33) |
 | `user_access_suspensions` | Los períodos en que una cuenta no puede entrar, en dos líneas de tiempo (§5.4, D-62) | Construida (V28; las dos líneas en V32) |
 | `spring_session`, `spring_session_attributes` | Las sesiones abiertas, en el servidor (§5.12, D-33) | Construidas (V3). Tablas técnicas de la librería |
 
@@ -208,7 +208,7 @@ Las pantallas de cuentas son dos: Seguridad › Usuarios (`/iam/users`), para el
   - Que la cuenta tenga un colaborador activo en la empresa del rol, o en alguna para un rol de sistema (`422 ROLE_ASSIGNMENT_EMPLOYEE_REQUIRED`).
   - Que la caducidad sea posterior al momento (`422 BUSINESS_RULE_VIOLATION`) y que la cuenta no tenga ya ese rol vigente sobre ese alcance (`409 ROLE_ASSIGNMENT_CONFLICT`).
   - Que no quede con `ADMIN_ACCESOS` y `ADMIN_EMPRESA` a la vez (`422 ROLE_ASSIGNMENT_DUTIES_INCOMPATIBLE`), y que un rol reservado vaya a una cuenta que ya cambió su contraseña provisional (`422 ROLE_ASSIGNMENT_TEMPORARY_PASSWORD`).
-- **Retirar** (`POST /role-assignments/{id}/revocation`, sin cuerpo). El motivo es siempre `retiro`. Retirar exige poder otorgar ese rol y actuar sobre esa cuenta. Errores: `404 ROLE_ASSIGNMENT_NOT_FOUND`, los `403` de otorgar, `422 ROLE_ASSIGNMENT_INACTIVE` si ya estaba retirada o vencida, `422 LAST_ACTIVE_SUPERADMIN`.
+- **Retirar** (`POST /role-assignments/{id}/revocation`, sin cuerpo). El motivo es siempre `retiro`, y queda registrado quién la retiró (`revoked_by`). Una salida firma como quien la registró, y una caducidad como `SYSTEM`; la historia de la cuenta muestra los dos autores (`grantedBy`, `revokedBy`). Retirar exige poder otorgar ese rol y actuar sobre esa cuenta. Errores: `404 ROLE_ASSIGNMENT_NOT_FOUND`, los `403` de otorgar, `422 ROLE_ASSIGNMENT_INACTIVE` si ya estaba retirada o vencida, `422 LAST_ACTIVE_SUPERADMIN`.
 - **Resultado:** la asignación vale desde la petición siguiente, sin que la persona vuelva a entrar (§5.12).
 
 ### F7 · Bloquear, levantar y cancelar (§5.4)
@@ -363,10 +363,7 @@ Las lecturas que `organization` le sirve a `iam` por la fachada no aplican el fi
 
 | Qué | Quién la toma |
 |---|---|
-| Validar las decisiones D-55 a D-72 en el diccionario v1.18 | Responsable del diccionario |
 | La matriz de permisos por rol, que llega antes del paso 5 y acota lo que leen los roles globales; con ella, quién crea los roles de una empresa | Responsable del diccionario, con el negocio (orden de implementación, ajuste 3) |
-| Cuántas personas tienen `ADMIN_ACCESOS`: el código no lo limita | Responsable del diccionario |
-| Si `user_roles` registra quién retiró un rol (`revoked_by`) | Responsable del diccionario |
 | Restablecer la contraseña con un enlace de un solo uso al correo, en vez de mostrar la provisional al administrador | Responsable del diccionario, cuando haya un servicio de correo |
 
 ### b) Código
@@ -387,7 +384,7 @@ Las lecturas que `organization` le sirve a `iam` por la fachada no aplican el fi
 
 ### d) Documentación
 
-- La propuesta del diccionario v1.18 registra D-55 a D-72 y actualiza §3 y §5.13; la valida el responsable del diccionario.
+- Nada pendiente: el diccionario v1.18 registró D-55 a D-72 y puso al día §3 y §5.13 el 17/10/2026.
 
 ---
 
@@ -396,5 +393,5 @@ Las lecturas que `organization` le sirve a `iam` por la fachada no aplican el fi
 1. **¿Qué permisos tiene cada rol del sistema, y quién crea los roles de una empresa?** [Procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), apartado 5, pregunta 5; diccionario §14; [orden de implementación](../orden-de-implementacion-millennium-mobility.md), ajuste 3.
 2. **¿Cómo obtiene el registro público, sin sesión, las sedes y los tipos de documento?** [Convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), §14.16.
 3. **¿Cómo se muestran las referencias a cuentas fuera de `iam`?** [Mapa de contextos](../mapa-de-contextos-millennium-mobility.md), §11, decisión 6.
-4. **¿Cuántas personas pueden tener `ADMIN_ACCESOS`, y se registra quién retiró un rol?** Propuesta del diccionario v1.18, preguntas abiertas.
-5. **¿El restablecimiento pasa a un enlace de un solo uso al correo?** Propuesta del diccionario v1.18, preguntas abiertas; [orden de implementación](../orden-de-implementacion-millennium-mobility.md), pendientes transversales.
+4. ~~**¿Cuántas personas pueden tener `ADMIN_ACCESOS`, y se registra quién retiró un rol?**~~ Resuelto el 17/10/2026: pueden tenerlo varias personas (§5.5, D-55), y `user_roles.revoked_by` registra quién retiró cada rol (§5.7, V33).
+5. **¿El restablecimiento pasa a un enlace de un solo uso al correo?** Diccionario §5.13; [orden de implementación](../orden-de-implementacion-millennium-mobility.md), pendientes transversales.
