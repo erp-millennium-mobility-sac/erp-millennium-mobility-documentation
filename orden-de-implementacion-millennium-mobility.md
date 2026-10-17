@@ -54,7 +54,7 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 - **Estado (15/10/2026):** construido para Perú, el único país que opera (D-5). Backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, sus pruebas y la ficha del país; la dirección elige su división en cascada. V24 carga el ubigeo del INEI, edición 2022, con 1 891 distritos. El diccionario v1.16 registra sus reglas y el alcance del cierre (D-52); el detalle está en la [revisión de cierre](retroalimentacion/2026-10-15-location.md). Las longitudes de los documentos de Colombia y México y sus listas oficiales quedan en los pendientes transversales, para antes de registrar su primera empresa.
 - **Tablas:** `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses`, `tax_id_types` (D-44).
-- **Pantallas:** Catálogos › Monedas y Países. Cada país abre su ficha, con sus datos, su estructura territorial (escalones y divisiones, D-45) y sus documentos tributarios, una sección bajo otra; la misma ficha registra el país y corrige sus datos. Las direcciones se llenan dentro de cada formulario que las usa; no tienen opción propia.
+- **Pantallas:** Catálogos › Monedas y Países. Cada país abre su ficha, con sus datos arriba y, debajo, en pestañas, su estructura territorial (escalones y divisiones, D-45) y sus documentos tributarios; la misma ficha registra el país y corrige sus datos. Las direcciones se llenan dentro de cada formulario que las usa; no tienen opción propia.
 - **Datos:** el archivo oficial de divisiones territoriales (ubigeo del INEI), cargado completo (D-2) por V24 desde `scripts/ubigeo/` del backend.
 
 

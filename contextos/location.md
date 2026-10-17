@@ -78,7 +78,7 @@ El país incluye sus escalones: se guardan y se validan con él (D-45).
 
 | Momento | Qué pasa |
 |---|---|
-| Alta | La migración V24 carga la lista oficial completa de Perú (D-2): el ubigeo del INEI, edición 2022, con 25 departamentos, 196 provincias y 1 891 distritos. Las de Colombia y México se cargan antes de registrar su primera empresa. Después, el superadministrador crea divisiones una por una en la ficha del país, sección Estructura territorial |
+| Alta | La migración V24 carga la lista oficial completa de Perú (D-2): el ubigeo del INEI, edición 2022, con 25 departamentos, 196 provincias y 1 891 distritos. Las de Colombia y México se cargan antes de registrar su primera empresa. Después, el superadministrador crea divisiones una por una en la ficha del país, pestaña Estructura territorial |
 | Qué cambia | Solo el nombre |
 | Qué queda fijo | El código oficial, el escalón, la división superior y el país, desde el alta |
 | Retiro | Se desactiva cuando se fusiona o desaparece. Las direcciones ya registradas siguen apuntando a ella |
@@ -88,7 +88,7 @@ El país incluye sus escalones: se guardan y se validan con él (D-45).
 
 | Momento | Qué pasa |
 |---|---|
-| Alta | El superadministrador lo crea en la ficha del país, sección Documentos tributarios. Llegan sembrados RUC, DNI, CE y PAS en Perú; NIT y CC en Colombia; RFC y CURP en México |
+| Alta | El superadministrador lo crea en la ficha del país, pestaña Documentos. Llegan sembrados RUC, DNI, CE y PAS en Perú; NIT y CC en Colombia; RFC y CURP en México |
 | Qué cambia | El nombre, a quién aplica (empresa, persona o ambos), la longitud y si tiene dígito de control |
 | Qué queda fijo | La sigla y el país, desde el alta |
 | Retiro | Se desactiva. Quien ya lo usa sigue siendo válido; un registro nuevo no puede elegirlo |
@@ -128,7 +128,7 @@ Todos los flujos de escritura los hace el superadministrador (D-43), salvo F5, q
 
 **Rol:** superadministrador. **Pantalla:** Catálogos › Países y la ficha del país (`/location/countries/new` y `/location/countries/{id}`), construidas.
 
-1. **Alta.** Escribe los dos códigos ISO, el nombre, el código telefónico, la moneda sugerida, la zona horaria, el impuesto y su tasa, y si exige código postal. El sistema revisa que los dos códigos nombren un mismo país de ISO 3166 (`PE` con `PER`, nunca con `PRI`), que ningún otro país los tenga, que el código telefónico sea `+` y de 1 a 5 dígitos, que la zona horaria exista y que la tasa esté entre 0 y 100 %. Al guardar, la ficha abre las demás secciones.
+1. **Alta.** Escribe los dos códigos ISO, el nombre, el código telefónico, la moneda sugerida, la zona horaria, el impuesto y su tasa, y si exige código postal. El sistema revisa que los dos códigos nombren un mismo país de ISO 3166 (`PE` con `PER`, nunca con `PRI`), que ningún otro país los tenga, que el código telefónico sea `+` y de 1 a 5 dígitos, que la zona horaria exista y que la tasa esté entre 0 y 100 %. Al guardar, la ficha abre las pestañas de su estructura territorial y sus documentos tributarios.
 2. **Escalones.** Declara el primero por su nombre (Departamento), después el segundo, hasta cuatro. El número lo pone el sistema: siempre el que sigue al último. No hay botón para borrar un escalón; solo se renombra.
 3. **Divisiones.** Elige el escalón, la división superior (solo se ofrecen las del escalón de arriba), el código oficial y el nombre. El sistema revisa que el país declare ese escalón, que el código no se repita en el país, que una división del escalón 1 no tenga superior y que cualquier otra cuelgue de una del mismo país en el escalón inmediato superior.
 4. **Documentos tributarios.** Crea cada tipo con su sigla, nombre, a quién aplica, longitud y dígito de control. El sistema revisa que la sigla no se repita en el país.
