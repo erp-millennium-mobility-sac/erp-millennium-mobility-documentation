@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.17 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
+**Versión:** 1.18 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 49 tablas más `role_permissions`, la tabla de unión de roles y permisos
 
 > **Cómo leer los cuadros.** En cada tabla, las columnas *Descripción* y *Por qué importa* están escritas para que las entienda cualquier persona, sin conocimientos técnicos: sirven para que quien conoce el negocio pueda revisar si el dato es el correcto. Las columnas *Tipo* y *Nulo*, las restricciones y el código SQL son para el equipo de desarrollo.
 
@@ -50,7 +50,7 @@ No documenta pantallas ni procesos. Cuando una regla de negocio determina una re
 | **Toda conversión viaja con su tipo de cambio, y la fecha de ese tipo de cambio es la del documento** | El tipo de cambio de una factura es el de su fecha de emisión; el de un pago, el de su fecha de pago. No hace falta una columna aparte, pero la regla debe estar escrita o alguien usará el tipo de cambio del día en que registra |
 | Montos: `NUMERIC`, `NOT NULL DEFAULT 0` | Un `NULL` en un monto se propaga por toda la aritmética y llega a pantalla como celda vacía |
 | Vigencias: un rango en la columna `period`, con el inicio incluido y el fin excluido; fin vacío = vigente (§2.6) | Una vigencia se cierra, nunca se borra |
-| Intervalos sin solapamiento: `daterange` o `tstzrange` + `WITHOUT OVERLAPS` (PG 18) | Impide dos períodos cruzados incluso en el pasado |
+| Intervalos sin solapamiento: `daterange` o `tstzrange` + `WITHOUT OVERLAPS` (PG 18). Cuando hay filas que no deben contar —un bloqueo cancelado— o la regla compara un dato que se deduce de otro —la línea de tiempo de un bloqueo—, una exclusión `EXCLUDE USING gist` con su condición, que necesita `btree_gist` (D-67) | Impide dos períodos cruzados incluso en el pasado. `WITHOUT OVERLAPS` no admite dejar filas afuera ni comparar una expresión; la exclusión sí, y protege lo mismo |
 | Identificadores de texto normalizados al guardar: `TRIM` + `UPPER`, sin guiones. Los correos electrónicos, `TRIM` + `LOWER` | `UNIQUE` no distingue `ABC-123` de `ABC123`, ni `Tere@…` de `tere@…` |
 | Centinelas (`-`, `NO TIENE`, `NO CORRESPONDE`) no se almacenan | Se generan al exportar. Guardados, obligan a parsear texto en cada cálculo |
 
@@ -104,11 +104,14 @@ Los campos que no pasan el filtro quedan listados como **candidatos**, con el cr
 
 - Toda tabla que se consulte por sí sola o que acumule volumen lleva su `company_id`, aunque se pudiera deducir siguiendo la cadena de relaciones. Las filas que solo se leen a través de su padre se apoyan en él.
 - Los catálogos generales —monedas, países, divisiones territoriales, tipos de documento tributario, permisos— no se filtran: son iguales para todos.
-- Los usuarios no pertenecen a una empresa. El administrador de una empresa ve a quienes tienen alguna asignación vigente en ella.
+- Los usuarios no pertenecen a una empresa. El administrador de una empresa ve las cuentas vinculadas a colaboradores de esa empresa —también las de quienes ya salieron, para comprobar que la salida les quitó el acceso—, con los roles vigentes que tienen en ella y los de alcance sistema, pero no las modifica: dar acceso, otorgar y retirar roles, bloquear cuentas y restablecer contraseñas es trabajo del administrador de accesos (D-57).
 - El stock es visible para toda la empresa. La sede limita dónde se puede actuar, no qué se ve.
 - Hay campos que no ve cualquiera aunque vea la fila. Cuando falta el permiso, el campo no sale de la base: ocultarlo en la pantalla no alcanza.
 - El acceso total es una excepción explícita evaluada con las mismas reglas, no una cuenta que se saltea el control.
+- **La frontera entre empresas la defiende también la base de datos** (D-66). La aplicación filtra cada consulta por las empresas que alcanza quien la hace. Además, en cada tabla que lleva `company_id` —y en `companies`, por su propio `id`—, la base deja ver y escribir solo las filas de esas empresas. Si algún día una consulta olvida su filtro, devuelve menos filas, nunca las de otra empresa. Un rol de alcance sistema ve todas; una operación sin alcance no ve ninguna.
 - Cuando existan clientes, la tabla de direcciones tendrá que quedar acotada igual que el resto: el domicilio de un cliente sí es un dato sensible.
+
+**Nota técnica.** Es Row Level Security de PostgreSQL, habilitada y forzada (`ENABLE` y `FORCE ROW LEVEL SECURITY`) para que tampoco el dueño de las tablas la saltee. Hoy cubre `companies`, `commercial_brands`, `branches`, `locations`, `employees` y `user_roles`, y cubrirá cada tabla con `company_id` que se cree. Hay dos cuentas de base de datos: la dueña, que solo aplica las migraciones, y la de la aplicación, que no es dueña de nada, no puede saltear la regla y no tiene permiso de borrar. Al comenzar cada transacción —nunca al abrir la conexión—, la aplicación fija desde un solo lugar, con `set_config(…, true)`, quién actúa y qué alcanza: `app.access_scope` (`SYSTEM` o `SCOPED`), `app.company_ids` y `app.user_id`. Un valor que falta no ve nada. El arranque y los procesos automáticos actúan con alcance `SYSTEM` de forma explícita, igual que firman como `SYSTEM` (D-42). `user_roles` le muestra además a cada cuenta sus propias asignaciones y las de alcance sistema, para que pueda calcularse su alcance. Las pocas comprobaciones que necesitan ver más allá de las empresas de quien opera —si la cuenta tiene un colaborador activo en otra empresa, o cuántos superadministradores quedan (§5.9)— se hacen con una elevación a `SYSTEM` acotada a esa comprobación, que solo devuelve el dato.
 
 ### 2.6 Fechas y horas
 
@@ -163,7 +166,7 @@ El código se construye en este orden. Respeta las dependencias del cuadro anter
 | 0 | 2 · Seguridad, en parte, y el núcleo común | `shared`, `iam` | Cuentas, roles, sesiones y asignaciones reducidas | — | Construido; lo que falta está en §5.13 |
 | 1 | 1 · Geografía y localización | `location` | Monedas, países con sus escalones, divisiones territoriales, direcciones y tipos de documento tributario | Archivo oficial de divisiones territoriales (ubigeo del INEI) | Construido para Perú: V24 carga el ubigeo del INEI, edición 2022. Colombia y México se completan antes de su primera empresa (D-52) |
 | 2 | 3 · Empresas | `organization` | Empresas, marcas comerciales, sedes y ubicaciones; `roles.company_id` | Razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales | En curso: empresas, marcas comerciales, sedes y ubicaciones construidas; falta `roles.company_id` |
-| 3 | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | Colaboradores; asignaciones por empresa, sede y marca; bloqueos de cuenta; permisos; dar acceso; registro público con perfil | Colaboradores reales y la matriz de permisos por rol | Pendiente |
+| 3 | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | Colaboradores; asignaciones por empresa, sede y marca; bloqueos de cuenta; permisos; dar acceso; registro público con perfil | Colaboradores reales y la matriz de permisos por rol | Construido, salvo los permisos y el registro público con perfil: colaboradores con su salida y su regreso, dar acceso, asignaciones por empresa, sede y marca con su caducidad, bloqueos en dos líneas de tiempo, la separación de funciones entre quien registra colaboradores y quien da acceso (D-57) y la frontera entre empresas en la base (D-66). Lo que falta está en §5.13 |
 | 4 | 4 · Catálogos de flota | `vehiclecatalog` | Tipos de vehículo, marcas y modelos, colores, equipamiento y a qué tipos aplica | Modelos reales, conciliados entre los dos catálogos que advierte §7.3 | Pendiente |
 | 5 | 6 · Vehículo y estados | `fleet` | Estados, caminos y motivos, vehículos, historial de estados, kilometraje | — | Pendiente |
 | 6 | 11 · Bitácora de cambios | `shared` | `change_log` | — | Pendiente |
@@ -178,7 +181,7 @@ Los cuatro ajustes:
 
 1. **La bitácora va apenas después del vehículo**, no al final. Depende solo del bloque 6, y desde ahí ya hay cambios delicados —corregir una placa, un VIN o el monto de una factura— que tienen que quedar registrados.
 2. **`advisor_assignments` se construye con el bloque 12**, aunque figure en el 3b: apunta a los contratos, que son de ventas.
-3. **El bloque 2 se termina en el paso 3.** Los permisos hacen falta antes de las operaciones de negocio de los bloques 6 y 7, como registrar una factura o dar de alta una unidad.
+3. **El bloque 2 se termina cuando llegue la matriz de permisos.** El paso 3 se construyó sin `permissions` ni `role_permissions` porque falta el dato: qué permisos lleva cada rol. Mientras tanto, quién otorga qué lo fija una regla provisional (§5.7, §5.13). Un rol de alcance sistema —el superadministrador o el administrador de accesos— lee los datos de todas las empresas: hoy empresas, marcas, sedes, ubicaciones y colaboradores, que el administrador de accesos necesita para dar acceso. La matriz llega antes del paso 5, el primero con operaciones de negocio, como dar de alta una unidad, y con ella se acota también lo que lee un rol global (D-68).
 4. **Desde el paso 5 hay dos ramas independientes:** compras y pagos (pasos 7 y 8), y habilitación y fondos (pasos 9 y 10). Se pueden alternar según la prioridad del negocio; fondos usa las cargas de archivos que llegan con la habilitación.
 
 Un paso se puede construir sin sus datos, con datos de ejemplo; los reales se cargan después.
@@ -524,23 +527,26 @@ Y sobre distinguir al que ya es cliente del que solo descargó la aplicación: *
 | 4 | El superadministrador crea las empresas, una por país | Usuario |
 | 5 | Crea las sedes de cada empresa | Usuario |
 | 6 | Se registra como colaborador de la empresa para la que trabaja y vincula su cuenta a ese perfil | Usuario |
-| 7 | Registra al administrador de cada empresa como colaborador, le da acceso y le asigna el rol `ADMIN_EMPRESA` sobre esa empresa | Usuario |
-| 8 | El administrador de cada empresa registra a sus colaboradores y da acceso a quienes usan el sistema, con los roles que corresponden a su puesto y su sede | Usuario |
+| 7 | Registra como colaboradores al administrador de cada empresa y al administrador de accesos, que son personas distintas, y les da acceso. Cuando cada uno cambió su contraseña provisional, le asigna su rol: `ADMIN_EMPRESA` sobre su empresa o `ADMIN_ACCESOS`, que alcanza todo el sistema | Usuario |
+| 8 | El administrador de cada empresa registra a sus colaboradores, con su puesto y su sede | Usuario |
+| 9 | El administrador de accesos da acceso a quienes usan el sistema y les asigna los roles que corresponden a su puesto y su sede | Usuario |
 
 Los pasos 1 a 3 no los puede ejecutar nadie desde la aplicación —no hay con qué iniciar sesión todavía—. Esto no es un rodeo: es la única forma de resolver que el primer usuario no tiene creador.
 
+**Los pasos 8 y 9 los hacen personas distintas, a propósito** (D-57). Quien registra a los colaboradores no les da acceso, y quien da acceso no registra colaboradores: así nadie puede inventar un colaborador y darle acceso. Por eso una misma cuenta nunca tiene a la vez `ADMIN_EMPRESA` y `ADMIN_ACCESOS` (D-71). El superadministrador puede hacer ambas cosas. Es el único que otorga `SUPERADMIN`, `ADMIN_ACCESOS` y `ADMIN_EMPRESA`, y el único que actúa sobre las cuentas que tienen alguno de esos tres roles (§5.5).
+
 Los catálogos, los roles y `SYSTEM` van en la migración. El primer superadministrador, en cambio, lo crea la aplicación al arrancar (decisión D-34), y solo mientras no exista ningún superadministrador activo. Toma el correo y la contraseña provisional de las variables de entorno `IAM_BOOTSTRAP_ADMIN_EMAIL` e `IAM_BOOTSTRAP_ADMIN_PASSWORD`, así esa contraseña no queda escrita en el repositorio. La cuenta figura creada por `SYSTEM` y debe cambiar la contraseña en su primer ingreso.
 
-**Es la única persona que nace sin perfil de colaborador**, porque todavía no existe ninguna empresa donde registrarla. Mientras no se vincule a su perfil (paso 6) puede configurar el sistema —empresas, sedes, catálogos y su propio perfil—, pero no puede dar acceso a nadie ni otorgar roles. Así, desde el primer acceso que se otorga, cada acción queda atribuida a una persona con nombre, documento y puesto.
+**Es la única persona que nace sin perfil de colaborador**, porque todavía no existe ninguna empresa donde registrarla. Mientras no se vincule a su perfil (paso 6) puede configurar el sistema —empresas, sedes, catálogos y su propio perfil—, pero no puede dar acceso a nadie ni otorgar roles. Así, desde el primer acceso que se otorga, cada acción queda atribuida a una persona con nombre, documento y puesto. Vincularse a sí mismo es solo de ese paso: lo hace el superadministrador mientras no tiene un colaborador activo. Después ninguna cuenta se vincula a sí misma, tampoco a un colaborador de otra empresa, porque sería darse acceso a sí misma (D-70).
 
 **Casos del arranque.** Si faltan las variables, la aplicación arranca igual, sin superadministrador, y lo advierte en su registro de eventos. Si el correo indicado ya pertenece a otra cuenta, la aplicación no arranca hasta que se corrija. El rol de ese primer superadministrador figura otorgado por `SYSTEM`.
 
 **Registro público, apagado por defecto** (decisión D-32). Además del acceso que da un administrador, una persona puede registrarse desde la pantalla de inicio de sesión. Se enciende o se apaga con la variable de entorno `IAM_PUBLIC_SIGN_UP_ENABLED`, y viene apagado. Como toda cuenta pertenece a un colaborador (D-38), el registro no crea solo la cuenta:
 
 - **Registra el perfil y la cuenta en la misma operación.** La persona elige su empresa —y su sede, si corresponde— y completa los mismos datos obligatorios que exige el registro de un colaborador (§5.3), además de su correo y su contraseña. Si algo falla, no queda ni el colaborador ni la cuenta.
-- **Si su documento ya está registrado en esa empresa, el registro se rechaza.** Esa persona ya tiene perfil, y el acceso se lo da un administrador desde ahí. Si el registro pudiera vincularse a un perfil existente, cualquiera que conozca un número de documento podría apropiarse del perfil de otra persona.
-- **Si el correo ya tiene cuenta, el registro se rechaza.** Esa persona ya tiene acceso por otra empresa del grupo: un administrador de esta empresa la registra como colaboradora y vincula el perfil a su cuenta.
-- **Nace sin roles.** Registrarse no da acceso a nada: los roles se los asigna un administrador después, con las mismas reglas de §5.5.
+- **Si su documento ya está registrado en esa empresa, el registro se rechaza.** Esa persona ya tiene perfil, y el acceso se lo da el administrador de accesos desde ahí. Si el registro pudiera vincularse a un perfil existente, cualquiera que conozca un número de documento podría apropiarse del perfil de otra persona.
+- **Si el correo ya tiene cuenta, el registro se rechaza.** Esa persona ya tiene acceso por otra empresa del grupo: el administrador de esta empresa la registra como colaboradora y el administrador de accesos vincula el perfil a su cuenta (§5.3).
+- **Nace sin roles.** Registrarse no da acceso a nada: los roles se los asigna después el administrador de accesos o un superadministrador, con las reglas de §5.5 y §5.7.
 - **La cuenta y el perfil figuran creados por `SYSTEM`**, igual que cualquier otro proceso automático, para que `created_by` siga respondiendo quién los originó.
 - **No tiene que cambiar su contraseña**, porque la eligió la propia persona; la obligación de §5.4 es para las claves provisionales que entrega un administrador.
 - **Para elegir empresa y sede**, el formulario las lista sin sesión iniciada, solo con su nombre, y solo mientras el registro está encendido.
@@ -589,9 +595,14 @@ El tercero no tiene cuenta en el sistema y existe igual.
 - El puesto es un texto informativo y **no da permisos**. Los permisos vienen del rol asignado en §5.7.
 - La misma persona trabajando para dos empresas del grupo son dos colaboradores, uno por empresa, con una sola cuenta de acceso.
 - Una cuenta se vincula a lo sumo a un colaborador por empresa.
-- **Toda cuenta pertenece a un colaborador** (decisión D-38). Las cuentas no se crean solas. Hay dos caminos, y en ambos la cuenta queda vinculada a su colaborador en la misma operación: un administrador **da acceso** a un colaborador ya registrado, o la persona usa el **registro público**, si está encendido, que crea el colaborador y la cuenta juntos (§5.2). Si la persona ya tiene cuenta porque trabaja para otra empresa del grupo, dar acceso vincula el nuevo colaborador a esa misma cuenta en vez de crear otra. Un colaborador puede existir sin cuenta y recibir acceso cuando lo necesite. Las únicas cuentas sin colaborador son `SYSTEM`, que no es una persona, y el primer superadministrador hasta que se vincula (§5.2).
+- **Toda cuenta pertenece a un colaborador** (decisión D-38). Las cuentas no se crean solas. Hay dos caminos, y en ambos la cuenta queda vinculada a su colaborador en la misma operación: el administrador de accesos o un superadministrador **da acceso** a un colaborador ya registrado, o la persona usa el **registro público**, si está encendido, que crea el colaborador y la cuenta juntos (§5.2). Si la persona ya tiene cuenta porque trabaja para otra empresa del grupo, dar acceso vincula el nuevo colaborador a esa misma cuenta en vez de crear otra. Un colaborador puede existir sin cuenta y recibir acceso cuando lo necesite. Las únicas cuentas sin colaborador son `SYSTEM`, que no es una persona, y el primer superadministrador hasta que se vincula (§5.2).
+- **Dar acceso crea la cuenta o la vincula, y nada más** (D-58). Una cuenta nueva recibe una contraseña provisional que genera el sistema, se muestra una sola vez y debe cambiarse en el primer ingreso (§5.4). Vincular una cuenta que ya existía nunca cambia sus roles ni su contraseña: la persona sigue entrando con la suya y conserva los roles que tiene en otras empresas; los de esta empresa se asignan después (§5.7). El administrador de accesos vincula cuentas de cualquier empresa del grupo, salvo una que tenga `SUPERADMIN`, `ADMIN_ACCESOS` o `ADMIN_EMPRESA` vigente: esa solo la vincula un superadministrador (§5.5). `SYSTEM` no se vincula a nadie. La única cuenta que se vincula a sí misma es la del primer superadministrador, y solo mientras no tiene un colaborador activo (§5.2, paso 6; D-70). Si la cuenta estaba cerrada por una salida, vincularla cierra el bloqueo `baja`, porque vuelve a tener un colaborador activo (§5.4).
 - **Para tener un rol en una empresa o una sede**, la cuenta debe estar vinculada a un colaborador activo —sin fecha de salida— de esa empresa. Un rol de alcance sistema exige un colaborador activo en alguna empresa.
-- **Cuando un colaborador sale**, se registra su fecha de salida y en la misma operación se retiran los roles de su cuenta en esa empresa, con motivo `baja_colaborador` (§5.7). Si a la cuenta no le queda ningún colaborador activo, se bloquea con motivo `baja` (§5.4), lo que cierra sus sesiones. Quien trabaja para dos empresas y deja una conserva su cuenta y sus roles en la otra. El sistema impide registrar la salida si con ella no quedaría ningún superadministrador activo (§5.9).
+- **Cuando un colaborador sale**, se registra su fecha de salida, que no puede ser posterior a hoy (D-60). La salida se registra cuando ocurre, no por adelantado, porque retirar los roles antes de tiempo dejaría sin acceso a alguien que todavía trabaja. Hoy se calcula como fija §2.6: en la zona de la sede del colaborador; sin sede, en la del país de su empresa. En la misma operación se retiran los roles de su cuenta en esa empresa, con motivo `baja_colaborador` (§5.7). Quien trabaja para dos empresas y deja una conserva su cuenta y sus roles en la otra.
+- **Si a la cuenta no le queda ningún colaborador activo, la salida la cierra** desde el momento en que se registra, aunque la fecha de salida sea anterior, porque un bloqueo no se registra en el pasado (§5.4). La cuenta se bloquea con motivo `baja`, salvo que ya tenga una `baja` en curso. Se retiran sus demás roles con motivo `baja_cuenta` (§5.9) y se cierran sus sesiones. Si la persona estaba de vacaciones o de licencia, ese bloqueo termina en ese momento, y los bloqueos programados de la línea laboral se cancelan. Un bloqueo por `seguridad`, en curso o programado, no se toca: corre en su propia línea de tiempo (§5.4).
+- **La salida siempre quita el acceso** (D-60), también el de una cuenta protegida (§5.5): quien se fue no conserva el acceso mientras alguien con más permisos se entera. Una salida equivocada se corrige con un regreso. El único freno es la protección del último superadministrador (§5.9).
+- **Registran y modifican colaboradores**, y registran sus salidas y regresos, el superadministrador y el administrador de la empresa del colaborador (D-57). El administrador de accesos no lo hace: quien da acceso no puede también crear al colaborador que lo recibe. Nadie registra su propia salida ni su propio regreso (D-70).
+- **Cuando un colaborador regresa**, se registra su nueva fecha de ingreso, que no puede ser anterior a la de salida ni posterior a hoy, calculado igual que para la salida. Si su cuenta estaba cerrada por la salida, en la misma operación se cierra el bloqueo `baja`, y la persona vuelve a entrar con la misma cuenta y su historial completo. Un bloqueo por `seguridad` en curso sigue hasta que alguien lo levante. Los roles no vuelven solos: se asignan de nuevo (§5.9).
 
 ### 5.4 `users` — Cuentas de acceso
 
@@ -601,7 +612,7 @@ Solo lo necesario para entrar. Quién es la persona vive en `employees`: toda cu
 |---|---|---|---|---|
 | `email` | VARCHAR(255) UNIQUE | No | El correo con que entra. No se repite. Se guarda sin espacios y en minúsculas | Una cuenta por persona, no por empresa: quien trabaja para dos empresas del grupo entra una sola vez y su historial queda completo en un solo lugar |
 | `password_hash` | VARCHAR(255) | No | La contraseña guardada de forma cifrada e ilegible | Nunca se guarda tal como se escribió. Ni siquiera quien administra el sistema puede verla |
-| `must_change_password` | BOOLEAN | No | Obliga a cambiar la contraseña la primera vez que entra | Cuando se crea una cuenta se entrega una clave provisional. Sin esta marca, esa clave se queda para siempre |
+| `must_change_password` | BOOLEAN | No | Obliga a cambiar la contraseña la próxima vez que entra | Cuando se crea una cuenta, o un administrador restablece la contraseña, se entrega una clave provisional. Sin esta marca, esa clave se queda para siempre |
 | `password_updated_at` | TIMESTAMPTZ | Sí | Cuándo cambió la contraseña por última vez | Permite exigir el cambio cada cierto tiempo y detectar claves antiguas |
 | `mfa_secret` | VARCHAR(255) | Sí | Clave del segundo factor, si lo activó | Un sistema con datos financieros debería poder exigir un segundo paso al entrar |
 | `last_login_at` | TIMESTAMPTZ | Sí | Última vez que entró | Con esto se detectan cuentas abandonadas, que son la puerta de entrada más común a un sistema |
@@ -627,9 +638,11 @@ La primera no corresponde a ninguna persona: existe para figurar como responsabl
 
 El usuario **nunca se borra**: su nombre está en las facturas, habilitaciones y cambios de estado que registró. Borrarlo dejaría todo ese historial sin autor.
 
-**Contraseñas.** Tienen entre 8 y 72 caracteres, sin reglas de composición; 72 es el máximo que procesa el cifrado que se usa (BCrypt). La nueva tiene que ser distinta de la actual. Al iniciar sesión, un correo que no existe y una contraseña equivocada reciben la misma respuesta, para no revelar qué cuentas existen.
+**Contraseñas.** Tienen entre 8 y 72 caracteres, sin reglas de composición; 72 es el máximo que procesa el cifrado que se usa (BCrypt). La nueva tiene que ser distinta de la actual. Al iniciar sesión, un correo que no existe y una contraseña equivocada reciben la misma respuesta, para no revelar qué cuentas existen. Una cuenta bloqueada se entera de que lo está solo después de que su contraseña coincidió, así la respuesta no le revela nada a quien no la conoce.
 
-**Mientras la contraseña es provisional**, la cuenta solo puede consultar quién es y cambiar su contraseña. Sus roles no valen hasta que la cambie.
+**Mientras la contraseña es provisional**, la cuenta solo puede consultar quién es y cambiar su contraseña. Sus roles no valen hasta que la cambie. Tampoco recibe un rol privilegiado —`SUPERADMIN`, `ADMIN_ACCESOS` o `ADMIN_EMPRESA`— hasta que la cambie (§5.7, D-72): quien le entregó la clave provisional la conoce, y no debe poder terminar con una cuenta privilegiada en sus manos.
+
+**Restablecer la contraseña de otra persona** (D-63). Cuando alguien olvida su contraseña, un superadministrador o el administrador de accesos le restablece una provisional: la genera el sistema, se muestra una sola vez a quien la pidió y la persona debe cambiarla en su siguiente ingreso. En la misma operación se cierran todas las sesiones de esa cuenta, para que nadie siga dentro con la contraseña anterior (§5.12). Nadie restablece así la suya: para eso está el cambio de contraseña. La de `SYSTEM` no se restablece, porque esa cuenta no inicia sesión. El administrador de accesos no la restablece a una cuenta protegida (§5.5), y el administrador de una empresa no restablece contraseñas (D-57).
 
 #### Suspender, dar de baja y volver a activar
 
@@ -647,28 +660,31 @@ Por eso los bloqueos se guardan como **períodos** en una tabla aparte, igual qu
 |---|---|---|---|---|
 | `user_id` | BIGINT FK → `users` | No | La persona a la que se le bloqueó el acceso | — |
 | `period` | TSTZRANGE | No | Desde cuándo hasta cuándo estuvo bloqueada, con fecha y hora. Abierto = sigue bloqueada | Permite responder quién tenía acceso en un momento pasado. Se guarda con hora, no solo fecha, porque un bloqueo y una reactivación pueden ocurrir el mismo día y hay que saber si la persona tenía acceso cuando se registró una operación a media tarde |
-| `reason` | VARCHAR(20) | No | `vacaciones`, `licencia`, `baja`, `seguridad` | Distingue una ausencia temporal de una salida de la empresa. Sin esto, en un reporte de personal las vacaciones se cuentan como bajas |
+| `reason` | VARCHAR(20) | No | `vacaciones`, `licencia`, `baja`, `seguridad`. Los tres primeros forman la línea laboral; `seguridad` tiene una línea propia | Distingue una ausencia temporal de una salida de la empresa y de un incidente. Sin esto, en un reporte de personal las vacaciones se cuentan como bajas |
 | `notes` | TEXT | Sí | Detalle cuando haga falta | — |
 | `created_by` | BIGINT FK → `users` | No | Quién ordenó el bloqueo | Misma exigencia que en los cambios de estado: fecha, usuario y motivo |
 | `created_at` | TIMESTAMPTZ | No | Cuándo se registró el bloqueo | — |
-| `closed_by` | BIGINT FK → `users` | Sí | Quién reactivó la cuenta. Vacío mientras siga bloqueada | Sin este dato se sabría quién quitó el acceso pero no quién lo devolvió, que es la mitad de la pregunta en una revisión de seguridad |
-| `closed_at` | TIMESTAMPTZ | Sí | Cuándo se reactivó | — |
+| `closed_by` | BIGINT FK → `users` | Sí | Quién levantó el bloqueo, o quién lo canceló antes de que empezara. Vacío mientras nadie lo cierre | Sin este dato se sabría quién quitó el acceso pero no quién lo devolvió, que es la mitad de la pregunta en una revisión de seguridad |
+| `closed_at` | TIMESTAMPTZ | Sí | Cuándo se levantó o se canceló. Es siempre el momento en que alguien lo cerró, nunca una fecha elegida | Un bloqueo levantado termina en ese momento. Uno cancelado antes de empezar conserva el período que tenía programado, para que se sepa qué se había planeado, y deja de bloquear |
 
 Cómo queda cada caso:
 
 | Situación | Qué se hace | Al volver |
 |---|---|---|
-| Vacaciones | Se crea un período con motivo `vacaciones` | Se cierra el período con la fecha de regreso |
-| Salida de la empresa | Se crea un período abierto con motivo `baja` | Si la persona regresa, se cierra ese período y vuelve a entrar con la misma cuenta y su historial completo |
-| Bloqueo por seguridad | Período abierto con motivo `seguridad` | Se cierra cuando se aclara |
+| Vacaciones o licencia | Se crea un período con motivo `vacaciones` o `licencia`, con su fin si ya se conoce | Termina solo al llegar su fin. Si la persona vuelve antes, o el período quedó abierto, se levanta en el momento en que regresa |
+| Salida de la empresa | Se crea un período abierto con motivo `baja`. Lo crea solo el sistema, al registrar la salida del último colaborador activo de la cuenta (§5.3); nadie lo abre a mano | Si la persona regresa, o se le da acceso desde otra empresa del grupo, se cierra ese período y vuelve a entrar con la misma cuenta y su historial completo. Nadie lo cierra a mano |
+| Bloqueo por seguridad | Período abierto con motivo `seguridad`, en su propia línea de tiempo | Se cierra cuando se aclara. La salida y el regreso no lo tocan |
+| Un bloqueo programado que ya no hace falta | Se cancela antes de que empiece | — |
 
-Un usuario está activo si **no tiene ningún período de bloqueo abierto**. No hay un campo que lo diga, para que no pueda contradecir a la tabla.
+Un usuario está activo si **no tiene ningún bloqueo en curso**: ninguno que ya haya empezado, no haya terminado y no se haya cancelado. Basta uno, de cualquier línea, para que no pueda entrar. No hay un campo que lo diga, para que no pueda contradecir a la tabla.
 
-El sistema impide que dos bloqueos de la misma persona se crucen en el tiempo, incluso en el pasado.
+**Dos líneas de tiempo** (D-62). Los bloqueos de una persona corren en dos líneas: la **laboral**, con `vacaciones`, `licencia` y `baja`, y la de **seguridad**. Dentro de una misma línea, el sistema impide que dos bloqueos se crucen en el tiempo, incluso en el pasado; los cancelados no cuentan. Entre líneas sí pueden cruzarse: un bloqueo por seguridad puede caer sobre unas vacaciones, una licencia o una baja. Tienen que ser independientes porque responden a hechos distintos. Si alguien investigado por un incidente sale de la empresa, la baja no puede borrar el bloqueo de seguridad. Y si después regresa, cerrar la baja no puede devolverle el acceso mientras el incidente no se aclare. La línea se deduce del motivo; no se guarda.
+
+**Quién bloquea y levanta** (D-57). El superadministrador y el administrador de accesos, por vacaciones, licencia o seguridad. Nadie bloquea su propia cuenta ni levanta sus propios bloqueos (D-70), `SYSTEM` no se bloquea, y el administrador de accesos no bloquea ni levanta los bloqueos de una cuenta protegida (§5.5). Un bloqueo programado sobre una cuenta que después pasó a ser protegida se conserva: se ve en su historia y lo cancela un superadministrador. La `baja` no la abre ni la cierra nadie a mano (D-69): la abre el sistema con la salida del último colaborador activo de la cuenta (§5.3) y la cierran el regreso o un nuevo acceso. El administrador de una empresa no bloquea cuentas: registra la salida, y la `baja` es su consecuencia.
 
 #### Qué queda registrado, exactamente
 
-Cada bloqueo y cada reactivación deja una fila que no se borra ni se reutiliza. Un ejemplo de la historia de una persona:
+Cada bloqueo deja una fila que no se borra ni se reutiliza; levantarlo o cancelarlo la completa con quién y cuándo, sin borrar nada. Un ejemplo de la historia de una persona:
 
 | # | Período | Motivo | Ordenado por | Reactivado por |
 |---|---|---|---|---|
@@ -683,16 +699,27 @@ Con eso se responden las preguntas que hace una auditoría:
 - *¿Quién le devolvió el acceso ese día?* Janover, a las 16:40.
 - *¿Está activo hoy?* No: la fila 3 sigue abierta.
 
+Con dos líneas, un bloqueo por seguridad puede quedar debajo de uno de la línea laboral. Otra persona, investigada por un incidente, sale de la empresa mientras tanto:
+
+| # | Período | Motivo | Línea | Ordenado por | Reactivado por |
+|---|---|---|---|---|---|
+| 1 | 03/08/2026 10:00 → *(abierto)* | seguridad | seguridad | Janover | — |
+| 2 | 14/08/2026 18:20 → 01/09/2026 09:00 | baja | laboral | Tere | Tere |
+
+La salida del 14/08/2026 abrió la fila 2 y no tocó la 1. El regreso del 01/09/2026 cerró la 2, y la persona sigue sin entrar: la fila 1 sigue abierta hasta que se aclare el incidente.
+
 Lo que **no** cubre esta tabla es la corrección posterior de una de estas filas —si alguien edita el motivo o mueve una fecha—. Eso lo registra la bitácora general de cambios del sistema, que documenta qué campo se modificó, su valor anterior y su valor nuevo (bloque 11). Son dos cosas distintas: esta tabla guarda lo que pasó con el acceso; la bitácora guarda lo que alguien hizo con el registro.
 
 **Relaciones.** Apunta a `users` tres veces: la persona bloqueada, quien ordenó el bloqueo y quien reactivó. No le apunta nadie.
 
 
-**Se pueden programar por adelantado.** Nada impide crear un bloqueo con fecha de inicio futura para unas vacaciones ya aprobadas: la persona conserva el acceso hasta que llegue esa fecha y lo pierde sola. No hace falta que nadie se acuerde el día que empieza.
+**Se pueden programar por adelantado, nunca hacia atrás** (D-61). Nada impide crear un bloqueo con fecha de inicio futura para unas vacaciones ya aprobadas: la persona conserva el acceso hasta que llegue esa fecha y lo pierde sola. No hace falta que nadie se acuerde el día que empieza. Lo que no se puede es crearlo con inicio en el pasado: esta tabla dice quién podía entrar en cada momento, y un bloqueo que no ocurrió no se registra. Sin fecha de inicio, empieza en el momento en que se registra.
+
+**Levantar y cancelar ocurren siempre ahora.** Cerrar un bloqueo en curso lo termina en ese momento. Cerrar uno programado, antes de que empiece, lo cancela: conserva el período que tenía programado, registra quién lo canceló y cuándo, y deja de contar. Nadie elige la fecha de cierre, porque una fecha elegida podría falsear quién tenía acceso. Un bloqueo que ya terminó, o que ya se levantó o se canceló, no se vuelve a cerrar.
 
 **Una ventaja concreta de bloquear la cuenta en vez de retirarle los roles.** Cuando alguien sale de vacaciones se podrían quitar sus roles y devolvérselos al volver. En la práctica alguien olvida devolver alguno, o devuelve uno de más. Bloqueando la cuenta, los roles quedan intactos: la persona vuelve y encuentra exactamente los mismos accesos que tenía.
 
-**Al bloquear una cuenta se cierran también sus sesiones abiertas**, o la persona seguiría dentro hasta que vencieran. Como las sesiones viven en el servidor (§5.12), cerrarlas es borrarlas y el efecto es inmediato.
+**Cuando empieza un bloqueo se cierran también las sesiones abiertas de la cuenta**, o la persona seguiría dentro hasta que vencieran. Como las sesiones viven en el servidor (§5.12), cerrarlas es borrarlas y el efecto es inmediato. Un bloqueo programado surte efecto al llegar su inicio: desde ese momento la sesión deja de servir, sin que nadie tenga que hacer nada.
 
 #### Los datos personales van en `employees`, no aquí
 
@@ -723,6 +750,7 @@ Un rol con su nivel de acceso. Define qué puede hacer alguien, no sobre qué em
 | code | name | empresa | alcance | del sistema |
 |---|---|---|---|---|
 | `SUPERADMIN` | Superadministrador | *(todas)* | Todo el sistema | Sí |
+| `ADMIN_ACCESOS` | Administrador de accesos | *(todas)* | Todo el sistema | Sí |
 | `ADMIN_EMPRESA` | Administrador de empresa | *(todas)* | Una empresa | Sí |
 | `ASESOR_VENTAS` | Asesor de ventas | *(todas)* | Una sede | Sí |
 | `JEFE_PATIO` | Jefe de patio | Millennium Perú | Una sede | No |
@@ -731,7 +759,7 @@ El último lo creó el administrador de Perú: no le aparece a Colombia.
 
 #### Crear roles nuevos
 
-Los seis roles que trae el sistema (cuadro al final de esta sección) son el punto de partida, no la lista definitiva: los puestos cambian y hay que poder agregar roles sin tocar el programa. Crear uno es insertar una fila en `roles` y marcar sus permisos, todo desde la pantalla de administración.
+Los siete roles que trae el sistema (cuadro al final de esta sección) son el punto de partida, no la lista definitiva: los puestos cambian y hay que poder agregar roles sin tocar el programa. Crear uno es insertar una fila en `roles` y marcar sus permisos, todo desde la pantalla de administración.
 
 | Quién lo crea | Dónde queda disponible |
 |---|---|
@@ -742,7 +770,7 @@ Cinco reglas que gobiernan esto:
 
 **1. No se puede dar lo que no se tiene.** Al crear o editar un rol, solo se pueden marcar permisos que quien lo está haciendo ya posee. Sin esta regla, el administrador de una empresa podría crear un rol con acceso total y asignárselo: quedaría convertido en superadministrador sin que nadie lo autorizara.
 
-**2. La misma regla vale al asignar.** Restringir solo la creación no sirve de nada: si el administrador no puede crear un rol con acceso total pero sí puede asignarse uno existente que ya lo tiene, el resultado es idéntico. Nadie puede otorgar un rol cuyos permisos excedan los suyos.
+**2. La misma regla vale al asignar.** Restringir solo la creación no sirve de nada: si el administrador no puede crear un rol con acceso total pero sí puede asignarse uno existente que ya lo tiene, el resultado es idéntico. Nadie puede otorgar un rol cuyos permisos excedan los suyos. La única excepción es el administrador de accesos, con los límites que se explican más abajo (D-56).
 
 **3. Los permisos no tienen niveles, son conjuntos.** No existe "un permiso por encima de otro": la comparación es de contenido. El rol nuevo es válido si todos sus permisos están dentro de los de quien lo crea.
 
@@ -752,11 +780,19 @@ Cinco reglas que gobiernan esto:
 
 Esto es también la razón de fondo por la que un usuario nunca se borra: si desapareciera, los roles y accesos que autorizó quedarían sin responsable y no habría forma de explicar quién los aprobó.
 
-Como los accesos otorgados no caducan solos, el control que los mantiene sanos es revisarlos cada cierto tiempo. El modelo lo permite sin campos adicionales: cada asignación guarda quién la otorgó y cuándo, así que se puede listar todo lo vigente y depurar lo que ya no corresponde.
+Como los accesos otorgados no caducan solos —salvo los que se otorgan con caducidad (§5.7, §5.8)—, el control que los mantiene sanos es revisarlos cada cierto tiempo. El modelo lo permite sin campos adicionales: cada asignación guarda quién la otorgó y cuándo, así que se puede listar todo lo vigente y depurar lo que ya no corresponde.
 
 Los roles marcados como propios del sistema no se pueden editar ni borrar, aunque quien lo intente tenga todos los permisos.
 
-**Límite de lo que la base puede garantizar.** La consistencia entre la empresa del rol y la empresa de la asignación no se puede exigir con una llave foránea, porque el campo admite vacío para los roles generales. Se resuelve con una validación programada que rechaza asignar un rol de una empresa dentro de otra. Las reglas 1 a 3 también viven en la aplicación: la base no sabe qué permisos tiene quien está ejecutando la operación.
+**Una excepción a la regla 2, con nombre propio** (D-56). El administrador de accesos asigna roles cuyos permisos no tiene. Su trabajo es dar acceso, no registrar facturas ni dar de alta unidades, y no tendría sentido darle todos los permisos del sistema solo para que pueda asignarlos. La excepción tiene tres límites, que son los que la hacen segura (D-55):
+
+- **Nunca actúa sobre sí mismo.** No se asigna roles ni actúa sobre su propia cuenta, como nadie (D-70).
+- **Nunca otorga ni retira `SUPERADMIN`, `ADMIN_ACCESOS` ni `ADMIN_EMPRESA`.** Esos tres los otorga y los retira solo un superadministrador.
+- **Nunca actúa sobre una cuenta protegida**, la que tiene `SUPERADMIN`, `ADMIN_ACCESOS` o `ADMIN_EMPRESA` vigente: no la vincula a un colaborador, no le asigna ni le retira roles, no la bloquea ni le levanta bloqueos y no le restablece la contraseña. Esas cuentas las administra solo un superadministrador.
+
+Con esos límites, la excepción no abre el camino que la regla 2 cierra: el administrador de accesos no puede convertirse en superadministrador ni convertir a otro, ni quitarle el acceso a quien lo controla. Tampoco puede tomar la cuenta de un administrador de empresa —restablecerle la contraseña y entrar como él— para inventar un colaborador y darle acceso. Todo lo que otorga queda con su nombre en `granted_by`. Es la única excepción a la regla 2; extenderla a otro rol requiere una decisión nueva.
+
+**Límite de lo que la base puede garantizar.** La consistencia entre la empresa del rol y la empresa de la asignación no se puede exigir con una llave foránea, porque el campo admite vacío para los roles generales. Se resuelve con una validación programada que rechaza asignar un rol de una empresa dentro de otra. Las reglas 1 a 3, la excepción del administrador de accesos y sus límites también viven en la aplicación: la base no sabe qué permisos ni qué roles tiene quien está ejecutando la operación.
 
 **Reglas de negocio**
 
@@ -765,11 +801,14 @@ Roles que trae el sistema:
 | code | name | Alcance |
 |---|---|---|
 | `SUPERADMIN` | Superadministrador | Todo el sistema |
+| `ADMIN_ACCESOS` | Administrador de accesos | Todo el sistema |
 | `ADMIN_EMPRESA` | Administrador de empresa | Una empresa |
 | `OPERACIONES` | Operaciones | Una empresa |
 | `CONTABILIDAD` | Contabilidad | Una empresa |
 | `ASESOR_VENTAS` | Asesor de ventas | Una sede |
 | `TALLER` | Taller | Una sede |
+
+El administrador de accesos da acceso a los colaboradores, asigna y retira roles, bloquea cuentas y restablece contraseñas, en todas las empresas del grupo (D-55). Es un rol para todo el grupo, no uno por empresa, y por eso su alcance es todo el sistema: ve todas las empresas. Pueden tenerlo varias personas, para que los accesos no se detengan cuando una falta. No registra colaboradores ni sus salidas o regresos (D-57), y sus tres límites están en la excepción a la regla 2. Una misma cuenta no tiene a la vez este rol y el de administrador de empresa (D-71).
 
 ### 5.6 `permissions` y `role_permissions` — Permisos
 Cada acción concreta que se puede autorizar por separado. Un rol es un conjunto de permisos.
@@ -802,7 +841,10 @@ Cada acción concreta que se puede autorizar por separado. Un rol es un conjunto
 |---|---|
 | Operaciones | 1, 3 |
 | Contabilidad | 1, 2 |
-| Administrador de empresa | 1, 2, 3, 4, 5, 6 |
+| Administrador de empresa | 1, 2, 3, 4, 5 |
+| Administrador de accesos | 6 |
+
+El administrador de empresa no lleva `seguridad.crear_usuario`: las cuentas las crea el administrador de accesos (D-57).
 
 Contabilidad puede registrar facturas atrasadas y Operaciones no: es la excepción que pide la guía funcional, resuelta con un permiso en vez de con una condición escrita en el programa.
 
@@ -827,9 +869,10 @@ Aquí se responde la pregunta real: *esta persona, con este rol, sobre qué empr
 | `granted_by` | BIGINT FK → `users` | Sí | Quién se lo dio | Primera pregunta de toda revisión de accesos: quién autorizó esto |
 | `expires_at` | TIMESTAMPTZ | Sí | Fecha prevista de caducidad. Vacío significa que no caduca | Para accesos temporales, como el de un auditor externo que necesita entrar un mes. Sin esto, el acceso queda vivo hasta que alguien se acuerde de retirarlo |
 | `revoked_at` | TIMESTAMPTZ | Sí | Cuándo se le quitó. Vacío significa que lo tiene todavía | El acceso se retira, no se borra: hay que poder explicar qué permisos tenía una persona el día que hizo una operación |
+| `revoked_by` | BIGINT FK → `users` | Sí | Quién se lo quitó: quien lo retiró, quien registró la salida que lo hizo caer, o `SYSTEM` cuando venció. Vacío mientras lo tenga. Obligatorio al retirar | Sin este dato se sabe quién dio el acceso pero no quién lo quitó, que es la mitad de la pregunta en una revisión de accesos, como en los bloqueos (§5.4). Con el administrador de accesos retirando roles en todas las empresas, la pregunta va a aparecer |
 | `revocation_reason` | VARCHAR(20) | Sí | Por qué se retiró: `retiro` (alguien lo quitó), `caducidad` (venció), `baja_colaborador` (la persona salió de esa empresa) o `baja_cuenta` (la cuenta se bloqueó con motivo `baja`). Obligatorio al retirar | Distingue un acceso que alguien decidió quitar de uno que venció solo o que cayó por una salida. Sin él, los cuatro casos se ven iguales al revisar |
 
-**Relaciones.** Es la tabla que une casi todo el bloque: apunta a `users` (dos veces: quién recibe el acceso y quién lo otorgó), a `roles`, a `companies`, a `branches` y a `commercial_brands`. No le apunta nadie.
+**Relaciones.** Es la tabla que une casi todo el bloque: apunta a `users` (tres veces: quién recibe el acceso, quién lo otorgó y quién lo retiró), a `roles`, a `companies`, a `branches` y a `commercial_brands`. No le apunta nadie.
 
 
 #### Un usuario con acceso a dos empresas
@@ -838,8 +881,8 @@ El rol define **qué puede hacer** una persona; la asignación define **sobre qu
 
 | Persona | Rol | Sobre |
 |---|---|---|
-| Tere | Contabilidad | Lizzo |
-| Tere | Contabilidad | Lima Bikes |
+| Tere | Contabilidad | Millennium Perú |
+| Tere | Contabilidad | Millennium Colombia |
 
 Tere hace lo mismo en ambas, pero es un acceso por empresa. Si mañana deja de llevar la contabilidad de una, se retira esa fila y la otra queda intacta.
 
@@ -847,8 +890,8 @@ Nada obliga a que el rol sea el mismo en las dos:
 
 | Persona | Rol | Sobre |
 |---|---|---|
-| Alejandro | Operaciones | Lima Bikes |
-| Alejandro | Asesor de ventas | Lizzo — sede San Isidro |
+| Alejandro | Operaciones | Millennium Colombia |
+| Alejandro | Asesor de ventas | Millennium Perú — sede San Isidro |
 
 Hay entonces tres formas de dar acceso, y conviene no confundirlas:
 
@@ -888,9 +931,33 @@ Lo que el sistema impide por sí solo, sin depender del programa:
 | La sede debe pertenecer a la empresa asignada | Dar acceso a la sede de otra empresa |
 | La marca debe pertenecer a la empresa asignada | Dar acceso a una marca que no es de esa empresa |
 | Un rol de alcance global no puede limitarse a una marca | Un superadministrador que en realidad solo ve una parte del sistema |
-| El mismo rol no se puede dar dos veces sobre lo mismo, mientras siga vigente | Asignaciones duplicadas que después nadie sabe cuál retirar |
+| El mismo rol no se puede dar dos veces sobre lo mismo —la misma empresa, sede y marca—, mientras siga vigente. Sobre dos empresas distintas, sí | Asignaciones duplicadas que después nadie sabe cuál retirar, sin impedir que Tere tenga Contabilidad en dos empresas |
 
 Lo que valida la aplicación, porque la base no puede verlo en una sola fila: para otorgar un rol de alcance empresa o sede, la cuenta debe estar vinculada a un colaborador activo de esa empresa; para uno de alcance sistema, a un colaborador activo de alguna empresa (§5.3). La única excepción es el rol del primer superadministrador, que se otorga al arrancar (§5.2).
+
+También valida que `ADMIN_EMPRESA` nunca se limite a una marca (D-59). Administrar una empresa —registrar sus colaboradores, sus salidas y sus regresos— alcanza a la empresa entera, y un colaborador no pertenece a una marca. La base no puede verlo, porque el código del rol no está en la fila de la asignación. Los demás roles de empresa y de sede sí pueden limitarse a una marca, como el asesor de Lima Bikes.
+
+#### Quién otorga y retira roles
+
+Otorgar y retirar roles es trabajo de dos roles del sistema (D-55, D-57):
+
+| Quién | Qué roles otorga y retira | Sobre qué cuentas |
+|---|---|---|
+| Superadministrador | Cualquiera, sobre cualquier empresa, sede o marca | Cualquiera, salvo `SYSTEM` y la suya |
+| Administrador de accesos | Cualquiera, salvo `SUPERADMIN`, `ADMIN_ACCESOS` y `ADMIN_EMPRESA`, sobre cualquier empresa, sede o marca | Cualquiera, salvo `SYSTEM`, la suya y las protegidas (§5.5) |
+| Administrador de empresa | Ninguno | — |
+| Cualquier otro rol | Ninguno | — |
+
+- Retirar una asignación exige poder otorgarla: el administrador de accesos no retira un `SUPERADMIN`, un `ADMIN_ACCESOS` ni un `ADMIN_EMPRESA`.
+- Nadie se otorga ni se retira roles a sí mismo, tampoco un superadministrador (D-70).
+- Quien otorga o retira tiene que estar vinculado a un colaborador activo (§5.2).
+- El administrador de empresa no otorga roles, ni siquiera en su empresa: registra a las personas, y el acceso lo da otro (§5.3).
+- **Separación estática** (D-71). Una cuenta nunca tiene `ADMIN_ACCESOS` y `ADMIN_EMPRESA` vigentes a la vez: otorgar uno a quien tiene el otro se rechaza. Si una persona pasa de un puesto al otro, primero se le retira el que tenía.
+- **Un rol privilegiado exige contraseña propia** (D-72). `SUPERADMIN`, `ADMIN_ACCESOS` y `ADMIN_EMPRESA` se otorgan solo a una cuenta que ya cambió su contraseña provisional (§5.4). El primer superadministrador no se otorga así: lo crea el arranque (§5.2).
+- El mismo rol puede tenerse sobre dos empresas a la vez, como Tere; retirar uno no toca el otro.
+- La segunda empresa de una persona la vincula el administrador de accesos: al dar acceso a su colaborador en la otra empresa con el mismo correo, el perfil se vincula a la cuenta que ya tiene, sin crear otra (§5.3). Un superadministrador solo hace falta si la cuenta es protegida.
+
+Las dos reglas nuevas las valida la aplicación: la base no ve dos asignaciones a la vez ni la contraseña de la cuenta al guardar una asignación.
 
 ### 5.8 Cómo se resuelven los permisos
 
@@ -898,25 +965,35 @@ Lo que valida la aplicación, porque la base no puede verlo en una sola fila: pa
 2. **El alcance baja, nunca sube.** Un rol sobre una empresa alcanza todas sus sedes. Uno sobre todo el sistema alcanza todas las empresas. Nunca al revés.
 3. **Consecuencia práctica:** como los permisos se suman, dar un rol amplio "por un rato" no se compensa dando además uno restringido. Los roles deben ser estrechos y combinables.
 4. **Los accesos retirados dejan de valer**, pero se conservan para poder reconstruir quién podía hacer qué en una fecha pasada.
-5. **Un acceso que caduca se cierra como si lo hubieran retirado**: el sistema le pone la fecha de retiro con motivo `caducidad`. Tiene que ser así y no quedar abierto con la fecha vencida, porque de lo contrario esa persona no podría recibir de nuevo el mismo acceso —el sistema lo vería como duplicado del que sigue abierto— y el auditor externo que vuelve el año siguiente quedaría fuera.
+5. **Un acceso que caduca se cierra como si lo hubieran retirado** (D-64): un proceso automático le pone como fecha de retiro la de su caducidad —no la del momento en que pasa el proceso—, con motivo `caducidad`. Tiene que ser así y no quedar abierto con la fecha vencida, porque de lo contrario esa persona no podría recibir de nuevo el mismo acceso —el sistema lo vería como duplicado del que sigue abierto— y el auditor externo que vuelve el año siguiente quedaría fuera. El acceso deja de valer exactamente al caducar, sin esperar al proceso: lo vigente es lo que no está retirado y cuya caducidad no llegó. Si se otorga de nuevo el mismo rol sobre lo mismo antes de que pase el proceso, en ese momento se cierra la asignación vencida con esa misma llave, y solo esa.
 
 ### 5.9 Semilla inicial y protección del acceso
 
-El usuario `SYSTEM` no puede iniciar sesión y figura como responsable de toda carga masiva y de todo proceso automático, incluida la actualización por archivo del SAT. Sin él, esos registros quedarían sin autor.
+El usuario `SYSTEM` no puede iniciar sesión y figura como responsable de toda carga masiva y de todo proceso automático, incluida la actualización por archivo del SAT. Sin él, esos registros quedarían sin autor. Tampoco se vincula a un colaborador, no recibe roles, no se bloquea y no se le restablece la contraseña: no es una persona y nadie lo administra.
 
-**Qué pasa automáticamente al registrar una baja.** Cuando se crea un bloqueo con motivo `baja`, el sistema revoca en la misma operación todas las asignaciones activas de esa persona, con motivo `baja_cuenta`. Son dos acciones distintas y las dos hacen falta: bloquear la cuenta corta el acceso en el momento, y retirar los roles evita que, si esa cuenta se reactiva algún día, la persona recupere de golpe todo lo que tenía. Automatizarlo es lo que impide que el segundo paso dependa de que alguien lo recuerde.
+**Qué pasa automáticamente al registrar una baja.** El bloqueo con motivo `baja` lo crea solo el sistema, cuando se registra la salida del último colaborador activo de la cuenta (§5.3, D-69); nadie lo abre ni lo cierra a mano. En la misma operación, el sistema revoca todas las asignaciones activas de esa persona, con motivo `baja_cuenta`. Son dos acciones distintas y las dos hacen falta: bloquear la cuenta corta el acceso en el momento, y retirar los roles evita que, si esa cuenta se reactiva algún día, la persona recupere de golpe todo lo que tenía. Automatizarlo es lo que impide que el segundo paso dependa de que alguien lo recuerde.
 
 Nada se pierde al revocar: las asignaciones quedan con su fecha de retiro y se puede seguir explicando qué accesos tenía esa persona en cualquier fecha pasada.
 
 Las vacaciones y las licencias funcionan al revés a propósito: ahí los roles **no** se tocan. Si se retiraran, al volver habría que devolvérselos y alguien olvidaría uno o daría uno de más. La persona regresa con exactamente los mismos accesos que tenía.
 
-**Protección necesaria:** el sistema impide retirar el último superadministrador activo, ya sea quitándole el rol, bloqueando su cuenta o registrando la salida de su colaborador. Sin ninguno, no hay forma de volver a entrar sin tocar la base a mano.
+**Protección necesaria:** el sistema impide retirar el último superadministrador activo, ya sea quitándole el rol, bloqueando su cuenta o registrando la salida que la cierra. Sin ninguno, no hay forma de volver a entrar sin tocar la base a mano.
 
-**El primer superadministrador no puede dar acceso a nadie ni otorgar roles** hasta vincularse a su perfil de colaborador (§5.2).
+No basta con que quede otro hoy (D-65). Una operación que le quita, o le quitará, el rol a un superadministrador solo procede si queda otra cuenta que lo sea **de forma duradera**: con el rol `SUPERADMIN` vigente y sin caducidad, y sin ningún bloqueo en curso ni programado. Esas operaciones son retirarle el rol, bloquearlo ahora o con un bloqueo programado, y registrar la salida que cierra su cuenta. Un superadministrador cuyo rol caduca en un mes, o que tiene unas vacaciones programadas, no cuenta como respaldo: al llegar esa fecha el sistema podría quedarse sin ninguno sin que nadie haya hecho nada. Además, esas operaciones se hacen de a una: si dos personas intentan al mismo tiempo retirar a dos superadministradores distintos, la segunda espera a la primera y ve su resultado, en vez de pasar las dos.
+
+**Es el único freno de una salida** (D-60). La salida de un colaborador siempre retira sus roles en esa empresa y, si era el último colaborador activo de la cuenta, la cierra, también si es la de un administrador de accesos o de empresa: quitarle el acceso a quien se fue no espera a nadie. Solo se detiene si dejaría al sistema sin un superadministrador activo.
+
+**El primer superadministrador no puede dar acceso a nadie ni otorgar roles** hasta vincularse a su perfil de colaborador (§5.2). Lo mismo vale para el administrador de accesos y el de empresa: actúan solo mientras su cuenta está vinculada a un colaborador activo (D-57). Vincularse a sí mismo es solo de ese momento: una cuenta que ya tiene un colaborador activo no se vincula a sí misma a otro (D-70).
+
+**No hace falta proteger al último administrador de accesos.** El superadministrador puede hacer todo lo que él hace, así que el sistema nunca se queda sin quien administre los accesos (D-55).
 
 ### 5.10 Candidatos del bloque 2
 
-Ninguno: todos los campos que estaban en espera se incorporaron. `last_login_at`, `password_updated_at` y `mfa_secret` entraron a `users`; `phone` y `photo_path`, a `employees`; `expires_at`, a las asignaciones; y los roles propios por empresa quedaron resueltos al cerrar D-7.
+Campos que hoy no entran porque nadie los usa todavía, con la condición que los admitiría. Los que estaban en espera antes se incorporaron: `last_login_at`, `password_updated_at` y `mfa_secret` entraron a `users`; `phone` y `photo_path`, a `employees`; `expires_at`, a las asignaciones; y los roles propios por empresa quedaron resueltos al cerrar D-7.
+
+| Campo | Tabla | Qué lo admitiría |
+|---|---|---|
+| `termination_reason` | `employees` | Una pantalla con la historia del colaborador, o un reporte de rotación, que muestre por qué salió. Si el reporte agrupa por motivo, entra como catálogo y no como texto libre |
 
 Los datos personales de las personas viven en `employees`, no aquí.
 
@@ -1013,9 +1090,10 @@ Cómo se mantiene iniciada la sesión de alguien (decisión D-33). No es un dato
 | Cierre por inactividad | 30 minutos | Una sesión olvidada en una computadora compartida no queda abierta indefinidamente |
 | Duración máxima | 8 horas, aunque se esté usando | Obliga a volver a entrar en cada jornada |
 | Cambio de contraseña | Se cierran las demás sesiones de la persona; sigue abierta la que hizo el cambio | Quien conocía la contraseña anterior pierde el acceso en ese momento |
-| Bloqueo de la cuenta | Se cierran todas sus sesiones | Ver §5.4 |
+| Restablecimiento de la contraseña por un administrador | Se cierran todas las sesiones de la persona | Nadie sigue dentro con la contraseña anterior (§5.4) |
+| Bloqueo de la cuenta | Se cierran todas sus sesiones cuando el bloqueo empieza, también si estaba programado | Ver §5.4 |
 | Cerrar sesión | Se borra la sesión en el servidor, no solo en la pantalla | La cookie que quedara en el navegador ya no sirve para nada |
-| Roles y contraseña provisional | Se leen de la base en cada operación, no se guardan en la sesión | Un rol otorgado o retirado vale desde la operación siguiente, sin esperar a que la persona vuelva a entrar |
+| Roles, bloqueos y contraseña provisional | Se leen de la base en cada operación, no se guardan en la sesión | Un rol otorgado o retirado vale desde la operación siguiente, y un bloqueo programado corta la sesión apenas empieza, sin esperar a que la persona vuelva a entrar |
 
 **Protección de la cookie.** Viaja marcada como inaccesible para el código de la página (`HttpOnly`), solo hacia el mismo sitio (`SameSite=Strict`) y, en producción, solo por HTTPS (`Secure`). Como el navegador la envía por sí solo, toda operación que modifica datos exige además un token contra solicitudes falsificadas (CSRF) que únicamente la propia aplicación puede leer.
 
@@ -1027,17 +1105,19 @@ Cómo se mantiene iniciada la sesión de alguien (decisión D-33). No es un dato
 
 ### 5.13 Lo que el backend implementa hoy
 
-El bloque 2 se construyó antes que `organization`, así que lo que depende de empresas, sedes y colaboradores quedó en una versión provisional. Nada de esto cambia el diseño de este capítulo: es lo que falta para llegar a él.
+El paso 3 completó lo que el bloque 2 había dejado provisional: colaboradores, dar acceso, asignaciones con su empresa, sede y marca, bloqueos, caducidad y la frontera entre empresas en la base (§2.5). Lo que sigue es lo que todavía no llega al diseño de este capítulo. Nada de esto cambia el diseño: es lo que falta para llegar a él.
 
 | Tema | Hoy | Cuándo se completa |
 |---|---|---|
-| `user_roles` | Se creó antes de su bloque (3b), sin `company_id`, `branch_id` ni `commercial_brand_id`. Solo se asignan roles de alcance sistema | Con el bloque 3 |
-| `roles.company_id` | No existe todavía: todos los roles son generales, y `code` es único en todo el sistema | Con el bloque 3, que define también la unicidad por empresa |
-| Otorgar un rol | Se exige tener ese mismo rol vigente, porque todavía no hay permisos que comparar (§5.5, reglas 1 a 3) | Cuando existan `permissions` y `role_permissions` |
-| Gestión de usuarios | Solo el superadministrador, porque todavía no se pueden acotar por empresa (§2.5) | Con el bloque 3 |
-| Colaboradores | No existen: las cuentas se crean solas y el registro público pide solo correo y contraseña, así que D-38 todavía no se aplica | Con el bloque 3b |
-| `user_access_suspensions`, `permissions`, `role_permissions` | No existen todavía | Los bloqueos, con el bloque 3b; los permisos, cuando se cargue la matriz de permisos por rol (§14) |
-| Retirar un rol y caducidad | No hay operación para retirar un rol ni nada que fije una caducidad, así que las protecciones de §5.5 y §5.9 y el cierre por caducidad de §5.8 todavía no tienen qué vigilar | Con la pantalla de roles y usuarios |
+| `permissions` y `role_permissions` | No existen. Quién otorga qué lo fija §5.7: el superadministrador otorga cualquier rol y el administrador de accesos cualquiera salvo `SUPERADMIN`, `ADMIN_ACCESOS` y `ADMIN_EMPRESA`. Las reglas 1 a 3 de §5.5 todavía no tienen permisos que comparar, y las operaciones exigen un rol, no un permiso | Cuando se cargue la matriz de permisos por rol, antes del paso 5 (§3, ajuste 3) |
+| Qué lee un rol global | El superadministrador y el administrador de accesos leen los datos de todas las empresas: hoy empresas, marcas, sedes, ubicaciones y colaboradores | Con la matriz de permisos, antes del paso 5 (D-68) |
+| La marca de una asignación | Acota dónde se otorga un rol, pero todavía no acota lo que se lee: la frontera que aplican la aplicación y la base es la empresa. Hoy ningún dato que se lee pertenece a una marca | Antes del paso 5: los vehículos son el primer dato que pertenece a una marca |
+| `employees.termination_reason` | Existe, y la salida lo pide, pero nada lo lee: es un candidato (§5.10) | Se quita del backend y del frontend en el próximo cambio de colaboradores |
+| `user_roles.revoked_by` | No existe todavía: se sabe quién otorgó cada rol, pero no quién lo retiró (§5.7) | Con su migración, antes de dar los accesos reales |
+| `roles.company_id` | No existe todavía: todos los roles son generales, y `code` es único en todo el sistema. Tampoco está decidido quién crea los roles de una empresa, ahora que el administrador de empresa no otorga roles (D-57) | Con el paso 2, que define también la unicidad por empresa. Quién los crea se decide con la matriz de permisos |
+| Registro público | Sigue pidiendo solo correo y contraseña y crea una cuenta sin colaborador, contra D-38. Viene apagado (D-32) | Cuando las convenciones de la API definan cómo lista sedes y tipos de documento sin sesión (convenciones, §14.16) |
+| Regreso de un colaborador | Reemplaza la fecha de ingreso y borra la de salida: el período anterior en esa empresa se pierde | Necesita un diseño en este diccionario (§14), antes de cargar los colaboradores reales |
+| Restablecer una contraseña | La clave provisional se muestra a quien la restablece, que se la hace llegar a la persona (D-63). Lo ideal es un enlace de un solo uso al correo de la persona, para que nadie más conozca la clave | Cuando exista un servicio de correo. Entonces cambian D-63, §5.4 y §5.12 |
 
 ---
 
@@ -2457,7 +2537,7 @@ La primera fila es el caso que más importa: la placa es la llave con que se cru
 
 ## 14. Decisiones
 
-Queda una decisión abierta, con su momento fijado: las longitudes de los documentos tributarios de Colombia y México (§4.7), antes de registrar la primera empresa de cada país (D-52). Lo que falta para construir son datos, no definiciones: la matriz de permisos por rol, los datos maestros reales —razón social y documento tributario de la empresa, sedes con su código de establecimiento, marcas, proveedores, colaboradores—. El archivo oficial de divisiones territoriales de Perú ya está cargado (§4.5).
+Quedan dos decisiones abiertas. Una tiene su momento fijado: las longitudes de los documentos tributarios de Colombia y México (§4.7), antes de registrar la primera empresa de cada país (D-52). La otra es cómo se conserva el período anterior de un colaborador que regresa a la misma empresa (§5.3, §5.13), antes de cargar los colaboradores reales: desde entonces, cada regreso borraría un período que ya no se recupera. Lo que falta para construir son datos, no definiciones: la matriz de permisos por rol, que tiene que llegar antes del paso 5 (D-68), y los datos maestros reales —razón social y documento tributario de la empresa, sedes con su código de establecimiento, marcas, proveedores, colaboradores—. El archivo oficial de divisiones territoriales de Perú ya está cargado (§4.5).
 
 ### Decisiones ya cerradas
 
@@ -2496,6 +2576,24 @@ Queda una decisión abierta, con su momento fijado: las longitudes de los docume
 | D-52 | Un paso se cierra con el alcance de los países que operan. Hoy opera solo Perú (D-5), así que el bloque 1 se cerró con su ubigeo cargado. Lo que es propio de otro país —su lista oficial de divisiones (D-2) y las longitudes de sus documentos tributarios (§4.7)— se resuelve antes de registrar su primera empresa |
 | D-53 | La división de una dirección es obligatoria cuando el país de la dirección tiene sus divisiones cargadas; solo puede faltar en un país sin ellas, como la dirección de un proveedor extranjero (§4.6) |
 | D-54 | `geo_divisions.parent_level` es una columna que calcula la base (el escalón menos uno) y no guarda un dato del negocio: existe solo para que la llave hacia la división superior incluya su escalón (§4.5). Es la única excepción a la regla de no guardar lo derivable, y la aplicación nunca la escribe |
+| D-55 | Existe un administrador de accesos para todo el grupo: el rol `ADMIN_ACCESOS`, del sistema y de alcance sistema, que da acceso a los colaboradores, asigna y retira roles, bloquea cuentas y restablece contraseñas en todas las empresas, y por eso las ve todas. Pueden tenerlo varias personas. Tiene tres límites: nunca actúa sobre su propia cuenta (D-70); nunca otorga ni retira `SUPERADMIN`, `ADMIN_ACCESOS` ni `ADMIN_EMPRESA`, que otorga y retira solo un superadministrador; y nunca actúa sobre una cuenta protegida —la que tiene `SUPERADMIN`, `ADMIN_ACCESOS` o `ADMIN_EMPRESA` vigente—, que solo administra un superadministrador. No se protege al último administrador de accesos, porque el superadministrador puede hacer todo lo que él hace (§5.5, §5.7, §5.9) |
+| D-56 | El administrador de accesos asigna roles cuyos permisos no tiene, dentro de los límites de D-55. Es la única excepción a la regla 2 de §5.5; extenderla a otro rol requiere una decisión nueva (§5.5) |
+| D-57 | Separación de funciones. El administrador de una empresa registra y modifica sus colaboradores y registra sus salidas y regresos; ve las cuentas de su empresa sin modificarlas, y no da acceso, no otorga ni retira roles, no bloquea cuentas ni restablece contraseñas. El administrador de accesos hace eso y no registra colaboradores, salidas ni regresos, para que nadie pueda inventar un colaborador y darle acceso. El superadministrador hace ambas cosas, además de las empresas y los catálogos. Todos actúan solo mientras su cuenta está vinculada a un colaborador activo, y ninguno actúa sobre lo suyo, como fija D-70 (§2.5, §5.2, §5.3, §5.4, §5.7) |
+| D-58 | Dar acceso crea la cuenta del colaborador, con una contraseña provisional que genera el sistema y se muestra una sola vez, o la vincula a la cuenta que la persona ya tiene por otra empresa del grupo; nunca cambia los roles ni la contraseña de una cuenta existente. Lo hacen el superadministrador y el administrador de accesos, este en cualquier empresa salvo con una cuenta protegida (D-55). La única cuenta que se vincula a sí misma es la del primer superadministrador, mientras no tiene un colaborador activo (D-70). Vincular una cuenta cerrada por una salida cierra su `baja` (§5.3, §5.4) |
+| D-59 | `ADMIN_EMPRESA` nunca se limita a una marca: administrar una empresa alcanza a la empresa entera. Lo valida la aplicación, porque la base no ve el rol en la fila de la asignación. Los demás roles de empresa y de sede sí pueden limitarse a una marca (§5.7) |
+| D-60 | La fecha de salida de un colaborador no puede ser posterior a hoy, calculado en la zona de su sede o, sin sede, en la del país de su empresa (§2.6): la salida se registra cuando ocurre. La salida siempre quita el acceso, también el de una cuenta protegida: retira los roles de esa empresa (`baja_colaborador`) y, si era el último colaborador activo, cierra la cuenta desde ese momento —`baja`, salvo que ya haya una en curso; `baja_cuenta`; sesiones cerradas—, termina las vacaciones o la licencia en curso, cancela los bloqueos programados de la línea laboral y no toca los bloqueos por seguridad. Su único freno es la protección del último superadministrador (§5.9). La fecha del regreso no es anterior a la de salida ni posterior a hoy, calculado igual. El regreso cierra solo la `baja`, y los roles no vuelven solos (§5.3, §5.4, §5.9) |
+| D-61 | Un bloqueo de cuenta empieza ahora o en el futuro, nunca en el pasado. Se cierra siempre en el momento en que alguien lo cierra, sin fecha elegida: uno en curso termina ahí; uno programado queda cancelado, conserva su período, registra quién y cuándo, y deja de contar. Uno terminado, levantado o cancelado no se vuelve a cerrar (§5.4) |
+| D-62 | Los bloqueos de cuenta corren en dos líneas de tiempo: la laboral —`vacaciones`, `licencia`, `baja`— y la de `seguridad`. Dentro de una línea no se cruzan, incluso en el pasado; entre líneas sí. Basta un bloqueo en curso de cualquier línea para que la cuenta no entre. La salida y el regreso no tocan la línea de seguridad (§5.4) |
+| D-63 | Un superadministrador o el administrador de accesos puede restablecer la contraseña de otra cuenta: el sistema genera una provisional, la muestra una sola vez, obliga a cambiarla y cierra todas las sesiones de esa cuenta. Nadie restablece así la suya, la de `SYSTEM` no se restablece, y el administrador de accesos no la restablece a una cuenta protegida (§5.4, §5.12) |
+| D-64 | Un proceso automático cierra las asignaciones vencidas con su caducidad como fecha de retiro y motivo `caducidad`. El acceso deja de valer exactamente al caducar, sin esperar al proceso (§5.8) |
+| D-65 | La protección del último superadministrador mira hacia adelante: una operación que le quita o le quitará el rol a una cuenta —retirarlo, bloquearla ahora o con un bloqueo programado, registrar la salida que la cierra— procede solo si otra cuenta queda como superadministradora duradera: con el rol vigente y sin caducidad, y sin bloqueos en curso ni programados. Esas operaciones se hacen de a una, para que dos solicitudes simultáneas no dejen al sistema sin ninguno (§5.9) |
+| D-66 | La frontera entre empresas la defiende también la base: Row Level Security, habilitada y forzada en toda tabla con `company_id` y en `companies`. La aplicación usa una cuenta de base que no es dueña de nada y fija el alcance al comenzar cada transacción; sin alcance no se ve nada. Los roles de alcance sistema, el arranque y los procesos automáticos actúan con alcance `SYSTEM` explícito (§2.5) |
+| D-67 | Los bloqueos de cuenta impiden el cruce con una exclusión `EXCLUDE USING gist`, no con `WITHOUT OVERLAPS`: un bloqueo cancelado no cuenta, y la línea de tiempo que se compara se deduce del motivo y no se guarda. Es una excepción con nombre a la regla de §2.2 (§2.2, §5.4) |
+| D-68 | La matriz de permisos llega antes del paso 5, el primero con operaciones de negocio, y acota también lo que lee un rol de alcance sistema. Hasta entonces, el superadministrador y el administrador de accesos leen los datos de todas las empresas, que hoy son empresas, marcas, sedes, ubicaciones y colaboradores (§3, §5.13) |
+| D-69 | La `baja` es de la salida: la abre solo el sistema, al registrar la salida del último colaborador activo de la cuenta, y la cierran solo el regreso o un nuevo acceso que vincula la cuenta. Nadie la abre ni la cierra a mano: los bloqueos que se registran a mano son por vacaciones, licencia o seguridad. Así una cuenta nunca queda dada de baja mientras su colaborador sigue activo (§5.4, §5.9) |
+| D-70 | Nadie actúa sobre lo suyo. Ninguna cuenta, tampoco la de un superadministrador, se otorga ni se retira roles, se bloquea, levanta sus bloqueos ni se restablece la contraseña por las operaciones de administración: cambiar la propia contraseña tiene su operación. Nadie registra su propia salida ni su propio regreso. La única cuenta que se vincula a sí misma es la del primer superadministrador, mientras no tiene un colaborador activo (§5.2, §5.3, §5.4, §5.7) |
+| D-71 | Separación estática de funciones: una cuenta nunca tiene `ADMIN_ACCESOS` y `ADMIN_EMPRESA` vigentes a la vez, para que quien registra los colaboradores de una empresa no sea también quien les da acceso. Lo valida la aplicación al otorgar cualquiera de los dos, porque la base no ve dos asignaciones a la vez (§5.5, §5.7) |
+| D-72 | Un rol privilegiado —`SUPERADMIN`, `ADMIN_ACCESOS` o `ADMIN_EMPRESA`, los que hacen protegida una cuenta— se otorga solo a una cuenta que ya cambió su contraseña provisional, para que quien la entregó nunca termine con una cuenta privilegiada en sus manos. El primer superadministrador no se otorga así: lo crea el arranque (§5.2, §5.4, §5.7) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
