@@ -80,7 +80,7 @@ Los campos que no pasan el filtro quedan listados como **candidatos**, con el cr
 - La llave primaria sigue siendo el entero. El UUID es una columna aparte con valor único.
 - Las direcciones web usan siempre el UUID. Dentro de los mensajes, los catálogos que siguen un estándar externo viajan por su código —`"moneda": "PEN"`— y las entidades del negocio por UUID.
 - Los archivos y documentos que salen del sistema llevan códigos de negocio y nombres —VIN, placa, RUC—, nunca el `id` interno ni el `public_id`. Excepción: un archivo diseñado para editarse y volver a subirse con el fin de actualizar registros existentes lleva además la columna `public_id` como llave estable, porque un código o un nombre pueden corregirse entre la descarga y la subida. El criterio es el uso de ida y vuelta, no quién recibe el archivo (D-51).
-- El `code` de un catálogo propio se puede corregir mientras nada dependa de él; una vez que hay registros que lo usan, queda fijo. Los códigos de normas externas no se editan nunca. La única excepción son los dos códigos ISO del país (D-47): se validan contra la lista de ISO 3166 y se corrigen mientras el país no tenga nada colgado. Extender esa excepción a otro código externo —moneda, sigla, ubigeo— requiere una decisión nueva (D-48).
+- El `code` de un catálogo propio se puede corregir mientras nada dependa de él; una vez que hay registros que lo usan, o una regla del programa que lo lee, queda fijo; un código que lee el programa queda fijo desde la semilla que lo crea (D-74). Los códigos de normas externas no se editan nunca. La única excepción son los dos códigos ISO del país (D-47): se validan contra la lista de ISO 3166 y se corrigen mientras el país no tenga nada colgado. Extender esa excepción a otro código externo —moneda, sigla, ubigeo— requiere una decisión nueva (D-48).
 
 ### 2.5 Separación de datos por empresa
 
@@ -1351,7 +1351,7 @@ La combinación de marca y modelo determina el tipo de vehículo y las reglas es
 | `vehicle_brand_id` | BIGINT FK → `vehicle_brands` | No | De qué marca es | El nombre del modelo solo identifica junto a la marca: hay modelos con nombres parecidos de marcas distintas |
 | `vehicle_type_id` | BIGINT FK → `vehicle_types` | No | Si es auto, moto o trimoto | De aquí sale el tipo de cada unidad, sin que nadie lo elija a mano |
 | `name` | VARCHAR(120) | No | Denominación oficial del modelo: `SAIL SEDAN 1.5L LT MT` | Se escribe una vez y todas las unidades la reutilizan |
-| `engine_cc` | INTEGER | Sí | Cilindraje | Es uno de los datos que hoy se registra por unidad y que en realidad es del modelo: escribirlo una vez evita que la misma moto figure con cilindrajes distintos |
+| `engine_cc` | INTEGER | Sí | Cilindraje en cc, entero. Vacío si no se conoce o no corresponde | Es uno de los datos que hoy se registra por unidad y que en realidad es del modelo: escribirlo una vez evita que la misma moto figure con cilindrajes distintos |
 | `fuel_type` | VARCHAR(20) | Sí | Combustible: gasolina, GNV, GLP, diésel, eléctrico, híbrido | Determina si la unidad necesita certificado de gas. Sin este dato, esa exigencia habría que recordarla a mano modelo por modelo |
 | `has_factory_screen` | BOOLEAN | No | Si el modelo ya viene con pantalla instalada de fábrica | Es la regla de la pantalla convertida en dato. Hoy está escrita como una comparación de texto —"Chevrolet más Sail Sedan"— y por eso agregar un modelo obliga a tocar el programa |
 | `is_active` | BOOLEAN | No | Si se siguen comprando unidades de este modelo | — |
@@ -1377,6 +1377,8 @@ La primera fila es el único modelo de auto que hoy requiere instalar pantalla; 
 - El tipo de vehículo de una unidad sale de su modelo y no se puede contradecir desde la unidad.
 - La exigencia de pantalla sale de este catálogo, no de comparar textos. Agregar un modelo sin pantalla de fábrica es cargar una fila.
 - Un modelo que deja de comprarse se desactiva: las unidades ya registradas lo siguen referenciando.
+- El cilindraje, cuando se registra, es un número entero de centímetros cúbicos mayor que cero (`vehicle_models_engine_cc_positive_ck`). Se escribe la cifra comercial del modelo, como en los ejemplos —125, 200, 1500—, no la técnica de la ficha (199,26). Un valor con parte decimal (1500,7) se rechaza: no se redondea ni se corta en silencio; 1500,0 es el mismo entero y se acepta. Queda vacío cuando no se conoce o no corresponde, y nunca se escribe 0 para decir «no tiene» (§2.2). No tiene un máximo: nada usa su magnitud (§2.3).
+- Un modelo eléctrico no lleva cilindraje: con `fuel_type` eléctrico, `engine_cc` queda vacío (`vehicle_models_electric_engine_cc_ck`).
 
 **Advertencia para la carga inicial.** Los dos catálogos entregados no coinciden entre sí. La guía funcional lista modelos sin marca y el documento de clientes los lista con marca y con otra escritura: `GRAND I10` frente a `I10`, o `GLORY 560 PRO 1.8L MT COMFORT 7 AS` frente a la misma denominación en minúsculas. Cargar ambos sin conciliarlos produce modelos duplicados el primer día, que es exactamente lo que este catálogo existe para evitar.
 
@@ -1410,7 +1412,7 @@ Lo que se instala en la unidad: GPS, pantalla multimedia y lo que venga.
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
-| `code` | VARCHAR(20) UNIQUE | No | Código corto: `GPS`, `PANTALLA` | Lo usan las reglas de habilitación |
+| `code` | VARCHAR(20) UNIQUE | No | Código corto: `GPS`, `PANTALLA` | Lo usan las reglas de habilitación, que reconocen el GPS y la pantalla por su código; por eso esos dos no se corrigen. El de otro equipo se corrige mientras ninguna instalación lo use (D-48, D-74) |
 | `name` | VARCHAR(60) | No | Nombre del equipo | — |
 | `blocks_availability` | BOOLEAN | No | Si sin este equipo la unidad no puede pasar a disponible | El GPS bloquea; la pantalla solo en los modelos que la necesitan. Escrito así, cambiar esa política es marcar una casilla y no modificar el programa |
 | `requires_serial` | BOOLEAN | No | Si al instalarlo hay que registrar un número de serie o identificador | El GPS tiene un identificador que después hace falta para ubicar la unidad. Sin este dato, quedaría al criterio de quien carga |
@@ -1446,6 +1448,7 @@ Lo que se instala en la unidad: GPS, pantalla multimedia y lo que venga.
 - Sin GPS instalado, la unidad no pasa a disponible. Es una de las tres condiciones que el cliente enumeró.
 - La pantalla solo bloquea en los modelos que no la traen de fábrica. En motos y trimotos no corresponde.
 - Un equipo no se instala en un tipo de vehículo al que no aplica. Solo cuenta la aplicabilidad activa: una desactivada es como si no existiera, salvo para la historia.
+- Un equipo aplica al menos a un tipo de vehículo. Para que deje de instalarse en todos se desactiva el equipo (`is_active`); no se le retiran todos los tipos. Así su retiro se dice en un solo lugar. Cuenta también un tipo de vehículo desactivado: sus unidades ya registradas pueden seguir necesitando el equipo —por ejemplo, un reemplazo de GPS— aunque ya no se registren nuevas (§7.1). Lo valida la aplicación; la base no lo protege.
 
 **La pantalla usa dos datos que responden preguntas distintas y conviene no confundir.** La aplicabilidad dice si el equipo *tiene sentido* en ese tipo de vehículo; `has_factory_screen` dice si ese modelo *ya la trae puesta*. Una moto no es un auto sin pantalla: es un vehículo donde la pregunta no corresponde. La regla, escrita una sola vez:
 
@@ -2600,7 +2603,8 @@ Quedan dos decisiones abiertas. Una tiene su momento fijado: las longitudes de l
 | D-70 | Nadie actúa sobre lo suyo. Ninguna cuenta, tampoco la de un superadministrador, se otorga ni se retira roles, se bloquea, levanta sus bloqueos ni se restablece la contraseña por las operaciones de administración: cambiar la propia contraseña tiene su operación. Nadie registra su propia salida ni su propio regreso. La única cuenta que se vincula a sí misma es la del primer superadministrador, mientras no tiene un colaborador activo (§5.2, §5.3, §5.4, §5.7) |
 | D-71 | Separación estática de funciones: una cuenta nunca tiene `ADMIN_ACCESOS` y `ADMIN_EMPRESA` vigentes a la vez, para que quien registra los colaboradores de una empresa no sea también quien les da acceso. Lo valida la aplicación al otorgar cualquiera de los dos, porque la base no ve dos asignaciones a la vez (§5.5, §5.7) |
 | D-72 | Un rol privilegiado —`SUPERADMIN`, `ADMIN_ACCESOS` o `ADMIN_EMPRESA`, los que hacen protegida una cuenta— se otorga solo a una cuenta que ya cambió su contraseña provisional, para que quien la entregó nunca termine con una cuenta privilegiada en sus manos. El primer superadministrador no se otorga así: lo crea el arranque (§5.2, §5.4, §5.7) |
-| D-73 | Los cinco catálogos del bloque 4 —`vehicle_types`, `vehicle_brands`, `vehicle_models`, `colors` y `equipment_types`— registran fechas pero no autor, como los del bloque 1: son catálogos generales (D-42). La aplicabilidad de un equipo a un tipo de vehículo se retira desactivándola, no borrándola, y se reactiva al volver a marcarla (§2.5, §7.5) |
+| D-73 | Los cinco catálogos del bloque 4 —`vehicle_types`, `vehicle_brands`, `vehicle_models`, `colors` y `equipment_types`— registran fechas pero no autor, como los del bloque 1: son catálogos generales (D-42). La aplicabilidad de un equipo a un tipo de vehículo se retira desactivándola, no borrándola, y se reactiva al volver a marcarla. La última aplicabilidad activa no se retira: un equipo que deja de aplicar a todo se desactiva (§2.5, §7.5) |
+| D-74 | Un código que lee una regla del programa cuenta como algo que lo usa (D-48): queda fijo desde la semilla que lo crea. En `equipment_types` son `GPS` y `PANTALLA`, porque las reglas de habilitación reconocen el GPS y la pantalla por su código (§7.5, §11.9). El código de cualquier otro equipo se corrige mientras ninguna instalación lo use, y desde la primera queda fijo. La API rechaza la corrección y responde si el código todavía se puede corregir, para que la pantalla bloquee el campo (§2.4) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |

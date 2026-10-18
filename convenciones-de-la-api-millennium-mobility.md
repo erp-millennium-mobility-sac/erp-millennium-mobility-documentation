@@ -188,7 +188,7 @@ Las sedes siguen el mismo contrato cuando se construyan: `POST /companies/{compa
 
 - El `id` interno no aparece nunca en una respuesta, una ruta ni un archivo exportado, tampoco en las referencias (diccionario §2.4).
 - Una respuesta puede acompañar la referencia con lo que la pantalla necesita mostrar, para no obligar a otra petición: `"companyId"` con `"companyName"`, `"parentId"` con `"parentName"`.
-- Una respuesta también puede traer un dato derivado que la pantalla necesita para decidir, calculado por el dueño del recurso y nunca guardado. Hoy hay uno: `isoCodesLocked` del país dice si sus códigos ISO todavía se pueden corregir (diccionario §4.2, D-47). La pantalla lo usa para bloquear los campos; la API rechaza la corrección igual.
+- Una respuesta también puede traer un dato derivado que la pantalla necesita para decidir, calculado por el dueño del recurso y nunca guardado. Hoy hay dos: `isoCodesLocked` del país dice si sus códigos ISO todavía se pueden corregir (diccionario §4.2, D-47), y `codeLocked` del tipo de equipamiento dice si su código todavía se puede corregir (diccionario §7.5, D-74). La pantalla lo usa para bloquear los campos; la API rechaza la corrección igual.
 
 ---
 
