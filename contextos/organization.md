@@ -294,7 +294,7 @@ Las lecturas de la fachada no aplican el filtro de alcance de la API: `iam` deci
 
 Cada agregado tiene pruebas de dominio, de servicio, de persistencia y de integración en el backend, y pruebas unitarias en el frontend. Las del backend corren como `erp_mm_app`, la cuenta de la aplicación, que no puede saltarse Row Level Security, y ya no suponen una base vacía (`da52323`). La sonda contra el backend real es `e2e-live/organization.live.spec.ts`, en su propia base.
 
-**Verificación final:** <<CIFRAS>>
+**Verificación final:** 18/10/2026, sobre `feature/organization-closure` —backend `26bc1e6`, 93 commits sobre `ee4df37`, con las migraciones V36 a V44; frontend `0a40211`, 119 commits sobre `a8ab115`—. La suite completa del backend: 1 576 pruebas sin fallos. Las unitarias del frontend: 1 273 sin fallos. La suite e2e completa: 641 pasan y 22 se omiten por proyecto, en tres corridas seguidas sin fallos. Las sondas contra el backend real: `location`, 8 de 8; `organization`, 8 de 10, con 2 omitidas porque la base tiene una sola empresa (el vínculo entre empresas de D-82 y la frontera del administrador de empresa). Las sondas corrieron sobre `erp_mm_db_verify`, por decisión del responsable, porque `erp_mm_db_live` todavía no existía. Las unitarias y las e2e corrieron sobre `68936ad`; los dos commits siguientes (`e9759d2`, `0a40211`) solo tocan los specs de la sonda.
 
 ### a) Decisiones
 
