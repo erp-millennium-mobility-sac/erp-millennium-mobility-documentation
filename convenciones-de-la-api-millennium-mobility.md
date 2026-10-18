@@ -1,6 +1,6 @@
 # Convenciones de la API REST — ERP Millennium Mobility
 
-**Actualizado:** 16/10/2026 (rutas, códigos y política de acceso de `iam` del paso 3; `/me`; `/users?companyId` y `managedBySuperadmin`; filtro de alcance construido) · 14/10/2026 (`location` nombra el país y la moneda por su código; escalones e hijos de una división como listas cortas; campos derivados del dueño) · 06/10/2026 (direcciones anidadas en su dueño, errores elegidos por `code`, fechas del Excel en ISO, rutas sin prefijo de contexto) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15 (§2.4 identificadores, §2.6 fechas, §4.6 direcciones, §5.12 sesiones, D-8, D-13, D-38, D-40, D-42, D-43, D-49, D-51), reglas de arquitectura de la skill `backend-module`, [mapa de contextos](mapa-de-contextos-millennium-mobility.md) y el backend construido. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 18/10/2026 (cierre de `location`: códigos propios de la dirección, del dígito de control y de la ubicación; la ubicación corrige o muda su dirección por su subrecurso, D-79; identificadores sin guiones, espacios ni puntos; un duplicado en carrera responde el código de su recurso; página de 1 a 200; español por omisión; §13 fila 14 resuelta) · 16/10/2026 (rutas, códigos y política de acceso de `iam` del paso 3; `/me`; `/users?companyId` y `managedBySuperadmin`; filtro de alcance construido) · 14/10/2026 (`location` nombra el país y la moneda por su código; escalones e hijos de una división como listas cortas; campos derivados del dueño) · 06/10/2026 (direcciones anidadas en su dueño, errores elegidos por `code`, fechas del Excel en ISO, rutas sin prefijo de contexto) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.20 (§2.2 normalización, §2.4 identificadores, §2.6 fechas, §4.6 direcciones, §4.7 tipos de documento, §5.12 sesiones, D-8, D-13, D-38, D-40, D-42, D-43, D-49, D-51, D-53, D-75, D-78, D-79), reglas de arquitectura de la skill `backend-module`, [mapa de contextos](mapa-de-contextos-millennium-mobility.md) y el backend construido. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 La API es REST: expone **recursos** con sustantivos, los manipula con los **métodos de HTTP** según su semántica y responde con **códigos de estado** que dicen qué pasó. El único cliente hoy es el frontend del ERP, que se sirve desde el mismo origen.
 
@@ -127,9 +127,10 @@ Las direcciones no tienen rutas propias: no existe `/addresses`. Viajan anidadas
 }
 ```
 
-- `streetName` es obligatorio, hasta 180 caracteres; `streetNumber` llega hasta 20, `unit` hasta 50 y `postalCode` hasta 12. Los demás son opcionales.
-- El país no viaja: lo fija el dueño. La dirección de una empresa, una sede o una ubicación está en el país de la empresa, y la base lo exige con una llave foránea compuesta. Es una regla de este documento que el diccionario todavía no registra (§4.6 solo exige que la división sea del país de la dirección). El proveedor, cuando exista, mandará su propio país.
-- En el alta del dueño, `fiscalAddress: null` registra al dueño sin dirección.
+- `streetName` es obligatorio, hasta 180 caracteres; `streetNumber` llega hasta 20, `unit` hasta 50 y `postalCode` hasta 12.
+- `geoDivisionId` es obligatorio cuando el país de la dirección tiene sus divisiones cargadas, como Perú, y solo puede faltar en un país sin ellas (D-53). `postalCode` es obligatorio en los países que lo exigen (`requiresPostalCode`). Los demás son opcionales.
+- El país no viaja: lo fija el dueño. La dirección de una empresa, una sede o una ubicación está en el país de la empresa (diccionario §4.6). La base lo exige en empresas y sedes con una llave foránea compuesta hacia `addresses (id, country_id)`; en una ubicación lo asegura la aplicación, porque `locations` no tiene columna de país. El proveedor, cuando exista, mandará su propio país.
+- En el alta del dueño, `fiscalAddress: null` registra al dueño sin dirección. Una ubicación de terceros siempre la lleva (`address`); una sede propia nunca, porque usa la de su sede (`address: null`, D-79).
 
 **Lo que devuelve el servidor.** La dirección embebida en el dueño, sin `id` ni fechas, porque no es un recurso:
 
@@ -160,9 +161,19 @@ Un dueño sin dirección responde `"fiscalAddress": null`. Que el país viaje co
 
 La dirección no tiene ruta propia, así que la mudanza no responde `201`: lo creado no es direccionable y la empresa no es nueva.
 
-Un fallo de la dirección responde por el endpoint del dueño con el código de `location`: `GEODIVISION_NOT_FOUND` si la división no existe, `VALIDATION_ERROR` si el país exige código postal y no llegó, `BUSINESS_RULE_VIOLATION` si la división no sirve para esa dirección.
+**Las sedes y las ubicaciones siguen el mismo contrato** (D-79): `POST /companies/{companyId}/branches` y `POST /companies/{companyId}/locations` con `address` anidada; `PUT /branches/{id}` y `PUT /locations/{id}` sin dirección, y `PUT` o `POST /branches/{id}/address` y `/locations/{id}/address` para corregir o mudar. El `PUT /locations/{id}` recibe `{ name, locationType, branchId }`: si un cliente viejo todavía manda `address`, el servidor la ignora y la dirección no cambia. Corregir la dirección de una ubicación que no tiene responde `422 LOCATION_ADDRESS_MISSING`, y corregir o mudar la de una sede propia, `422 LOCATION_ADDRESS_NOT_ALLOWED`: usa la de su sede. Una ubicación tampoco pasa de sede propia a ubicación de terceros ni al revés, porque es otro lugar: el `PUT` que lo intenta responde `422 LOCATION_OWNERSHIP_CHANGE_NOT_ALLOWED`, y se desactiva la ubicación y se registra una nueva.
 
-Las sedes siguen el mismo contrato cuando se construyan: `POST /companies/{companyId}/branches` con `address` anidada, `PUT /branches/{id}` sin dirección, y `PUT` o `POST /branches/{id}/address` para corregir o mudar.
+**Los fallos de la dirección** salen por el endpoint del dueño que la lleva —el alta de la empresa, la sede o la ubicación, y su subrecurso de dirección— con un código propio de cada regla. Todos responden `422`, y el campo es el objeto de dirección anidado (`fiscalAddress` o `address`):
+
+| `code` | Cuándo |
+|---|---|
+| `ADDRESS_DIVISION_REQUIRED` | Falta la división y el país de la dirección tiene sus divisiones cargadas (D-53) |
+| `ADDRESS_POSTAL_CODE_REQUIRED` | Falta el código postal y el país lo exige |
+| `ADDRESS_DIVISION_OTHER_COUNTRY` | La división es de otro país que la dirección |
+| `ADDRESS_DIVISION_NOT_DEEPEST_LEVEL` | La división no es del último escalón que declara el país: una provincia y no un distrito |
+| `ADDRESS_DIVISION_INACTIVE` | La división está inactiva y es nueva para la dirección; la que la dirección ya tenía se conserva |
+
+Siguen además `GEODIVISION_NOT_FOUND` (`404`) si la división no existe y `VALIDATION_ERROR` (`400`) para el formato del cuerpo: una calle vacía, una longitud.
 
 ---
 
@@ -221,7 +232,12 @@ Todo monto viaja con su moneda (regla 4.4) y nunca es `null`: el diccionario los
 
 ### 5.3 Normalización
 
-El servidor normaliza lo que recibe, así que el cliente puede enviar cualquier forma: códigos en mayúsculas y sin espacios (`pen` → `PEN`), correos en minúsculas, placas y documentos tributarios sin guiones ni espacios (diccionario §2.2). La respuesta devuelve el valor ya normalizado.
+El servidor normaliza lo que recibe, así que el cliente puede enviar cualquier forma (diccionario §2.2). La respuesta devuelve el valor ya normalizado.
+
+- Los códigos de norma externa, recortados y en mayúsculas: `" pen "` → `PEN`, en el código de una moneda nueva y en `defaultCurrency`, `isoAlpha2` e `isoAlpha3` del país.
+- Los identificadores de texto, con `TRIM` + `UPPER` y sin guiones, espacios ni puntos en ninguna posición: el código de una división (`" t-2 "` → `T2`), el número de documento de una empresa y el de un colaborador (`" 74-839.201 "` → `74839201`), y las placas cuando existan. También caen los espacios y los guiones de Unicode que llegan al pegar un texto: el espacio duro, el guion no separable, la raya, el signo menos y los caracteres invisibles. Dos formas que quedan iguales son el mismo valor y chocan con el `409` de su recurso; un código de división hecho solo de separadores responde `400 VALIDATION_ERROR`. La migración V39 llevó a esta forma los que ya estaban guardados.
+- Los correos, recortados y en minúsculas.
+- Un valor de lista cerrada se acepta en mayúsculas y con espacios alrededor, y se guarda como lo fija el diccionario: `" Persona "` → `persona` en `appliesTo`.
 
 ---
 
@@ -259,7 +275,7 @@ GET /api/v1/countries/{id}/geo-divisions?q=lima&level=2&isActive=true&page=0&siz
 |---|---|
 | `q` | Texto que contiene alguno de los campos de búsqueda de la lista, sin distinguir mayúsculas. `%` y `_` se buscan tal cual |
 | `page` | Índice de la página, desde 0. **Con `page`, la respuesta es el sobre de arriba; sin `page`, es el arreglo de todo lo que coincide**, en el mismo orden y con la misma búsqueda y filtros, como lo pide un select |
-| `size` | 50 por omisión y 200 como máximo |
+| `size` | 50 por omisión, de 1 a 200. Un valor fuera de ese rango se lleva a su borde: más de 200 responde una página de 200, y 0 o un negativo, una página de una fila, nunca todas las filas |
 | `sort` | `campo` o `campo,desc`, con el nombre del campo JSON. Cada lista declara por qué campos ordena; con otro campo usa su orden propio. Los empates se ordenan por el `id` interno, para que una fila no salte de página |
 
 Lo que busca y ordena cada lista construida:
@@ -300,9 +316,9 @@ Todo error responde el mismo recurso, también los que ocurren antes del control
 ```
 
 - `code` es estable y es lo que el cliente usa para decidir qué mostrar.
-- `message` sale traducido según `Accept-Language` (`es` o `en`), para quien llame a la API sin el frontend.
+- `message` sale traducido según `Accept-Language` (`es` o `en`), para quien llame a la API sin el frontend. Sin `Accept-Language`, o con un idioma que la API no habla, responde en español, el idioma de las pantallas (D-39). El frontend manda `Accept-Language: es` en cada petición, para que el idioma del navegador no cambie los mensajes ni las exportaciones.
 - El frontend elige su texto de `es.json` por `code` (decidido el 06/10/2026, §14.12), con un `switch` por los códigos que conoce. Un código desconocido cae en el mensaje genérico de la operación, nunca en uno específico: así una causa nueva muestra un texto incompleto, pero nunca uno falso. El estado HTTP solo decide en dos casos: `0`, sin red, y los errores del framework que todavía no tienen código del catálogo (§13 fila 18). El frontend nunca muestra `message` ni lee el cuerpo por su cuenta.
-- `details` explica el caso para quien depura. Nunca lleva SQL, nombres de restricciones ni trazas.
+- `details` explica el caso para quien depura. Nunca lleva SQL, nombres de restricciones ni trazas. En un `500 UNEXPECTED_ERROR` es un texto fijo y traducido («Ocurrió un error inesperado. Quedó registrado para su revisión»), nunca el mensaje de la excepción, que queda solo en el registro del servidor.
 
 ### 7.2 Códigos
 
@@ -324,12 +340,27 @@ Todo error responde el mismo recurso, también los que ocurren antes del control
 
 - Un fallo esperado del negocio se devuelve como `Result`, nunca como excepción (regla 3.1), y se traduce aquí.
 - Las fábricas de `ApplicationError` (`notFound`, `conflict`, `businessRuleViolation`, `validationError`…) producen los códigos genéricos de la tabla. Por omisión, un duplicado es `ApplicationError.conflict(...)`, que responde `<RECURSO>_CONFLICT`.
+- **Un duplicado que llega a la base en una carrera responde el código de su recurso**, el mismo que el servicio da sin carrera. Dos peticiones simultáneas pueden pasar las dos la comprobación del servicio; la restricción única de la base detiene a la segunda, y el adaptador del repositorio traduce esa violación en el fallo de su clave natural ([patrones de persistencia](patrones-de-persistencia-millennium-mobility.md)). En `location` responden así `CURRENCY_CONFLICT`, `COUNTRY_ISO_ALPHA2_CONFLICT`, `COUNTRY_ISO_ALPHA3_CONFLICT`, `GEODIVISION_CONFLICT` y `TAXIDTYPE_CONFLICT` (`409`). Solo un duplicado que su adaptador todavía no traduce, como hoy los de `organization`, llega al manejador global y responde el genérico `RESOURCE_CONFLICT` (`409`), sin el texto de la base.
 - Cuando un agregado tiene dos o más reglas de unicidad, cada una lleva su código propio `<RECURSO>_<CAMPO>_CONFLICT`, que produce `ApplicationError.conflict(recurso, campo, …)`, para que el cliente sepa cuál falló: `COMPANY_COUNTRY_CONFLICT` y `COMPANY_TAX_ID_CONFLICT` en la empresa, que ya los emite; `VEHICLE_VIN_CONFLICT` y `VEHICLE_PLATE_CONFLICT` en la unidad; `BRANCH_CODE_CONFLICT` y `BRANCH_TAX_ESTABLISHMENT_CODE_CONFLICT` en la sede (diccionario §6.4). Un agregado con una sola regla se queda con el genérico.
 - El estado de un código propio sale de su sufijo: `_NOT_FOUND` responde `404`, `_CONFLICT` responde `409` y cualquier otro, `422`. Por eso un código propio de duplicado termina siempre en `_CONFLICT`: con otro sufijo saldría como regla rota. Un código propio que no es un duplicado, como `COMPANY_FISCAL_ADDRESS_MISSING` (§3.3), responde `422`. Los cuatro `403` propios de la tabla (`ACCOUNT_SUSPENDED`, `ACCOUNT_MANAGED_BY_SUPERADMIN`, `OWN_ACCOUNT_FORBIDDEN` y `ACTOR_EMPLOYEE_REQUIRED`) son la excepción: no tienen un sufijo que dé su estado, así que `ErrorResponseAssembler` los nombra uno por uno.
 - Un `403` dice por qué cuando la pantalla tiene que explicarlo: cada causa tiene su código, y `ACCESS_DENIED` queda para la falta de rol. El rol se revisa antes que la existencia: quien no tiene el rol de la ruta recibe `403` aunque el recurso no exista.
 - Como todo `Result.failure` es un fallo esperado, un código propio nunca responde `500`. Su texto en el servidor se busca en `error.<código-en-kebab>.message`, por ejemplo `error.vehicle-vin-conflict.message`, y el frontend tiene su propia clave en `es.json` (§7.1).
 - `<RECURSO>` es el nombre del agregado en mayúsculas. Hoy las fábricas lo pasan a mayúsculas sin separar palabras: `notFound("GeoDivision", …)` produce `GEODIVISION_NOT_FOUND`. **(propuesta, §14.11)** Separar las palabras con guion bajo (`GEO_DIVISION_NOT_FOUND`, `PURCHASE_INVOICE_CONFLICT`), lo que obliga a cambiar las fábricas.
 - **(propuesta, §14.5)** Un `422` dice qué regla falló en `rule`, un identificador estable: `"rule": "mileage-reading.not-lower"`. Así el cliente distingue reglas sin leer el texto.
+
+**Los códigos del documento tributario y de la ubicación** (registrado el 18/10/2026). Todos responden `422`. Los de la dirección están en §3.3.
+
+| `code` | Operación | Campo | Cuándo |
+|---|---|---|---|
+| `COMPANY_TAX_ID_CHECK_DIGIT_INVALID` | `POST /companies` | `taxId` | El tipo tiene dígito de control y el número no lo cumple (D-75): el RUC `20512345678`, cuyo dígito correcto es `1`. Un tipo con dígito de control cuyo cálculo `location` todavía no tiene —el NIT, el RFC y la CURP— acepta el número sin verificarlo |
+| `EMPLOYEE_DOCUMENT_NUMBER_CHECK_DIGIT_INVALID` | `POST /companies/{id}/employees`, `PUT /employees/{id}` | `documentNumber` | Lo mismo, para el documento del colaborador. En la edición se verifica solo si cambian el tipo o el número: un documento ya guardado sigue siendo válido |
+| `LOCATION_OWNERSHIP_CHANGE_NOT_ALLOWED` | `PUT /locations/{id}` | `locationType` | La edición pasa una sede propia a ubicación de terceros o al revés (D-79). Entre los tipos de terceros sí se cambia |
+| `LOCATION_ADDRESS_MISSING` | `PUT /locations/{id}/address` | — | La ubicación no tiene dirección que corregir; la primera se registra con `POST` |
+| `LOCATION_ADDRESS_NOT_ALLOWED` | `PUT` y `POST /locations/{id}/address` | — | Es una sede propia: usa la dirección de su sede, que se corrige o se muda en `/branches/{id}/address` |
+
+- El número se revisa antes que los duplicados: un RUC mal escrito responde `422` (`COMPANY_TAX_ID_CHECK_DIGIT_INVALID`, o `BUSINESS_RULE_VIOLATION` por el tipo o la longitud) aunque el país ya tenga su empresa, en vez de `409`. Lo mismo el documento de un colaborador.
+- Los demás rechazos del tipo de documento —de otro país, inactivo, que no aplica a empresas o a personas, de otra longitud— siguen siendo `BUSINESS_RULE_VIOLATION`. Un tipo inactivo se rechaza solo cuando es nuevo para el registro: el colaborador que ya lo tenía se sigue editando (LOC-R36).
+- La longitud que declara un tipo de documento va de 1 a 20 (D-78): con 21 o más, `400 VALIDATION_ERROR`.
 
 **Los códigos de las cuentas y de la salida y el regreso** (registrado el 16/10/2026). Cada causa que la pantalla tiene que distinguir lleva su código, y el frontend tiene un mensaje para cada uno. Todos responden `422` salvo que se indique otro estado. "Los cuatro `403`" son `ACCESS_DENIED`, `OWN_ACCOUNT_FORBIDDEN`, `ACTOR_EMPLOYEE_REQUIRED` y `ACCOUNT_MANAGED_BY_SUPERADMIN`.
 
@@ -369,7 +400,7 @@ El archivo lo arma siempre el backend, con fastexcel (`org.dhatim:fastexcel`: es
 
 - Una lista se exporta desde **su propio endpoint**. El `GET` que devuelve el JSON, pedido con el `Accept` de Excel, devuelve el archivo con la misma búsqueda (`q`), los mismos filtros y el mismo orden (`sort`), y **todas** las filas que coinciden: ignora `page` y `size` (§6.2). No hay rutas `/export` aparte.
 - El controlador declara un segundo método en la misma ruta con `produces = SpreadsheetExporter.MEDIA_TYPE`, que llama a la misma consulta y pasa las filas a `SpreadsheetExporter` (`shared.interfaces.rest.export`) con sus columnas (`SpreadsheetColumn`).
-- Cada columna es una clave de `messages.properties` para el encabezado y una función que lee la fila. Encabezados y textos salen en el idioma de la petición (`Accept-Language`), igual que los mensajes de error.
+- Cada columna es una clave de `messages.properties` para el encabezado y una función que lee la fila. Encabezados y textos salen en el idioma de la petición (`Accept-Language`), igual que los mensajes de error, y en español si la petición no nombra un idioma que la API hable (§7.1).
 - Los valores conservan su tipo, para que la hoja sume, filtre y ordene: un número es número; una fecha, fecha; un momento, fecha y hora; un booleano, "Sí" o "No". Un texto que se traduce, como un estado, se devuelve como `SpreadsheetColumn.Message`.
 - Las fechas y los momentos se escriben en ISO, nunca en el formato de pantalla (diccionario §2.6, D-40, D-49). Una fecha es una celda de fecha con la máscara `AAAA-MM-DD`; un momento, una celda de fecha y hora con la máscara `AAAA-MM-DD hh:mm:ss`. Una celda de Excel no guarda la zona, así que todos los momentos de un archivo van en **una sola zona, nombrada en el encabezado** de cada columna de momentos: «Último acceso (America/Lima)». Nunca se mezclan zonas en una columna.
 - Esa zona sale de la regla de "hoy" (diccionario §2.6) aplicada al alcance de la exportación: la sede si la lista es de una sede; si no, el país de la empresa si es de una empresa; si no, `America/Lima`. `SpreadsheetExporter` recibe la zona como parámetro y usa `America/Lima` si no se la pasan, que es lo que corresponde hoy a todas las listas. Desde el paso 3, cada controlador que exporte momentos de una empresa o una sede le pasa la zona de ese alcance.
@@ -528,7 +559,7 @@ La columna "Pendiente de" indica la propuesta de §14 que debe validarse antes d
 | 11 | ~~Las divisiones territoriales se listan completas, sin página~~ | Resuelto el 06/10/2026: con `page` responden una página (§6.2) | — |
 | 12 | ~~`GET /users` devuelve la lista completa, sin página~~ | Resuelto el 06/10/2026: con `page` responde una página (§6.2) | — |
 | 13 | Códigos `GEODIVISION_*`, `GEODIVISIONLEVEL_*` y `TAXIDTYPE_*`. El padre inexistente ya responde `GEODIVISION_NOT_FOUND` | Con guion bajo entre palabras si se valida §14.11 | §14.11 |
-| 14 | Un error inesperado devuelve en `details` el mensaje de la excepción | `details` nunca lleva el texto interno (§7.1) | — |
+| 14 | ~~Un error inesperado devuelve en `details` el mensaje de la excepción~~ | Resuelto el 17/10/2026 en la rama `feature/location-closure`: `UNEXPECTED_ERROR` lleva en `details` un texto fijo y traducido, y la excepción queda solo en el registro del servidor (§7.1) | — |
 | 15 | El `422` no dice qué regla falló | Campo `rule` (§7.2) | §14.5 |
 | 16 | ~~`POST /api/v1/users` crea una cuenta sin colaborador (`email`, `temporaryPassword`, `roleIds`) y otorga roles en la misma petición; es la pantalla "Nuevo usuario"~~ | Resuelto el 16/10/2026: `POST /users` y la pantalla "Nuevo usuario" ya no existen. El acceso se da con `POST /access-grants` (§14.15), los roles se otorgan aparte en `/users/{id}/role-assignments`, y `/users` solo lista y exporta | — |
 | 17 | ~~`BaseApiEndpoint.delete` en el frontend envía `DELETE`~~ | Resuelto el 06/10/2026: el método ya no existe; un registro se retira con `PATCH …/status`, una revocación o un cierre (regla 4.2) | — |
