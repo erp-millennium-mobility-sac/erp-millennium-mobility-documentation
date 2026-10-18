@@ -1,6 +1,6 @@
 # Contextos — ERP Millennium Mobility
 
-**Actualizado:** 14/10/2026 · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.15, [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md) y el código de las ramas revisadas. Si un documento de esta carpeta y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 18/10/2026 (diccionario v1.22; `vehiclecatalog` ya tiene código) · 14/10/2026 · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.22, [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md) y el código de las ramas revisadas. Si un documento de esta carpeta y el diccionario no coinciden, manda el diccionario.
 
 Los demás documentos están ordenados por tema: los datos (diccionario), la API (convenciones), las fronteras (mapa), los procesos de negocio (procesos y pantallas). Para entender un contexto completo hay que leer partes de los cuatro y después el código. Esta carpeta junta, por contexto, lo que no está en ninguno de ellos.
 
@@ -10,7 +10,7 @@ Los demás documentos están ordenados por tema: los datos (diccionario), la API
 | [iam.md](iam.md) | `iam`: cuentas, roles y sesiones | 0 y 3 |
 | [organization.md](organization.md) | `organization`: empresas, marcas, sedes, ubicaciones y colaboradores | 2 y 3 |
 
-Los contextos que todavía no tienen código (`vehiclecatalog`, `fleet`, `procurement`) no tienen documento. Su diseño está en el diccionario, y escribir sus flujos antes de construirlos sería adivinar lo que el código decidirá. El documento de un contexto se escribe cuando empieza su paso.
+`vehiclecatalog` ya tiene código —su paso, el 4, está en curso en `develop`— pero todavía no tiene documento: escribirlo, con sus reglas, es parte de cerrar el paso ([orden de implementación](../orden-de-implementacion-millennium-mobility.md), paso 4). Los contextos que todavía no tienen código (`fleet`, `procurement`) no tienen documento. Su diseño está en el diccionario, y escribir sus flujos antes de construirlos sería adivinar lo que el código decidirá. El documento de un contexto se escribe cuando empieza su paso.
 
 ## Qué lleva cada documento
 
