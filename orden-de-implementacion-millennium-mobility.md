@@ -1,6 +1,6 @@
 # Orden de implementación — ERP Millennium Mobility
 
-**Actualizado:** 16/10/2026 (paso 3 construido, salvo los permisos, el registro público con perfil y el dígito de control) · 15/10/2026 · **Fuente:** diccionario de datos v1.17, §3. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 18/10/2026 (paso 1 cerrado, a falta de validar `contextos/location.md`; la sonda contra el backend real como criterio de cierre; el dígito de control, construido) · 16/10/2026 (paso 3 construido, salvo los permisos, el registro público con perfil y el dígito de control) · 15/10/2026 · **Fuente:** diccionario de datos v1.20, §3. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 El orden lo fijan las dependencias entre tablas: nada se construye antes de lo que referencia. Cada paso entrega su contexto completo, del backend (migraciones, dominio y API) al frontend (pantallas y opciones del menú).
 
@@ -10,9 +10,9 @@ El orden lo fijan las dependencias entre tablas: nada se construye antes de lo q
 | Paso | Bloque del diccionario                                | Contexto              | Depende de                       | Estado                   |
 | ---- | ----------------------------------------------------- | --------------------- | -------------------------------- | ------------------------ |
 | 0    | 2 · Seguridad, en parte, y el núcleo común            | `shared`, `iam`       | —                                | Construido               |
-| 1    | 1 · Geografía                                         | `location`            | —                                | Construido (Perú)        |
+| 1    | 1 · Geografía                                         | `location`            | —                                | Cerrado (Perú), a falta de validar `location.md` |
 | 2    | 3 · Empresas                                          | `organization`        | 1 y 2                            | En curso                 |
-| 3    | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | 2 y 3                            | Construido, salvo permisos, registro con perfil y dígito de control |
+| 3    | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | 2 y 3                            | Construido, salvo permisos y registro con perfil |
 | 4    | 4 · Catálogos de flota                                | `vehiclecatalog`      | 3                                | En curso                 |
 | 5    | 6 · Vehículo y estados                                | `fleet`               | 4                                | Pendiente                |
 | 6    | 11 · Bitácora de cambios                              | `shared`              | 6                                | Pendiente                |
@@ -50,12 +50,20 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 
 
-### Paso 1 · Geografía y localización — construido para Perú
+### Paso 1 · Geografía y localización — cerrado para Perú
 
-- **Estado (15/10/2026):** construido para Perú, el único país que opera (D-5). Backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, sus pruebas y la ficha del país; la dirección elige su división en cascada. V24 carga el ubigeo del INEI, edición 2022, con 1 891 distritos. El diccionario v1.16 registra sus reglas y el alcance del cierre (D-52); el detalle está en la [revisión de cierre](retroalimentacion/2026-10-15-location.md). Las longitudes de los documentos de Colombia y México y sus listas oficiales quedan en los pendientes transversales, para antes de registrar su primera empresa.
+- **Estado (18/10/2026):** cerrado para Perú, el único país que opera (D-5). Solo falta que el responsable del diccionario valide [contextos/location.md](contextos/location.md), que sigue como borrador. Backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, sus pruebas y la ficha del país; la dirección elige su división en cascada. V24 carga el ubigeo del INEI, edición 2022, con 1 891 distritos, y cada distrito creado por ley después entra con su propia migración cuando tiene código oficial (D-77). El cierre, en `feature/location-closure` (backend sobre `ee4df37`, con V36 a V39; frontend sobre `a8ab115`), atendió los 60 hallazgos de la auditoría del 17/10/2026 con las decisiones D-75 a D-80 del diccionario v1.20:
+  - el dígito de control lo calcula `location` y lo aplica `organization` en empresas y colaboradores; hoy, el del RUC (D-75), y el DNI no lo tiene (D-76);
+  - un colaborador cuyo tipo de documento se desactivó se sigue editando (LOC-R36);
+  - cada regla de una dirección responde su propio código, y las ubicaciones corrigen o mudan su dirección por su subrecurso, como las sedes (D-79);
+  - los identificadores se guardan sin guiones, espacios ni puntos (§2.2, V39); las zonas horarias son nombres IANA de región; un tipo de documento declara una longitud de 1 a 20 (D-78, V38);
+  - un duplicado en carrera responde el código de su recurso y ya no `RESOURCE_CONFLICT`; un error inesperado ya no expone su mensaje (convenciones §13 fila 14); la API responde en español por omisión;
+  - las pruebas que faltaban contra la base, de lectura con los roles sembrados y de extremo a extremo de Ubicaciones, y la primera sonda contra el backend real.
+
+  Verificación final: <<CIFRAS>>. El detalle está en [contextos/location.md](contextos/location.md), sección 6, y en la [revisión del 18/10/2026](retroalimentacion/2026-10-18-location.md). Lo que es de Colombia y México y los demás pendientes con disparo quedan en los pendientes transversales.
 - **Tablas:** `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses`, `tax_id_types` (D-44).
 - **Pantallas:** Catálogos › Monedas y Países. Cada país abre su ficha, con sus datos arriba y, debajo, en pestañas, su estructura territorial (escalones y divisiones, D-45) y sus documentos tributarios; la misma ficha registra el país y corrige sus datos. Las direcciones se llenan dentro de cada formulario que las usa; no tienen opción propia.
-- **Datos:** el archivo oficial de divisiones territoriales (ubigeo del INEI), cargado completo (D-2) por V24 desde `scripts/ubigeo/` del backend.
+- **Datos:** el archivo oficial de divisiones territoriales (ubigeo del INEI), edición 2022, cargado por V24 desde `scripts/ubigeo/` del backend; los distritos creados por ley después entran cuando el INEI o SUNAT publican su código, y la lista se revisó al 17/10/2026 (D-2, D-77). Falta Santa Rosa de Loreto, que espera el suyo.
 
 
 
@@ -68,7 +76,7 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 
 
-### Paso 3 · Colaboradores y accesos, y el resto del bloque 2 — construido, salvo los permisos, el registro público con perfil y el dígito de control
+### Paso 3 · Colaboradores y accesos, y el resto del bloque 2 — construido, salvo los permisos y el registro público con perfil
 
 - **Estado (16/10/2026):** construido en `feature/access-model`, en el backend y en el frontend, con las seis rondas del modelo de acceso. Lo construido:
   - colaboradores, con su salida y su regreso, que nunca tienen fecha posterior a hoy en la zona del colaborador;
@@ -80,12 +88,13 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
   - la frontera entre empresas en la aplicación (`404` fuera del alcance) y en la base (Row Level Security, con la aplicación conectada con una cuenta que no es dueña de nada);
   - `iam` depende de `organization` y nunca al revés (mapa de contextos, decisiones 2 y 4).
   
-  Migraciones V26 a V32. El detalle está en [contextos/iam.md](contextos/iam.md), [contextos/organization.md](contextos/organization.md) y la [revisión del 16/10/2026](retroalimentacion/2026-10-16-iam.md). Las decisiones que se tomaron en el camino están en la propuesta del diccionario v1.18 (D-55 a D-72), pendiente de validar.
+  Migraciones V26 a V32. El detalle está en [contextos/iam.md](contextos/iam.md), [contextos/organization.md](contextos/organization.md) y la [revisión del 16/10/2026](retroalimentacion/2026-10-16-iam.md). Las decisiones que se tomaron en el camino están en el diccionario v1.18 (D-55 a D-72), validado el 17/10/2026.
 - **Verificación** (sobre el backend `6a7d9b1` y el frontend `1a341ab`): 926 pruebas del backend, sin fallos, errores ni omitidas, conectadas como `erp_mm_app` sobre una `erp_mm_db_verify` recreada y migrada por `erp_mm_owner` de V1 a V32; 877 pruebas unitarias del frontend en 88 archivos; build inicial de 489,11 kB, bajo el presupuesto de 500 kB; `lint:styles` sin observaciones; 425 e2e en verde y 22 omitidas a propósito, sin fallos. La primera sonda contra el backend real (ronda 4) coincidió en 210 de 211 comprobaciones HTTP —la restante fue el orden de la propia sonda, no el backend— y en las 40 de la frontera entre empresas, y el recorrido con los tres roles no dio errores de página. Sonda final (rondas 5 y 6): 129 de 129 comprobaciones de la política coincidieron, y el navegador sin simulaciones se comportó como dice el contrato; quedan cuatro diferencias menores, anotadas en la [revisión del 16/10/2026](retroalimentacion/2026-10-16-iam.md).
 - **Lo que falta del paso:**
   - `permissions` y `role_permissions`: esperan la matriz de permisos, que llega antes del paso 5 (ajuste 3). Hasta entonces, los roles globales —el superadministrador y el administrador de accesos— leen los datos de todas las empresas.
   - El registro público con perfil (D-32): espera a que convenciones §14.16 defina cómo lista sedes y tipos de documento sin sesión. Mientras tanto sigue apagado.
-  - Verificar el dígito de control de los documentos tributarios (§4.7; [location.md](contextos/location.md), LOC-R35, y [organization.md](contextos/organization.md), ORG-R04): decidir qué contexto lo calcula. Hoy `has_check_digit` se guarda y nadie lo verifica (pendientes transversales).
+  
+  El dígito de control de los documentos tributarios, que figuraba aquí, se construyó con el cierre del paso 1 (D-75; [location.md](contextos/location.md), LOC-R35, y [organization.md](contextos/organization.md), ORG-R04).
 - **Tablas:** `employees`; `user_roles` con su alcance por empresa, sede y marca; `user_access_suspensions`, `permissions` y `role_permissions`.
 - **Pantallas:** Configuración › Colaboradores, con las acciones de cuenta según el rol de la sesión; Seguridad › Usuarios, para el superadministrador y el administrador de accesos; Seguridad › Roles y permisos: sus pantallas de roles propios y permisos existen en el frontend, pero no figuran en el menú hasta que el backend sirva la matriz.
 - **Datos:** colaboradores reales y la matriz de permisos por rol.
@@ -178,7 +187,7 @@ El diccionario ordena los bloques por sus dependencias. La implementación lo si
 
 | Qué | Prioridad |
 | --- | --- |
-| La matriz de permisos por rol: `permissions` y `role_permissions` (§5.6), qué lee un rol global y quién crea los roles de una empresa. Hasta entonces, el superadministrador y el administrador de accesos leen los datos de todas las empresas, y la opción Seguridad › Roles y permisos queda fuera del menú: sus pantallas existen en el frontend y llaman a rutas que el backend todavía no sirve | Antes del paso 5 (ajuste 3) |
+| La matriz de permisos por rol: `permissions` y `role_permissions` (§5.6), qué lee un rol global y quién crea los roles de una empresa. Hasta entonces, el superadministrador y el administrador de accesos leen los datos de todas las empresas, y la opción Seguridad › Roles y permisos queda fuera del menú: sus pantallas existen en el frontend y llaman a rutas que el backend todavía no sirve. Con la matriz, la lectura de los catálogos generales pasa de cualquier rol vigente a un permiso propio (D-43), lo que toca los ocho controladores de `location` y sus pruebas | Antes del paso 5 (ajuste 3) |
 | Historia de los reingresos: hoy el regreso de un colaborador reemplaza su fecha de ingreso y borra la de salida, y el período anterior se pierde. Necesita un diseño en el diccionario (§5.3, §5.13 y §14) | Cuando el diccionario lo diseñe, antes de cargar los colaboradores reales: desde entonces, cada regreso borraría un período que ya no se recupera |
 | La marca de una asignación acota dónde se otorga un rol, pero todavía no lo que se lee: la frontera de la aplicación y de la base es la empresa (§5.13) | Antes del paso 5: los vehículos son el primer dato que pertenece a una marca |
 | Restablecer la contraseña con un enlace de un solo uso al correo de la persona, en vez de mostrarle la provisional al administrador | Cuando exista el envío de correos |
@@ -187,10 +196,12 @@ El diccionario ordena los bloques por sus dependencias. La implementación lo si
 | Un correo de más de 255 caracteres devuelve error 500 en vez de 400 | Baja |
 | Separar en cada entorno la cuenta de Flyway, dueña de las tablas, de la cuenta de la aplicación, que lee, inserta y actualiza, y solo borra en `spring_session*`. El código y las pruebas ya funcionan así: las pruebas corren conectadas como `erp_mm_app` (README del backend, "Cuentas de la base" y "Pruebas"). Falta correr los scripts (`scripts/database/create-roles.sql`, una vez por clúster, y `hand-over-database.sql`, una vez por base ya migrada) y fijar `FLYWAY_USER`, `FLYWAY_PASSWORD`, `DATABASE_USER` y `DATABASE_PASSWORD`. Con `postgres`, que es superusuario, la base no aísla las empresas (V29) | En cada entorno, antes de usar roles de empresa o de sede en él |
 | Zona de los momentos en las exportaciones con alcance de empresa o de sede: cada controlador le pasa a `SpreadsheetExporter` la zona de ese alcance ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §8.1). Hoy ninguna exportación de empresa o de sede lleva momentos; la de cuentas los da en `America/Lima`, porque una cuenta no es de una empresa | Con la primera exportación de empresa o de sede que lleve momentos |
-| Fijar los decimales de una moneda cuando un monto ya la usa (§4.1): `location` publica un puerto (SPI) que implementan los contextos con montos, para saber si alguno usa la moneda sin depender de ellos | Antes del paso 7 |
+| Fijar los decimales de una moneda cuando un monto ya la usa (§4.1): `location` publica un puerto (SPI) que implementan los contextos con montos, para saber si alguno usa la moneda sin depender de ellos | Antes del paso 7 o del 9, el que vaya primero: los dos traen los primeros montos |
+| Los tipos de cambio por día (`exchange_rates`) y el tipo de tasa que propone cada país para sus compras (§4.8, D-46); la moneda de grupo, con los reportes | Justo antes del paso 7; la moneda de grupo, con el paso 11 |
+| Acotar la tabla de direcciones por empresa, con Row Level Security, como las demás tablas de empresa (§2.5, D-66, D-80). Cómo se acota se diseña con el paso | En el paso 7, antes de guardar la primera dirección de un proveedor |
 | Fechas en pantalla (§2.6): deben verse en la zona de la sede; sin sede, en la del país de la empresa; sin empresa, en `America/Lima`, y como `dd/mm/aaaa hh:mm`. Las pantallas de cuentas ya lo hacen, en `America/Lima`; las demás todavía usan la zona del navegador | Media. Antes de la próxima pantalla que muestre fechas |
-| Verificar el dígito de control de los documentos tributarios (§4.7): decidir qué contexto lo calcula. Hoy `has_check_digit` se guarda y nadie lo verifica | Paso 3, con los colaboradores |
-| Longitudes de los documentos de Colombia y México (§4.7): el RFC tiene 12 caracteres para empresas y 13 para personas con un solo tipo; el NIT y el DNI, decidir si el dígito de control va dentro del número; la CC exige exactamente 10. **(propuesta)** Partir el RFC en dos tipos, dejar la CC sin longitud fija y ajustar el NIT. Además, cargar la lista oficial de divisiones del país (DANE, INEGI) | Antes de registrar la primera empresa de Colombia o México |
+| Colombia y México (§4.7, D-52, D-75): las longitudes de sus documentos —el RFC tiene 12 caracteres para empresas y 13 para personas con un solo tipo; el NIT, decidir si el dígito de control va dentro del número; la CC exige exactamente 10—, el cálculo del dígito de control del NIT, el RFC y la CURP, y la lista oficial de divisiones del país (DANE, INEGI). **(propuesta)** Partir el RFC en dos tipos, dejar la CC sin longitud fija y ajustar el NIT. **Riesgo aceptado:** hasta entonces nada en el código impide registrar una empresa de esos países, y sus tipos con dígito de control aceptan cualquier número sin verificar. No hay que crear a mano divisiones de Colombia ni de México: con una sola cargada, toda dirección de ese país pasa a exigir la suya (D-53) | Antes de registrar la primera empresa de Colombia o México |
+| Dar de alta Santa Rosa de Loreto (Ley 32403, 03/07/2025) con su propia migración; hasta entonces no se puede elegir (D-77) | Cuando el INEI o SUNAT publiquen su código |
 
 
 
@@ -201,6 +212,8 @@ El diccionario ordena los bloques por sus dependencias. La implementación lo si
 - El backend sigue la estructura de contextos, con sus pruebas, y todo endpoint de negocio exige un rol o un permiso.
 - El frontend tiene sus pantallas y las opciones del menú del paso ya no llevan `pending: true`.
 - Pasan las pruebas del backend, las unitarias del frontend y las de extremo a extremo, con las capturas de referencia revisadas.
+- Si el paso tiene pantallas, se cierra con una corrida del spec en vivo contra el backend real, sin la API simulada, y su resultado queda anotado en [retroalimentacion/](retroalimentacion/README.md).
+- La lista oficial de divisiones de Perú se revisa contra las leyes nuevas y las ediciones nuevas del INEI, y cada distrito nuevo con código oficial entra con su propia migración (D-77).
 - Si la implementación se apartó del diccionario a propósito, el diccionario lo registra.
 - El documento de su contexto en [contextos/](contextos/README.md) tiene sus reglas al día, y su sección 6 queda sin pendientes de código o con cada pendiente asignado a un paso posterior.
 - Este documento actualiza el estado del paso.
