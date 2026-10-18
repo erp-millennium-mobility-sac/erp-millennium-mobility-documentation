@@ -26,3 +26,4 @@ Una revisión no es una evaluación de personas. Sirve para que el equipo compar
 | 16/10/2026 | `iam`, `organization` | [Modelo de acceso del paso 3](2026-10-16-iam.md) |
 | 18/10/2026 | `location`, `organization` | [Cierre del paso 1: dígito de control, direcciones de las ubicaciones y sonda en vivo](2026-10-18-location.md) |
 | 18/10/2026 | `organization`, `iam` | [Cierre de los pasos 2 y 3: identidad de las cuentas, padres inactivos y sonda en vivo](2026-10-18-organization.md) |
+| 18/10/2026 | `organization` | [Seguimiento del cierre después de integrarlo: quién lee los colaboradores, reactivar bajo una empresa inactiva y fallas de carga](2026-10-18-organization-seguimiento.md) |
