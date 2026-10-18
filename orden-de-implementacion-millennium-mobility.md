@@ -95,7 +95,7 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 ### Paso 4 · Catálogos de flota — en curso
 
-- **Estado (16/10/2026):** el frontend de Tipos de vehículo, Marcas y modelos, Colores y Equipamiento está en `feature/location`, con su opción del menú; su backend está en la rama `feature/vehiclecatalog`, que se pone al día con `feature/location` antes de integrarse. Hasta entonces esas pantallas no tienen servidor que les responda.
+- **Estado (17/10/2026):** construido en `develop`, backend y frontend, rama `feature/vehicle-catalog`. El backend tomó el catálogo de `feature/vehiclecatalog` (johanncamiloaga, coautor de esos commits) y lo adaptó al diccionario v1.19 (D-73, D-74, reglas de §7.3 y §7.5): migración V35 con las semillas `AUTO`, `MOTO`, `TRIMOTO`, `GPS` y `PANTALLA`, rutas sin prefijo de contexto, aplicabilidad que se desactiva en vez de borrarse. El resto de esa rama —bloqueos, roles y permisos— no se integró: lo reemplaza el paso 3, y los permisos esperan la matriz. Falta para cerrar el paso: los modelos reales conciliados (§7.3) y `contextos/vehiclecatalog.md` con sus reglas. Queda abierta la tensión entre §7.5 y §11.9 sobre si la pantalla bloquea la disponibilidad; la semilla sigue §7.5.
 - **Tablas:** `vehicle_types`, `vehicle_brands`, `vehicle_models`, `colors`, `equipment_types` y `equipment_type_vehicle_types`.
 - **Pantallas:** Catálogos › Tipos de vehículo, Marcas y modelos (una sola pantalla: marcas a la izquierda, los modelos de la marca elegida a la derecha), Colores y Equipamiento.
 - **Datos:** los modelos reales, conciliados entre los dos catálogos entregados, que no coinciden entre sí (§7.3).
