@@ -51,7 +51,7 @@ No documenta pantallas ni procesos. Cuando una regla de negocio determina una re
 | Montos: `NUMERIC`, `NOT NULL DEFAULT 0` | Un `NULL` en un monto se propaga por toda la aritmética y llega a pantalla como celda vacía |
 | Vigencias: un rango en la columna `period`, con el inicio incluido y el fin excluido; fin vacío = vigente (§2.6) | Una vigencia se cierra, nunca se borra |
 | Intervalos sin solapamiento: `daterange` o `tstzrange` + `WITHOUT OVERLAPS` (PG 18). Cuando hay filas que no deben contar —un bloqueo cancelado— o la regla compara un dato que se deduce de otro —la línea de tiempo de un bloqueo—, una exclusión `EXCLUDE USING gist` con su condición, que necesita `btree_gist` (D-67) | Impide dos períodos cruzados incluso en el pasado. `WITHOUT OVERLAPS` no admite dejar filas afuera ni comparar una expresión; la exclusión sí, y protege lo mismo |
-| Identificadores de texto normalizados al guardar: `TRIM` + `UPPER`, sin guiones. Los correos electrónicos, `TRIM` + `LOWER` | `UNIQUE` no distingue `ABC-123` de `ABC123`, ni `Tere@…` de `tere@…` |
+| Identificadores de texto normalizados al guardar: `TRIM` + `UPPER`, sin guiones, espacios ni puntos. Los correos electrónicos, `TRIM` + `LOWER` | `UNIQUE` no distingue `ABC-123` de `ABC123`, ni `Tere@…` de `tere@…` |
 | Centinelas (`-`, `NO TIENE`, `NO CORRESPONDE`) no se almacenan | Se generan al exportar. Guardados, obligan a parsear texto en cada cálculo |
 
 La regla de moneda no es teórica. La guía funcional tuvo que enunciar como norma que una nota de crédito debe estar en la misma moneda que su factura (decisión A-06). Esa regla no debería necesitar enunciarse: debería ser imposible violarla.
@@ -1139,7 +1139,7 @@ La razón social constituida en un país. Es quien compra, factura, tributa y fi
 |---|---|---|---|---|
 | `country_id` | BIGINT FK → `countries` | No | País donde está constituida | Una empresa pertenece a un solo país. Expandirse a Colombia crea una empresa nueva, no una sede de la peruana |
 | `tax_id_type_id` | BIGINT FK → `tax_id_types` | No | Con qué documento se identifica: RUC, NIT, RFC | El tipo varía por país, así que no se puede asumir "RUC" en el modelo |
-| `tax_id` | VARCHAR(20) | No | El número de ese documento, sin guiones ni espacios | Es el identificador de la empresa ante el Estado. Se guarda normalizado para que `10429...` y `10-429...` no se registren como dos empresas |
+| `tax_id` | VARCHAR(20) | No | El número de ese documento, sin guiones, espacios ni puntos | Es el identificador de la empresa ante el Estado. Se guarda normalizado para que `10429...` y `10-429...` no se registren como dos empresas |
 | `legal_name` | VARCHAR(255) | No | La razón social exacta, como figura en registros públicos | Es la que debe aparecer impresa en comprobantes y contratos. No se puede "arreglar" para que se vea mejor |
 | `trade_name` | VARCHAR(150) | No | El nombre con que se la conoce a diario | Es el que se muestra en pantalla, más corto que la razón social |
 | `fiscal_address_id` | BIGINT FK → `addresses` | Sí | Domicilio fiscal declarado | Va en facturas y en trámites. Puede faltar mientras la empresa se está registrando |
@@ -1165,7 +1165,7 @@ Una empresa por país, cada una con su propia razón social y su propio document
 - Hay una sola empresa por país, y cada empresa pertenece a un único país: expandirse crea una empresa nueva, no una sede de la existente.
 - Una plantilla de orden de compra puede imprimir un emisor editado (§9.2), pero eso no crea otra empresa. Si algún día aparece otra razón social en el mismo país, será otra fila de esta tabla y habrá que revisar D-5.
 - El número de documento tributario no se repite dentro del mismo país.
-- El número se guarda normalizado, sin guiones ni espacios, para que la misma empresa no se registre dos veces escrita de formas distintas.
+- El número se guarda normalizado, sin guiones, espacios ni puntos, para que la misma empresa no se registre dos veces escrita de formas distintas.
 - El tipo de documento es del país de la empresa, está activo y aplica a empresas (§4.7). Si el tipo declara una longitud, el número la respeta, y si tiene dígito de control, el número lo cumple (D-75). Que sea del mismo país lo impide la base, porque la llave hacia el tipo incluye el país; lo demás lo valida la aplicación.
 - La razón social es la del registro público y no se ajusta para que se vea mejor: es la que se imprime en comprobantes y contratos.
 - Una empresa que deja de operar se desactiva, nunca se borra: su historial de compras y contratos debe seguir siendo consultable.
@@ -1703,7 +1703,7 @@ Tres reglas del negocio que el modelo tiene que poder expresar y hoy no:
 |---|---|---|---|---|
 | `company_id` | BIGINT FK → `companies` | No | La empresa que le compra | El proveedor se registra con el documento tributario del país donde opera. La misma empresa vendiendo en Colombia es otro proveedor, con otro número |
 | `tax_id_type_id` | BIGINT FK → `tax_id_types` | No | Con qué documento se identifica | — |
-| `tax_id` | VARCHAR(20) | No | Número del documento, sin guiones ni espacios | Va en la factura y es lo que revisa el auditor |
+| `tax_id` | VARCHAR(20) | No | Número del documento, sin guiones, espacios ni puntos | Va en la factura y es lo que revisa el auditor |
 | `legal_name` | VARCHAR(255) | No | Razón social | Es la que debe figurar en la orden de compra que se le envía |
 | `trade_name` | VARCHAR(150) | Sí | Nombre comercial | El nombre corto con que lo conoce la operación |
 | `address_id` | BIGINT FK → `addresses` | Sí | Domicilio | Se imprime en la orden de compra |
@@ -1832,7 +1832,7 @@ El formato con que se emite una orden. Los campos son siempre los mismos; lo que
 | `series` | VARCHAR(20) | No | Prefijo de numeración: `OC-LBT`. En mayúsculas y sin espacios | Separa la numeración de cada plantilla: cada serie lleva su propio correlativo |
 | `issuer_legal_name` | VARCHAR(255) | No | Razón social que se imprime como emisora | Se propone la de la empresa y se puede editar |
 | `issuer_tax_id_type_id` | BIGINT FK → `tax_id_types` | No | Tipo de documento del emisor: RUC | Se propone el de la empresa |
-| `issuer_tax_id` | VARCHAR(20) | No | Número de documento del emisor, sin guiones ni espacios | Se propone el de la empresa |
+| `issuer_tax_id` | VARCHAR(20) | No | Número de documento del emisor, sin guiones, espacios ni puntos | Se propone el de la empresa |
 | `issuer_phone` | VARCHAR(30) | Sí | Teléfono del emisor | Se propone el de la empresa (`companies.phone`) |
 | `issuer_address_id` | BIGINT FK → `addresses` | Sí | Dirección que se imprime; el distrito o ciudad sale de su división territorial | Fila propia, copiada del domicilio fiscal de la empresa al crear la plantilla. Las direcciones no se comparten entre entidades (§4.6) |
 | `attention_name` | VARCHAR(150) | Sí | Sección "Atención": quién recibe la orden dentro de la empresa | Es texto y no una referencia a un colaborador: puede ser un área o un buzón compartido |
@@ -1867,7 +1867,7 @@ Las tres toman el emisor de la misma empresa y difieren en lo demás. Cambiar el
 - La serie no se repite dentro de la empresa. Se guarda normalizada —mayúsculas, sin espacios— y se puede corregir mientras la plantilla no tenga órdenes; después queda fija, como el código de un catálogo (§2.4).
 - La línea de negocio, si se indica, tiene que ser una marca de la misma empresa: el sistema lo impide, igual que en las asignaciones de rol (§5.7).
 - Puede haber más de una plantilla activa para la misma línea y tipo —dos talleres con contactos distintos, por ejemplo—: quien emite la orden elige cuál usar.
-- Los correos se guardan sin espacios y en minúsculas, y el documento del emisor sin guiones ni espacios (§2.2).
+- Los correos se guardan sin espacios y en minúsculas, y el documento del emisor sin guiones, espacios ni puntos (§2.2).
 - Una plantilla no se borra: se desactiva. Las órdenes emitidas con ella la siguen referenciando.
 - Cada cambio queda en la bitácora (§13), con el valor anterior y el nuevo. El documento de cada orden enviada ya lo conserva su PDF; la bitácora explica qué tenía la plantilla en una fecha pasada.
 - Crear o editar plantillas exige el permiso `compras.gestionar_plantillas`.
