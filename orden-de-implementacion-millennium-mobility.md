@@ -1,6 +1,6 @@
 # Orden de implementación — ERP Millennium Mobility
 
-**Actualizado:** 18/10/2026 (paso 1 cerrado, a falta de validar `contextos/location.md`; la sonda contra el backend real como criterio de cierre; el dígito de control, construido) · 16/10/2026 (paso 3 construido, salvo los permisos, el registro público con perfil y el dígito de control) · 15/10/2026 · **Fuente:** diccionario de datos v1.20, §3. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 18/10/2026 (`contextos/location.md` validado; paso 2 cerrado, a falta de la verificación final, con `roles.company_id` en la matriz de permisos, D-81; paso 3 cerrado salvo la matriz, con el registro público con perfil fuera del paso, D-83; cómo se integran los cierres; las condiciones para empezar el paso 5) · 18/10/2026 (paso 1 cerrado, a falta de validar `contextos/location.md`; la sonda contra el backend real como criterio de cierre; el dígito de control, construido) · 16/10/2026 (paso 3 construido, salvo los permisos, el registro público con perfil y el dígito de control) · 15/10/2026 · **Fuente:** diccionario de datos v1.21, §3 y D-81 a D-92. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 El orden lo fijan las dependencias entre tablas: nada se construye antes de lo que referencia. Cada paso entrega su contexto completo, del backend (migraciones, dominio y API) al frontend (pantallas y opciones del menú).
 
@@ -10,9 +10,9 @@ El orden lo fijan las dependencias entre tablas: nada se construye antes de lo q
 | Paso | Bloque del diccionario                                | Contexto              | Depende de                       | Estado                   |
 | ---- | ----------------------------------------------------- | --------------------- | -------------------------------- | ------------------------ |
 | 0    | 2 · Seguridad, en parte, y el núcleo común            | `shared`, `iam`       | —                                | Construido               |
-| 1    | 1 · Geografía                                         | `location`            | —                                | Cerrado (Perú), a falta de validar `location.md` |
-| 2    | 3 · Empresas                                          | `organization`        | 1 y 2                            | En curso                 |
-| 3    | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | 2 y 3                            | Construido, salvo permisos y registro con perfil |
+| 1    | 1 · Geografía                                         | `location`            | —                                | Cerrado (Perú)           |
+| 2    | 3 · Empresas                                          | `organization`        | 1 y 2                            | Cerrado, a falta de la verificación final |
+| 3    | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | 2 y 3                            | Cerrado salvo la matriz de permisos (D-68), antes del paso 5 |
 | 4    | 4 · Catálogos de flota                                | `vehiclecatalog`      | 3                                | En curso                 |
 | 5    | 6 · Vehículo y estados                                | `fleet`               | 4                                | Pendiente                |
 | 6    | 11 · Bitácora de cambios                              | `shared`              | 6                                | Pendiente                |
@@ -46,13 +46,13 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 - **Tablas:** `users`, `roles` y una versión reducida de `user_roles`, más las sesiones (`spring_session`).
 - **Pantallas:** inicio de sesión, registro público (se enciende con una variable de entorno), cambio de contraseña y Seguridad › Usuarios.
-- **Lo que falta del bloque:** el paso 3 completó las asignaciones con su alcance, los bloqueos, la caducidad y dar acceso desde el colaborador, que reemplazó a "Nuevo usuario". Quedan los permisos y el registro público con perfil (paso 3, abajo).
+- **Lo que falta del bloque:** el paso 3 completó las asignaciones con su alcance, los bloqueos, la caducidad y dar acceso desde el colaborador, que reemplazó a "Nuevo usuario". Quedan los permisos, antes del paso 5 (paso 3, abajo), y el registro público con perfil, fuera del paso 3 (D-83, pendientes transversales).
 
 
 
 ### Paso 1 · Geografía y localización — cerrado para Perú
 
-- **Estado (18/10/2026):** cerrado para Perú, el único país que opera (D-5). Solo falta que el responsable del diccionario valide [contextos/location.md](contextos/location.md), que sigue como borrador. Backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, sus pruebas y la ficha del país; la dirección elige su división en cascada. V24 carga el ubigeo del INEI, edición 2022, con 1 891 distritos, y cada distrito creado por ley después entra con su propia migración cuando tiene código oficial (D-77). El cierre, en `feature/location-closure` (backend sobre `ee4df37`, con V36 a V39; frontend sobre `a8ab115`), atendió los 60 hallazgos de la auditoría del 17/10/2026 con las decisiones D-75 a D-80 del diccionario v1.20:
+- **Estado (18/10/2026):** cerrado para Perú, el único país que opera (D-5). El responsable validó [contextos/location.md](contextos/location.md) el 18/10/2026, después de las correcciones que pidió la auditoría de `organization`; se integra dentro de `feature/organization-closure` (paso 2, "Integración"). Backend y frontend tienen monedas, países con sus escalones, divisiones, direcciones y tipos de documento tributario, con su API, sus pruebas y la ficha del país; la dirección elige su división en cascada. V24 carga el ubigeo del INEI, edición 2022, con 1 891 distritos, y cada distrito creado por ley después entra con su propia migración cuando tiene código oficial (D-77). El cierre, en `feature/location-closure` (backend sobre `ee4df37`, con V36 a V39; frontend sobre `a8ab115`), atendió los 60 hallazgos de la auditoría del 17/10/2026 con las decisiones D-75 a D-80 del diccionario v1.20:
   - el dígito de control lo calcula `location` y lo aplica `organization` en empresas y colaboradores; hoy, el del RUC (D-75), y el DNI no lo tiene (D-76);
   - un colaborador cuyo tipo de documento se desactivó se sigue editando (LOC-R36);
   - cada regla de una dirección responde su propio código, y las ubicaciones corrigen o mudan su dirección por su subrecurso, como las sedes (D-79);
@@ -67,17 +67,26 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 
 
-### Paso 2 · Empresas — en curso
+### Paso 2 · Empresas — cerrado
 
-- **Estado (16/10/2026):** Empresas, Marcas comerciales, Sedes y Ubicaciones están construidas en el backend y en el frontend, con su opción del menú. La empresa, la sede y la ubicación llevan su dirección anidada. Falta `roles.company_id`. Los hallazgos de seguridad de la revisión del 14/10/2026 quedaron resueltos con el paso 3; lo que falta para cerrar el paso está en [contextos/organization.md](contextos/organization.md), sección 6.
-- **Tablas:** `companies`, `commercial_brands`, `branches`, `locations`. Además se agrega `roles.company_id`, que esperaba a que existieran las empresas. `tax_id_types` pasó al paso 1 (D-44).
+- **Estado (18/10/2026):** cerrado; solo falta anotar la verificación final. Empresas, Marcas comerciales, Sedes y Ubicaciones están construidas en el backend y en el frontend, con su opción del menú, y la empresa, la sede y la ubicación llevan su dirección anidada. `roles.company_id` ya no es de este paso: llega con la matriz de permisos, antes del paso 5, porque un rol propio de una empresa solo tiene sentido con permisos que marcarle (D-81). El cierre, en `feature/organization-closure` (49 commits del backend y 55 del frontend sobre `feature/location-closure`, con V40 a V44), partió de los 82 hallazgos confirmados de la auditoría del 18/10/2026 y de las decisiones D-81 a D-92 del diccionario v1.21; lo que no se corrigió quedó con su paso:
+  - la empresa nombra su país y su moneda por su código (D-13), y el tipo de una ubicación viaja en minúsculas;
+  - a una empresa, una sede o una marca inactiva no se le cuelga nada nuevo (D-84), y el superadministrador corrige el documento tributario de una empresa (D-85);
+  - los códigos propios conservan sus guiones (D-86), una sede tiene a lo sumo una ubicación propia, que se reactiva después de su sede (D-90), y la longitud de un número sin cambios no se vuelve a medir (D-91);
+  - empresas, sedes y marcas se bloquean antes de cambiarlas, y lo que se les cuelga lee el padre con `FOR SHARE`;
+  - las pruebas de autorización de cada escritura, las claves naturales en una carrera, que ya no suponen una base vacía, y la sonda contra el backend real de las pantallas de `organization`.
+
+  Verificación final: <<CIFRAS>>. El detalle está en [contextos/organization.md](contextos/organization.md), sección 6, y en la [revisión del 18/10/2026](retroalimentacion/2026-10-18-organization.md).
+- **Integración:** `feature/organization-closure` se integra en `develop` entera, en el backend y en el frontend. Contiene `feature/location-closure`, que no se integra sola: la última versión de V39 (`aade406`) y la pantalla de LOC-R36 (`9842ea8`) están solo en `feature/organization-closure`. Como `develop` se despliega en cada push, antes del merge el responsable corre en la base desplegada (`millennium_erp_dev`), con la cuenta dueña, los dos inventarios de solo lectura del backend: `scripts/database/inventory-text-identifiers.sql`, que dice qué reescribiría V39 y si se detendría, e `scripts/database/inventory-organization-checks.sql`, que lista las filas que detendrían V40, V41 y V43. Cada fila que aparezca pide una decisión del responsable, no una limpieza (README del backend, "Inventario antes de V39" e "Inventario antes de V40, V41 y V43"). Después del merge se anotan los commits integrados en este documento.
+- **Tablas:** `companies`, `commercial_brands`, `branches`, `locations`. `roles.company_id` pasó a la matriz de permisos (D-81), y `tax_id_types` al paso 1 (D-44).
 - **Pantallas:** Configuración › Empresas (solo superadministrador), Sedes, Marcas comerciales y Ubicaciones. Qué países operan lo muestra Empresas filtrada por país (D-3).
 - **Datos:** razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales.
 
 
 
-### Paso 3 · Colaboradores y accesos, y el resto del bloque 2 — construido, salvo los permisos y el registro público con perfil
+### Paso 3 · Colaboradores y accesos, y el resto del bloque 2 — cerrado salvo la matriz de permisos (D-68), antes del paso 5
 
+- **Estado (18/10/2026):** cerrado salvo la matriz de permisos (D-68), que llega antes del paso 5. El registro público con perfil (D-32) no es de este paso: sigue apagado y se construye antes de encender el registro público en cualquier entorno (D-83). El cierre de `organization` (paso 2) agregó al paso 3 la cuenta existente solo de la misma persona, con la confirmación del superadministrador atada a los titulares que vio, y la desvinculación, que funciona como una salida (D-82); el registro de esas decisiones (`employee_account_link_events`, V44); la fecha de ingreso no posterior a hoy (D-88); el superadministrador sin vincular, que registra colaboradores pero no salidas, regresos ni desvínculos (D-89); la caducidad de un rol como el día completo en la zona de la empresa (D-87); y en qué empresas trabaja cada cuenta, en la sesión y en la lista de cuentas. Su verificación es la del paso 2: <<CIFRAS>>.
 - **Estado (16/10/2026):** construido en `feature/access-model`, en el backend y en el frontend, con las seis rondas del modelo de acceso. Lo construido:
   - colaboradores, con su salida y su regreso, que nunca tienen fecha posterior a hoy en la zona del colaborador;
   - dar acceso desde el colaborador (`POST /access-grants`), que crea la cuenta o vincula la que la persona ya tiene, sin tocar sus roles ni su contraseña;
@@ -91,11 +100,12 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
   Migraciones V26 a V32. El detalle está en [contextos/iam.md](contextos/iam.md), [contextos/organization.md](contextos/organization.md) y la [revisión del 16/10/2026](retroalimentacion/2026-10-16-iam.md). Las decisiones que se tomaron en el camino están en el diccionario v1.18 (D-55 a D-72), validado el 17/10/2026.
 - **Verificación** (sobre el backend `6a7d9b1` y el frontend `1a341ab`): 926 pruebas del backend, sin fallos, errores ni omitidas, conectadas como `erp_mm_app` sobre una `erp_mm_db_verify` recreada y migrada por `erp_mm_owner` de V1 a V32; 877 pruebas unitarias del frontend en 88 archivos; build inicial de 489,11 kB, bajo el presupuesto de 500 kB; `lint:styles` sin observaciones; 425 e2e en verde y 22 omitidas a propósito, sin fallos. La primera sonda contra el backend real (ronda 4) coincidió en 210 de 211 comprobaciones HTTP —la restante fue el orden de la propia sonda, no el backend— y en las 40 de la frontera entre empresas, y el recorrido con los tres roles no dio errores de página. Sonda final (rondas 5 y 6): 129 de 129 comprobaciones de la política coincidieron, y el navegador sin simulaciones se comportó como dice el contrato; quedan cuatro diferencias menores, anotadas en la [revisión del 16/10/2026](retroalimentacion/2026-10-16-iam.md).
 - **Lo que falta del paso:**
-  - `permissions` y `role_permissions`: esperan la matriz de permisos, que llega antes del paso 5 (ajuste 3). Hasta entonces, los roles globales —el superadministrador y el administrador de accesos— leen los datos de todas las empresas.
-  - El registro público con perfil (D-32): espera a que convenciones §14.16 defina cómo lista sedes y tipos de documento sin sesión. Mientras tanto sigue apagado.
+  - `permissions` y `role_permissions`, con `roles.company_id` (D-81): esperan la matriz de permisos, que llega antes del paso 5 (D-68, ajuste 3). Hasta entonces, los roles globales —el superadministrador y el administrador de accesos— leen los datos de todas las empresas, y cualquier rol con alcance en una empresa lee y exporta sus colaboradores.
+
+  El registro público con perfil, que figuraba aquí, salió del paso (D-83): queda en los pendientes transversales.
   
   El dígito de control de los documentos tributarios, que figuraba aquí, se construyó con el cierre del paso 1 (D-75; [location.md](contextos/location.md), LOC-R35, y [organization.md](contextos/organization.md), ORG-R04).
-- **Tablas:** `employees`; `user_roles` con su alcance por empresa, sede y marca; `user_access_suspensions`, `permissions` y `role_permissions`.
+- **Tablas:** `employees`; `user_roles` con su alcance por empresa, sede y marca; `user_access_suspensions`, `employee_account_link_events`, `permissions` y `role_permissions`. `employees` es de `organization`, y las demás de `iam` (D-92).
 - **Pantallas:** Configuración › Colaboradores, con las acciones de cuenta según el rol de la sesión; Seguridad › Usuarios, para el superadministrador y el administrador de accesos; Seguridad › Roles y permisos: sus pantallas de roles propios y permisos existen en el frontend, pero no figuran en el menú hasta que el backend sirva la matriz.
 - **Datos:** colaboradores reales y la matriz de permisos por rol.
 - **Nota:** `advisor_assignments` figura en el bloque 3b, pero se construye con ventas (bloque 12), porque apunta a los contratos.
@@ -113,6 +123,11 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 ### Paso 5 · Vehículo y estados
 
+- **Para empezarlo** (condiciones de entrada, auditoría de `organization` del 18/10/2026):
+  - la matriz de permisos (D-68), con `permissions`, `role_permissions` y `roles.company_id` (D-81): las primeras operaciones de negocio exigen un permiso, no un rol;
+  - qué lee cada rol: un rol global hoy lee todas las empresas, y cualquier rol con alcance en una empresa, también uno de sede o de marca, lee y exporta los colaboradores de toda la empresa con su documento y su teléfono (O19, §5.13); la marca de una asignación tiene que acotar también lo que se lee, porque los vehículos son el primer dato que pertenece a una marca;
+  - que la marca y la ubicación de un vehículo sean de su empresa: la regla de §8.1 del diccionario y la llave compuesta del vehículo hacia su ubicación, que puede apuntar a `locations_id_company_uq (id, company_id)`, ya agregada por V41 (G3.1);
+  - la lectura en lote de las ubicaciones de una empresa por la fachada de `organization`, que `fleet` va a necesitar (G3.2).
 - **Tablas:** `vehicle_statuses`, `status_change_reasons`, `vehicles`, `vehicle_status_history`, `vehicle_mileage_readings`.
 - **Pantallas:** Logística › Inventario (la ficha del vehículo reúne su historial de estados y su kilometraje); Catálogos › Estados y motivos.
 
@@ -174,7 +189,7 @@ El diccionario ordena los bloques por sus dependencias. La implementación lo si
 
 1. **La bitácora va apenas después del vehículo**, no al final.
 2. `advisor_assignments` **se construye con ventas**, aunque figure en el bloque 3b.
-3. **El bloque 2 se termina con la matriz de permisos, antes del paso 5.** El paso 3 se construyó sin `permissions` ni `role_permissions`, porque falta el dato: qué permisos lleva cada rol. Los permisos hacen falta antes de las operaciones de negocio de los pasos 5 y 7, como dar de alta una unidad o registrar una factura, y con ellos se acota también lo que lee un rol global: hasta entonces, el superadministrador y el administrador de accesos leen los datos de todas las empresas. Con la matriz se decide además quién crea los roles de una empresa.
+3. **El bloque 2 se termina con la matriz de permisos, antes del paso 5.** El paso 3 se construyó sin `permissions` ni `role_permissions`, porque falta el dato: qué permisos lleva cada rol. Los permisos hacen falta antes de las operaciones de negocio de los pasos 5 y 7, como dar de alta una unidad o registrar una factura, y con ellos se acota también lo que lee un rol global: hasta entonces, el superadministrador y el administrador de accesos leen los datos de todas las empresas. Con la matriz llega además `roles.company_id`, los roles propios de una empresa, y se decide quién los crea (D-81).
 4. **Desde el vehículo hay dos ramas independientes**, que se pueden alternar.
 
 
@@ -187,19 +202,22 @@ El diccionario ordena los bloques por sus dependencias. La implementación lo si
 
 | Qué | Prioridad |
 | --- | --- |
-| La matriz de permisos por rol: `permissions` y `role_permissions` (§5.6), qué lee un rol global y quién crea los roles de una empresa. Hasta entonces, el superadministrador y el administrador de accesos leen los datos de todas las empresas, y la opción Seguridad › Roles y permisos queda fuera del menú: sus pantallas existen en el frontend y llaman a rutas que el backend todavía no sirve. Con la matriz, la lectura de los catálogos generales pasa de cualquier rol vigente a un permiso propio (D-43), lo que toca los ocho controladores de `location` y sus pruebas | Antes del paso 5 (ajuste 3) |
+| La matriz de permisos por rol (D-68): `permissions` y `role_permissions` (§5.6), qué lee un rol global y qué lee un rol de empresa, de sede o de marca —hoy cualquiera lee y exporta los colaboradores de toda su empresa (O19)—, y `roles.company_id`, con quién crea los roles de una empresa y la unicidad de su código (D-81). Hasta entonces, el superadministrador y el administrador de accesos leen los datos de todas las empresas, y la opción Seguridad › Roles y permisos queda fuera del menú: sus pantallas existen en el frontend y llaman a rutas que el backend todavía no sirve. Con la matriz, la lectura de los catálogos generales pasa de cualquier rol vigente a un permiso propio (D-43), lo que toca los ocho controladores de `location` y sus pruebas | Antes del paso 5 (ajuste 3); es condición para empezarlo |
 | Historia de los reingresos: hoy el regreso de un colaborador reemplaza su fecha de ingreso y borra la de salida, y el período anterior se pierde. Necesita un diseño en el diccionario (§5.3, §5.13 y §14) | Cuando el diccionario lo diseñe, antes de cargar los colaboradores reales: desde entonces, cada regreso borraría un período que ya no se recupera |
 | La marca de una asignación acota dónde se otorga un rol, pero todavía no lo que se lee: la frontera de la aplicación y de la base es la empresa (§5.13) | Antes del paso 5: los vehículos son el primer dato que pertenece a una marca |
 | Restablecer la contraseña con un enlace de un solo uso al correo de la persona, en vez de mostrarle la provisional al administrador | Cuando exista el envío de correos |
-| Registro público con perfil (D-32): elegir empresa y sede sin sesión y crear el colaborador y la cuenta juntos; hoy crea solo la cuenta y viene apagado | Cuando se decida [convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §14.16, antes de encender el registro |
-| La sesión guarda el hash de la contraseña | Media |
-| Un correo de más de 255 caracteres devuelve error 500 en vez de 400 | Baja |
+| Registro público con perfil (D-32): elegir empresa y sede sin sesión y crear el colaborador y la cuenta juntos; hoy crea solo la cuenta y viene apagado. Quedó fuera del paso 3 (D-83) | Antes de encender el registro público en cualquier entorno, con la forma que fijen las [convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §14.16 |
+| La sesión guarda el hash de la contraseña ([iam.md](contextos/iam.md), §6 b, O58) | Media. **(propuesta)** Antes del paso 5, y a más tardar antes del primer entorno con usuarios reales |
+| Un correo de más de 255 caracteres devuelve error 500 en vez de 400 (O58) | Baja. **(propuesta)** Con el próximo cambio de los recursos de entrada de `iam`, y a más tardar antes del paso 5 |
+| Inventarios de solo lectura en la base desplegada antes de V39 y antes de V40, V41 y V43 (`scripts/database/inventory-text-identifiers.sql`, `inventory-organization-checks.sql`) | Antes de integrar `feature/organization-closure` en `develop` (paso 2, "Integración") |
+| Una pantalla de solo lectura de `employee_account_link_events` para el superadministrador; hoy no tiene ruta de lectura (§5.4) | Cuando el responsable la pida |
+| El colaborador en un contexto propio (D-92) | Cuando lleguen los contratos laborales, la planilla o la asistencia |
 | Separar en cada entorno la cuenta de Flyway, dueña de las tablas, de la cuenta de la aplicación, que lee, inserta y actualiza, y solo borra en `spring_session*`. El código y las pruebas ya funcionan así: las pruebas corren conectadas como `erp_mm_app` (README del backend, "Cuentas de la base" y "Pruebas"). Falta correr los scripts (`scripts/database/create-roles.sql`, una vez por clúster, y `hand-over-database.sql`, una vez por base ya migrada) y fijar `FLYWAY_USER`, `FLYWAY_PASSWORD`, `DATABASE_USER` y `DATABASE_PASSWORD`. Con `postgres`, que es superusuario, la base no aísla las empresas (V29) | En cada entorno, antes de usar roles de empresa o de sede en él |
 | Zona de los momentos en las exportaciones con alcance de empresa o de sede: cada controlador le pasa a `SpreadsheetExporter` la zona de ese alcance ([convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §8.1). Hoy ninguna exportación de empresa o de sede lleva momentos; la de cuentas los da en `America/Lima`, porque una cuenta no es de una empresa | Con la primera exportación de empresa o de sede que lleve momentos |
 | Fijar los decimales de una moneda cuando un monto ya la usa (§4.1): `location` publica un puerto (SPI) que implementan los contextos con montos, para saber si alguno usa la moneda sin depender de ellos | Antes del paso 7 o del 9, el que vaya primero: los dos traen los primeros montos |
 | Los tipos de cambio por día (`exchange_rates`) y el tipo de tasa que propone cada país para sus compras (§4.8, D-46); la moneda de grupo, con los reportes | Justo antes del paso 7; la moneda de grupo, con el paso 11 |
 | Acotar la tabla de direcciones por empresa, con Row Level Security, como las demás tablas de empresa (§2.5, D-66, D-80). Cómo se acota se diseña con el paso | En el paso 7, antes de guardar la primera dirección de un proveedor |
-| Fechas en pantalla (§2.6): deben verse en la zona de la sede; sin sede, en la del país de la empresa; sin empresa, en `America/Lima`, y como `dd/mm/aaaa hh:mm`. Las pantallas de cuentas ya lo hacen, en `America/Lima`; las demás todavía usan la zona del navegador | Media. Antes de la próxima pantalla que muestre fechas |
+| Fechas en pantalla (§2.6): deben verse en la zona de la sede; sin sede, en la del país de la empresa; sin empresa, en `America/Lima`, y como `dd/mm/aaaa hh:mm`. Las pantallas de cuentas ya lo hacen, en `America/Lima`, y las de `organization` también; las demás todavía usan la zona del navegador (O70) | Media. Antes de la próxima pantalla que muestre fechas (pasos 4 y 5) |
 | Colombia y México (§4.7, D-52, D-75): las longitudes de sus documentos —el RFC tiene 12 caracteres para empresas y 13 para personas con un solo tipo; el NIT, decidir si el dígito de control va dentro del número; la CC exige exactamente 10—, el cálculo del dígito de control del NIT, el RFC y la CURP, y la lista oficial de divisiones del país (DANE, INEGI). **(propuesta)** Partir el RFC en dos tipos, dejar la CC sin longitud fija y ajustar el NIT. **Riesgo aceptado:** hasta entonces nada en el código impide registrar una empresa de esos países, y sus tipos con dígito de control aceptan cualquier número sin verificar. No hay que crear a mano divisiones de Colombia ni de México: con una sola cargada, toda dirección de ese país pasa a exigir la suya (D-53) | Antes de registrar la primera empresa de Colombia o México |
 | Dar de alta Santa Rosa de Loreto (Ley 32403, 03/07/2025) con su propia migración; hasta entonces no se puede elegir (D-77) | Cuando el INEI o SUNAT publiquen su código |
 
