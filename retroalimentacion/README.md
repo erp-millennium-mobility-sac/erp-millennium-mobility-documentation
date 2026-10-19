@@ -27,3 +27,4 @@ Una revisión no es una evaluación de personas. Sirve para que el equipo compar
 | 18/10/2026 | `location`, `organization` | [Cierre del paso 1: dígito de control, direcciones de las ubicaciones y sonda en vivo](2026-10-18-location.md) |
 | 18/10/2026 | `organization`, `iam` | [Cierre de los pasos 2 y 3: identidad de las cuentas, padres inactivos y sonda en vivo](2026-10-18-organization.md) |
 | 18/10/2026 | `organization` | [Seguimiento del cierre después de integrarlo: quién lee los colaboradores, reactivar bajo una empresa inactiva y fallas de carga](2026-10-18-organization-seguimiento.md) |
+| 19/10/2026 | `iam`, `shared`, `location`, `vehiclecatalog`, `organization` | [La matriz de permisos del paso 3b: los hallazgos del panel de diseño que la fijaron y lo que queda abierto](2026-10-19-permisos.md) |
