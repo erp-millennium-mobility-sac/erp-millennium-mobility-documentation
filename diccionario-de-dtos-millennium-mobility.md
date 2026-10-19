@@ -878,7 +878,7 @@ Un rol incluye un permiso a lo sumo una vez mientras está vigente.
 
 | code | module | description | Paso |
 |---|---|---|---|
-| `catalogos.ver` | catalogos | Leer monedas, tipos de cambio, países, divisiones, tipos de documento tributario, catálogos de flota, estados y motivos, tipos de documento del vehículo (D-43) | 1, 4, 5 |
+| `catalogos.ver` | catalogos | Leer monedas, tipos de cambio, países, divisiones, documentos tributarios, catálogos de flota, estados y motivos, documentos del vehículo (D-43) | 1, 4, 5 |
 | `catalogos.gestionar_generales` | catalogos | Monedas, países y sus escalones, divisiones, tipos de documento tributario (D-43) | 1 |
 | `catalogos.gestionar_flota` | catalogos | Tipos de vehículo, marcas y modelos, colores, equipamiento (§7) | 4 |
 | `catalogos.gestionar_estados` | catalogos | Estados del vehículo, motivos y caminos con el permiso que exige cada uno, tipos de documento del vehículo (D-100) | 5, 9 |
