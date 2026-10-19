@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.22 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 50 tablas más `role_permissions`, la tabla de unión de roles y permisos
+**Versión:** 1.23 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 50 tablas más `role_permissions`, la tabla de unión de roles y permisos
 
 > **Cómo leer los cuadros.** En cada tabla, las columnas *Descripción* y *Por qué importa* están escritas para que las entienda cualquier persona, sin conocimientos técnicos: sirven para que quien conoce el negocio pueda revisar si el dato es el correcto. Las columnas *Tipo* y *Nulo*, las restricciones y el código SQL son para el equipo de desarrollo.
 
@@ -106,6 +106,7 @@ Los campos que no pasan el filtro quedan listados como **candidatos**, con el cr
 - Los catálogos generales —monedas, países, divisiones territoriales, tipos de documento tributario, permisos— no se filtran: son iguales para todos.
 - Los usuarios no pertenecen a una empresa. El administrador de una empresa ve las cuentas vinculadas a colaboradores de esa empresa —también las de quienes ya salieron, para comprobar que la salida les quitó el acceso—, con los roles vigentes que tienen en ella y los de alcance sistema, pero no las modifica: dar acceso, otorgar y retirar roles, bloquear cuentas y restablecer contraseñas es trabajo del administrador de accesos (D-57).
 - El stock es visible para toda la empresa. La sede limita dónde se puede actuar, no qué se ve.
+- Un rol de sede actúa sobre las unidades que están en la ubicación propia de su sede; las que están en una ubicación de terceros, o todavía sin ubicación, las tocan los roles de empresa (D-101). La marca de una asignación acota lo que se ve y lo que se toca de los datos que pertenecen a una marca, desde los vehículos (D-102).
 - Hay campos que no ve cualquiera aunque vea la fila. Cuando falta el permiso, el campo no sale de la base: ocultarlo en la pantalla no alcanza.
 - El acceso total es una excepción explícita evaluada con las mismas reglas, no una cuenta que se saltea el control.
 - **La frontera entre empresas la defiende también la base de datos** (D-66). La aplicación filtra cada consulta por las empresas que alcanza quien la hace. Además, en cada tabla que lleva `company_id` —y en `companies`, por su propio `id`—, la base deja ver y escribir solo las filas de esas empresas. Si algún día una consulta olvida su filtro, devuelve menos filas, nunca las de otra empresa. Un rol de alcance sistema ve todas; una operación sin alcance no ve ninguna.
@@ -142,7 +143,7 @@ Cada bloque pertenece a un contexto delimitado, que es la unidad de código: `lo
 | Bloque | Contenido | Depende de | Estado |
 |---|---|---|---|
 | 1 | Geografía y localización: `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `addresses`, `tax_id_types` | — | **Cerrado** |
-| 2 | Seguridad: `users`, `user_access_suspensions`, `roles`, `permissions`, `role_permissions` | — (`roles.company_id` necesita el 3 y llega con la matriz de permisos, D-81) | **Cerrado** |
+| 2 | Seguridad: `users`, `user_access_suspensions`, `roles`, `permissions`, `role_permissions` | — (`roles.company_id` necesita el 3; llegó con la matriz de permisos, D-81, D-98) | **Cerrado** |
 | 3 | Empresas: `companies`, `commercial_brands`, `branches`, `locations` | 1, 2 | **Cerrado** |
 | 3b | Colaboradores y accesos: `employees`, `user_roles`, `employee_account_link_events`, `advisor_assignments` | 2, 3 | **Cerrado** |
 | 4 | Catálogos de flota: `vehicle_types`, `vehicle_brands`, `vehicle_models`, `colors`, `equipment_types` | 3 | **Cerrado** |
@@ -166,7 +167,8 @@ El código se construye en este orden. Respeta las dependencias del cuadro anter
 | 0 | 2 · Seguridad, en parte, y el núcleo común | `shared`, `iam` | Cuentas, roles, sesiones y asignaciones reducidas | — | Construido; lo que falta está en §5.13 |
 | 1 | 1 · Geografía y localización | `location` | Monedas, países con sus escalones, divisiones territoriales, direcciones y tipos de documento tributario | Archivo oficial de divisiones territoriales (ubigeo del INEI) | Construido para Perú: V24 carga el ubigeo del INEI, edición 2022, y cada distrito creado después entra con su propia migración cuando tiene código oficial (D-77). Colombia y México se completan antes de su primera empresa (D-52) |
 | 2 | 3 · Empresas | `organization` | Empresas, marcas comerciales, sedes y ubicaciones | Razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales | Construido: empresas, marcas comerciales, sedes y ubicaciones. `roles.company_id` no es de este paso: llega con la matriz de permisos, antes del paso 5 (D-81) |
-| 3 | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | Colaboradores; asignaciones por empresa, sede y marca; bloqueos de cuenta; permisos; dar acceso | Colaboradores reales y la matriz de permisos por rol | Construido, salvo los permisos: colaboradores con su salida y su regreso, dar acceso, asignaciones por empresa, sede y marca con su caducidad, bloqueos en dos líneas de tiempo, la separación de funciones entre quien registra colaboradores y quien da acceso (D-57) y la frontera entre empresas en la base (D-66). El registro público con perfil no es de este paso: sigue apagado y se construye antes de encender el registro público en un entorno (D-83). Lo que falta está en §5.13 |
+| 3 | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | Colaboradores; asignaciones por empresa, sede y marca; bloqueos de cuenta; permisos; dar acceso | Colaboradores reales | Construido; los permisos llegaron con el paso 3b: colaboradores con su salida y su regreso, dar acceso, asignaciones por empresa, sede y marca con su caducidad, bloqueos en dos líneas de tiempo, la separación de funciones entre quien registra colaboradores y quien da acceso (D-57) y la frontera entre empresas en la base (D-66). El registro público con perfil no es de este paso: sigue apagado y se construye antes de encender el registro público en un entorno (D-83). Lo que falta está en §5.13 |
+| 3b | 2 · La matriz de permisos | `iam`, `shared` | `permissions`, `role_permissions`, `roles.company_id` e `is_active`; la pantalla Seguridad › Roles y permisos; las operaciones y las lecturas de los pasos 1 a 4 exigen un permiso | La matriz de permisos por rol (§5.6, fijada el 19/10/2026) | En construcción desde el 19/10/2026 (`feature/permissions-matrix`) |
 | 4 | 4 · Catálogos de flota | `vehiclecatalog` | Tipos de vehículo, marcas y modelos, colores, equipamiento y a qué tipos aplica | Modelos reales, conciliados entre los dos catálogos que advierte §7.3 | Construido, salvo los datos: faltan los modelos reales conciliados (§7.3) |
 | 5 | 6 · Vehículo y estados | `fleet` | Estados, caminos y motivos, vehículos, historial de estados, kilometraje | — | Pendiente |
 | 6 | 11 · Bitácora de cambios | `shared` | `change_log` | — | Pendiente |
@@ -181,7 +183,7 @@ Los cuatro ajustes:
 
 1. **La bitácora va apenas después del vehículo**, no al final. Depende solo del bloque 6, y desde ahí ya hay cambios delicados —corregir una placa, un VIN o el monto de una factura— que tienen que quedar registrados.
 2. **`advisor_assignments` se construye con el bloque 12**, aunque figure en el 3b: apunta a los contratos, que son de ventas.
-3. **El bloque 2 se termina cuando llegue la matriz de permisos.** El paso 3 se construyó sin `permissions` ni `role_permissions` porque falta el dato: qué permisos lleva cada rol. Mientras tanto, quién otorga qué lo fija una regla provisional (§5.7, §5.13). Un rol de alcance sistema —el superadministrador o el administrador de accesos— lee los datos de todas las empresas: hoy empresas, marcas, sedes, ubicaciones y colaboradores, que el administrador de accesos necesita para dar acceso. La matriz llega antes del paso 5, el primero con operaciones de negocio, como dar de alta una unidad, y con ella se acota también lo que lee un rol global (D-68). Con ella llega además `roles.company_id`, los roles propios de una empresa: un rol propio solo tiene sentido con permisos que marcarle (D-81).
+3. **El bloque 2 se termina con la matriz de permisos, en el paso 3b.** El paso 3 se construyó sin `permissions` ni `role_permissions` porque faltaba el dato: qué permisos lleva cada rol. El 19/10/2026 la matriz quedó fijada (§5.6, D-95 a D-105) y el paso 3b la construye, antes del paso 5: desde él, las operaciones de negocio y las lecturas de datos exigen un permiso, las cuentas y los accesos siguen por rol (§5.8), un rol global lee lo que su matriz le da (D-68), y existen los roles propios de una empresa (D-81, D-98).
 4. **Desde el paso 5 hay dos ramas independientes:** compras y pagos (pasos 7 y 8), y habilitación y fondos (pasos 9 y 10). Se pueden alternar según la prioridad del negocio; fondos usa las cargas de archivos que llegan con la habilitación.
 
 Un paso se puede construir sin sus datos, con datos de ejemplo; los reales se cargan después.
@@ -488,7 +490,7 @@ Hoy cada documento guarda el tipo de cambio que usó (§2.2), pero nada lo propo
 | `updated_at` / `updated_by` | TIMESTAMPTZ / FK `users` | No / Sí | Quién la corrigió por última vez | — |
 
 - Las dos monedas, la fecha y el tipo no se repiten. Las dos monedas son distintas y la tasa es mayor que cero.
-- La tasa de cada día la carga un proceso automático desde la fuente oficial del país, a nombre de `SYSTEM`. Contabilidad la corrige a mano cuando hace falta, y la corrección queda en la bitácora.
+- La tasa de cada día la carga un proceso automático desde la fuente oficial del país, a nombre de `SYSTEM`. El superadministrador la corrige a mano cuando hace falta, con `catalogos.corregir_tipo_cambio`, y la corrección queda en la bitácora: la tabla no tiene empresa, así que una tasa sirve a todo el sistema y no se puede acotar a la contabilidad de una empresa (D-103).
 - El documento propone la tasa más reciente de su fecha o anterior, porque las fuentes no publican los fines de semana, y la copia en su propia columna. Corregir una tasa después no cambia los documentos que ya la copiaron.
 - Qué tipo de tasa propone cada país para sus compras lo dice `countries.purchase_exchange_rate_type`. En Perú la práctica es la de venta de la SBS a la fecha de emisión del comprobante; lo confirma Contabilidad antes del paso 7.
 
@@ -608,7 +610,7 @@ El tercero no tiene cuenta en el sistema y existe igual.
 - **La salida siempre quita el acceso** (D-60), también el de una cuenta protegida (§5.5): quien se fue no conserva el acceso mientras alguien con más permisos se entera. Una salida equivocada se corrige con un regreso. El único freno es la protección del último superadministrador (§5.9).
 - **Desvincular una cuenta funciona como una salida** (D-82). Lo hace solo un superadministrador, para corregir un vínculo equivocado, y la operación queda registrada en `employee_account_link_events` (§5.4). El colaborador sigue registrado, ahora sin cuenta, y la cuenta pierde sus roles en esa empresa, retirados con motivo `retiro`: el colaborador no salió, alguien corrigió un error. Si a la cuenta no le queda ningún colaborador activo, se cierra como en una salida (reglas anteriores): `baja`, `baja_cuenta` para sus demás roles y sesiones cerradas, con el mismo freno de la protección del último superadministrador.
 - **Registran y modifican colaboradores**, y registran sus salidas y regresos, el superadministrador y el administrador de la empresa del colaborador (D-57). El administrador de accesos no lo hace: quien da acceso no puede también crear al colaborador que lo recibe. Nadie registra su propia salida ni su propio regreso (D-70). El superadministrador que todavía no está vinculado a un colaborador registra y modifica colaboradores, porque tiene que crear el suyo, pero no registra salidas ni regresos hasta vincularse (D-89).
-- **Leen los colaboradores de una empresa** —la lista, cada uno y su exportación— solo una cuenta de alcance global, que hoy son el superadministrador y el administrador de accesos, los que manejan las cuentas, y una cuenta que administra esa empresa (D-93). Un rol de empresa o de sede que no la administra, como el de un asesor de ventas o el de taller, no los lee: su documento, su teléfono y su foto son datos personales, y quien atiende un local no necesita la planilla de toda la empresa. La matriz de permisos (D-68) decide después qué ve cada rol, por ejemplo los colaboradores de su sede.
+- **Leen los colaboradores de una empresa** quienes tienen el permiso (D-93, D-105): la fila mínima —nombre, puesto, sede, si está activo— cualquier rol con `configuracion.ver_colaboradores`, para elegir quién instaló un equipo o nombrar a quien registró algo; el documento, el teléfono, la foto y la exportación, solo con `configuracion.ver_datos_personales_colaboradores`, que la matriz da al superadministrador, al administrador de accesos y al administrador de la empresa. Un rol de empresa o de sede que no la administra no ve esos datos personales: quien atiende un local no necesita la planilla de toda la empresa. El campo que no se puede ver no viaja (§2.5).
 - **La fecha de ingreso no puede ser posterior a hoy** (D-88), al registrar al colaborador y al modificarlo, como la salida y el regreso. Hoy se calcula como fija §2.6: en la zona de la sede del colaborador; sin sede, en la del país de su empresa. Un colaborador con ingreso futuro podría recibir acceso y roles antes de empezar a trabajar, y no se le podría registrar la salida hasta corregir su ingreso.
 - **Un colaborador se registra en una empresa activa y, si tiene sede, en una sede activa** (D-84). El que ya está registrado sigue siendo válido y se sigue modificando aunque su empresa o su sede se hayan desactivado, mientras no cambie de sede; si cambia, la nueva tiene que estar activa.
 - **Cuando un colaborador regresa**, se registra su nueva fecha de ingreso, que no puede ser anterior a la de salida ni posterior a hoy, calculado igual que para la salida. Si su cuenta estaba cerrada por la salida, en la misma operación se cierra el bloqueo `baja`, y la persona vuelve a entrar con la misma cuenta y su historial completo. Un bloqueo por `seguridad` en curso sigue hasta que alguien lo levante. Los roles no vuelven solos: se asignan de nuevo (§5.9). Regresar es volver a colgarse de la empresa (D-94): un colaborador regresa solo a una empresa activa y, si tiene sede, a una sede activa, porque el regreso le devuelve la cuenta a la persona.
@@ -778,6 +780,7 @@ Un rol con su nivel de acceso. Define qué puede hacer alguien, no sobre qué em
 | `description` | TEXT | Sí | Explicación de qué hace este rol | Evita que dentro de un año nadie sepa en qué se diferencian dos roles parecidos |
 | `scope_level` | VARCHAR(10) | No | Hasta dónde llega el rol: `SYSTEM` (todo el sistema), `COMPANY` (una empresa) o `BRANCH` (una sede) | Es lo que impide darle a un asesor de una tienda el mismo alcance que al administrador general |
 | `is_system` | BOOLEAN | No | Marca los roles que trae el sistema y no se pueden borrar ni modificar | Protege al administrador general: si alguien lo borrara por error, nadie podría volver a administrar el sistema |
+| `is_active` | BOOLEAN | No | Si el rol se sigue ofreciendo al otorgar accesos. Un rol propio que ya no se usa se desactiva; los del sistema siempre están activos | Un rol que ya no corresponde no debe seguir ofreciéndose en la pantalla de accesos, y como nada se borra, se desactiva: lo que ya tenía asignado sigue vigente (D-97) |
 
 **Relaciones.** Apunta a `companies` cuando el rol pertenece a una empresa concreta. Le apuntan `role_permissions` (qué permisos incluye) y `user_roles` (a quién se le asignó).
 
@@ -799,10 +802,11 @@ Los siete roles que trae el sistema (cuadro al final de esta sección) son el pu
 
 | Quién lo crea | Dónde queda disponible |
 |---|---|
-| Superadministrador | En todas las empresas (`company_id` vacío) |
-| Administrador de una empresa | Solo en esa empresa |
+| Superadministrador | En todas las empresas (`company_id` vacío), o solo en una empresa concreta (`company_id` lleno), eligiéndola al crearlo (D-98) |
 
-**Los roles propios de una empresa llegan con la matriz de permisos** (D-81). `roles.company_id` se construye con `permissions` y `role_permissions`, antes del paso 5, y no con las empresas: un rol propio de una empresa solo tiene sentido con permisos que marcarle. Con la matriz se decide también quién crea esos roles: el cuadro de arriba se lo da al administrador de la empresa, que desde D-57 no otorga roles. Y el código pasa a ser único dentro de cada empresa. Hasta entonces todos los roles son generales (§5.13).
+El administrador de una empresa no crea roles: la regla 1 exige poseer los permisos que se marcan, y no tiene por qué tenerlos todos; además, desde D-57 no otorga roles. Lee los roles del sistema, los generales y los de su empresa. El administrador de accesos los lee todos, porque es quien los otorga y necesita saber qué incluye cada uno (D-98).
+
+**Los roles propios de una empresa existen desde la matriz de permisos** (D-81, D-98): `roles.company_id` apunta a la empresa, o queda vacío en los roles generales y en los del sistema; el código es único dentro de cada empresa y entre los generales, y un rol propio nunca usa el código de un rol del sistema. Un rol de una empresa solo se asigna dentro de esa empresa, y no puede ser de alcance sistema.
 
 Cinco reglas que gobiernan esto:
 
@@ -820,7 +824,7 @@ Esto es también la razón de fondo por la que un usuario nunca se borra: si des
 
 Como los accesos otorgados no caducan solos —salvo los que se otorgan con caducidad (§5.7, §5.8)—, el control que los mantiene sanos es revisarlos cada cierto tiempo. El modelo lo permite sin campos adicionales: cada asignación guarda quién la otorgó y cuándo, así que se puede listar todo lo vigente y depurar lo que ya no corresponde.
 
-Los roles marcados como propios del sistema no se pueden editar ni borrar, aunque quien lo intente tenga todos los permisos.
+Los roles marcados como propios del sistema no se pueden editar ni borrar, aunque quien lo intente tenga todos los permisos. Tampoco se les cambian los permisos ni se desactivan: la matriz de los siete roles del sistema la fijan las migraciones, y para variarla se crea un rol propio (D-97).
 
 **Una excepción a la regla 2, con nombre propio** (D-56). El administrador de accesos asigna roles cuyos permisos no tiene. Su trabajo es dar acceso, no registrar facturas ni dar de alta unidades, y no tendría sentido darle todos los permisos del sistema solo para que pueda asignarlos. La excepción tiene tres límites, que son los que la hacen segura (D-55):
 
@@ -857,38 +861,138 @@ Cada acción concreta que se puede autorizar por separado. Un rol es un conjunto
 | `module` | VARCHAR(30) | No | A qué parte del sistema pertenece: stock, compras, seguridad | Ordena la pantalla donde se asignan. Con cien permisos sueltos, nadie encuentra el que busca |
 | `description` | VARCHAR(150) | No | Qué habilita exactamente este permiso | Es lo que lee quien asigna. Sin explicación se otorgan permisos por el nombre y se termina dando de más |
 
-**Relaciones.** `permissions` no apunta a nadie: es un catálogo fijo que se carga con el sistema. `role_permissions` es la tabla intermedia que une roles con permisos.
+**Relaciones.** `permissions` no apunta a nadie: es un catálogo fijo que se carga con el sistema; cada paso trae los suyos con una migración de `iam` (D-95). `role_permissions` es la tabla intermedia que une roles con permisos, con su historia (D-96):
 
-**Ejemplo de `permissions`**
+| Variable | Tipo | Nulo | Descripción | Por qué importa |
+|---|---|---|---|---|
+| `role_id` | BIGINT FK → `roles` | No | El rol | |
+| `permission_id` | BIGINT FK → `permissions` | No | El permiso que incluye | |
+| `granted_at` | TIMESTAMPTZ | No | Desde cuándo lo incluye | |
+| `granted_by` | BIGINT FK → `users` | No | Quién lo marcó; `SYSTEM` en la semilla | Lo autorizado tiene responsable, como una asignación (§5.7) |
+| `revoked_at` | TIMESTAMPTZ | Sí | Desde cuándo dejó de incluirlo. Vacío = vigente | Desmarcar un permiso no borra la fila: nada se borra, y se puede saber qué permitía un rol en una fecha pasada |
+| `revoked_by` | BIGINT FK → `users` | Sí | Quién lo desmarcó | |
 
-| id | code | module | description |
+Un rol incluye un permiso a lo sumo una vez mientras está vigente.
+
+**El catálogo** (D-95). Cincuenta permisos para los pasos 1 a 11, en `<módulo>.<acción>`, en minúsculas y en español. "Ver" es una lectura; "gestionar" agrupa crear, editar y desactivar un recurso; lo que lleva nombre propio es una excepción controlada que se puede dar por separado. Cada paso carga los suyos cuando construye sus operaciones; hoy existen los de los pasos 1 a 4.
+
+| code | module | description | Paso |
 |---|---|---|---|
-| 1 | `compras.registrar_factura` | compras | Registrar una factura de compra |
-| 2 | `compras.registrar_factura_antigua` | compras | Registrar una factura de más de 20 días |
-| 3 | `stock.crear_vehiculo` | stock | Dar de alta una unidad |
-| 4 | `stock.corregir_placa` | stock | Corregir una placa ya registrada |
-| 5 | `stock.anular_vehiculo` | stock | Anular una unidad |
-| 6 | `seguridad.crear_usuario` | seguridad | Crear cuentas de acceso |
-| 7 | `stock.ver_costos` | stock | Ver el costo de compra y los descuentos del proveedor |
-| 8 | `clientes.ver_cartera_completa` | clientes | Ver la cartera de todos los asesores, no solo la propia |
-| 9 | `compras.gestionar_plantillas` | compras | Crear y editar las plantillas de orden de compra |
+| `catalogos.ver` | catalogos | Leer monedas, tipos de cambio, países, divisiones, tipos de documento tributario, catálogos de flota, estados y motivos, tipos de documento del vehículo (D-43) | 1, 4, 5 |
+| `catalogos.gestionar_generales` | catalogos | Monedas, países y sus escalones, divisiones, tipos de documento tributario (D-43) | 1 |
+| `catalogos.gestionar_flota` | catalogos | Tipos de vehículo, marcas y modelos, colores, equipamiento (§7) | 4 |
+| `catalogos.gestionar_estados` | catalogos | Estados del vehículo, motivos y caminos con el permiso que exige cada uno, tipos de documento del vehículo (D-100) | 5, 9 |
+| `catalogos.corregir_tipo_cambio` | catalogos | Corregir a mano una tasa cargada por el proceso automático (§4.8, D-103) | 7 |
+| `configuracion.ver_estructura` | configuracion | Empresas, sedes, marcas comerciales y ubicaciones del alcance | 2 |
+| `configuracion.gestionar_empresas` | configuracion | Crear y editar empresas, corregir su documento, activarlas y desactivarlas (D-85) | 2 |
+| `configuracion.gestionar_sedes_y_marcas` | configuracion | Sedes y marcas comerciales, con sus direcciones y su estado | 2 |
+| `configuracion.gestionar_ubicaciones` | configuracion | Ubicaciones, con sus direcciones y su estado (D-79, D-90) | 2 |
+| `configuracion.ver_colaboradores` | configuracion | La fila mínima de cada colaborador: nombre, puesto, sede y si está activo (D-105) | 3 |
+| `configuracion.ver_datos_personales_colaboradores` | configuracion | Documento, teléfono y foto, y la exportación de colaboradores (D-93, D-105) | 3 |
+| `stock.ver` | stock | Inventario y ficha de la unidad: datos, historial de estados, lecturas, documentos, equipos, llaves y cesiones; vencidas; habilitación. Toda la empresa (D-14), sin costos | 5, 9, 10 |
+| `stock.ver_costos` | stock | El costo visto desde la unidad: valor de factura, notas de crédito y valor del vehículo en la ficha, la columna de costo del exportable y los indicadores derivados de costos (§2.5) | 5, 7, 11 |
+| `stock.crear_vehiculo` | stock | Dar de alta una unidad | 5 |
+| `stock.editar_vehiculo` | stock | Color, motor, año, marca comercial, ubicación actual | 5 |
+| `stock.cambiar_estado` | stock | Recorrer un camino que no exige un permiso propio (D-100) | 5 |
+| `stock.habilitar` | stock | El camino En habilitación → Disponible | 5 |
+| `stock.vender` | stock | El camino Disponible → Vendido | 5 |
+| `stock.entregar` | stock | El camino Vendido → Activo | 5 |
+| `stock.atender_en_taller` | stock | Los caminos hacia Mecánica y Puesta a punto, y de vuelta a Disponible | 5 |
+| `stock.recuperar` | stock | Los caminos por morosidad y resolución de contrato (Custodia) | 5 |
+| `stock.registrar_kilometraje` | stock | Lecturas de taller, entrega, devolución y manuales (§8.5) | 5 |
+| `stock.registrar_sustitucion_odometro` | stock | El cambio de tablero, el hecho distinto que admite que la siguiente lectura sea menor (§8.5) | 5 |
+| `stock.corregir_placa` | stock | Corregir una placa ya registrada, con motivo (§13.1) | 5, 6 |
+| `stock.corregir_vin` | stock | Corregir un VIN ya registrado, con motivo (§13.1) | 5, 6 |
+| `stock.anular_vehiculo` | stock | Anular una unidad por acción explícita, con el candado de §9.6 (D-104) | 7 |
+| `stock.cargar_migracion_inicial` | stock | La carga del Excel que da de alta unidades (D-18) | 5 |
+| `compras.ver` | compras | Proveedores, órdenes, facturas y notas de crédito, con sus importes | 7 |
+| `compras.gestionar_proveedores` | compras | Crear y editar proveedores, con su dirección y su estado (§9.1) | 7 |
+| `compras.gestionar_plantillas` | compras | Plantillas de orden de compra y sus tipos (D-35) | 7 |
+| `compras.gestionar_ordenes` | compras | Crear, editar el borrador, enviar, cerrar a mano y anular órdenes (§9.2) | 7 |
+| `compras.registrar_factura` | compras | Registrar una factura de compra con sus líneas | 7 |
+| `compras.registrar_factura_antigua` | compras | Una factura de más de veinte días (§9.3) | 7 |
+| `compras.anular_factura` | compras | Anular un comprobante completo (§9.3) | 7 |
+| `compras.registrar_nota_credito` | compras | Registrar una nota de crédito y su reparto; con motivo "anulación de unidad", anula la línea y, si el valor llega a cero, la unidad (§9.4 a §9.6) | 7 |
+| `pagos.ver` | pagos | Pagos, aplicaciones, imputaciones y el saldo con cada proveedor, con sus importes | 8 |
+| `pagos.registrar_pago` | pagos | Registrar, aplicar e imputar un pago (§10.1 a §10.3) | 8 |
+| `pagos.anular_pago` | pagos | Anular un pago mal registrado (§10.1) | 8 |
+| `habilitacion.registrar_hitos` | habilitacion | Ingreso físico, inmatriculación y el primer registro de la placa (§11.1) | 9 |
+| `habilitacion.gestionar_documentos` | habilitacion | Cargar los documentos del vehículo (§11.3, D-28) | 9 |
+| `habilitacion.gestionar_equipos` | habilitacion | Instalar y retirar equipamiento (§11.4) | 9 |
+| `habilitacion.gestionar_llaves` | habilitacion | Registrar las llaves y dónde están (§11.5, D-29) | 9 |
+| `habilitacion.cargar_archivo_sat` | habilitacion | La declaración del impuesto vehicular (§11.7) | 9 |
+| `habilitacion.ver_cargas` | habilitacion | Las cargas de archivos y sus errores (§11.8) | 9 |
+| `fondos.ver` | fondos | La pantalla de fondos y las cesiones por fondo (§12) | 10 |
+| `fondos.gestionar_fondos` | fondos | Crear y editar fondos (§12.1) | 10 |
+| `fondos.registrar_cesion` | fondos | Ceder una unidad a un fondo o cerrar la cesión a mano (§12.2) | 10 |
+| `fondos.cargar_archivo_garantia` | fondos | El archivo de garantía mobiliaria (D-30) | 10 |
+| `bitacora.ver` | bitacora | La bitácora de cambios de la empresa (§13.1) | 6 |
+| `reportes.ver` | reportes | Exportable de stock, brecha de días, diferencia por inicial; los costos siguen a `stock.ver_costos` (§10.5) | 11 |
 
-**Ejemplo de `role_permissions`**
+Quedan fuera del catálogo, a propósito, las operaciones que fija un rol (§5.8 regla 7): dar acceso, otorgar y retirar roles, bloquear y restablecer contraseñas (D-55, D-56), registrar y modificar colaboradores y sus salidas y regresos (D-57), desvincular (D-82), crear y editar roles (§5.5) y leer cuentas (§2.5). Y esperan otra decisión las correcciones delicadas de un monto de factura y de una fecha ya reportada (convenciones de la API, §14.21), que llevarán un permiso cada una cuando tengan su ruta; el bloque 12 traerá los suyos, entre ellos `clientes.ver_cartera_completa`.
 
-| Rol | Permisos que incluye |
-|---|---|
-| Operaciones | 1, 3 |
-| Contabilidad | 1, 2 |
-| Administrador de empresa | 1, 2, 3, 4, 5 |
-| Administrador de accesos | 6 |
+**La matriz** (D-95). Lo que incluye cada rol del sistema. SA = `SUPERADMIN` · AA = `ADMIN_ACCESOS` · AE = `ADMIN_EMPRESA` · OP = `OPERACIONES` · CO = `CONTABILIDAD` · AV = `ASESOR_VENTAS` · TA = `TALLER`.
 
-El administrador de empresa no lleva `seguridad.crear_usuario`: las cuentas las crea el administrador de accesos (D-57).
+| Permiso | SA | AA | AE | OP | CO | AV | TA |
+|---|---|---|---|---|---|---|---|
+| `catalogos.ver` | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| `catalogos.gestionar_generales` | ✔ | | | | | | |
+| `catalogos.gestionar_flota` | ✔ | | | | | | |
+| `catalogos.gestionar_estados` | ✔ | | | | | | |
+| `catalogos.corregir_tipo_cambio` | ✔ | | | | | | |
+| `configuracion.ver_estructura` | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| `configuracion.gestionar_empresas` | ✔ | | | | | | |
+| `configuracion.gestionar_sedes_y_marcas` | ✔ | | | | | | |
+| `configuracion.gestionar_ubicaciones` | ✔ | | | | | | |
+| `configuracion.ver_colaboradores` | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| `configuracion.ver_datos_personales_colaboradores` | ✔ | ✔ | ✔ | | | | |
+| `stock.ver` | ✔ | | ✔ | ✔ | ✔ | ✔ | ✔ |
+| `stock.ver_costos` | ✔ | | ✔ | | ✔ | | |
+| `stock.crear_vehiculo` | ✔ | | ✔ | ✔ | | | |
+| `stock.editar_vehiculo` | ✔ | | ✔ | ✔ | | | |
+| `stock.cambiar_estado` | ✔ | | ✔ | ✔ | | | |
+| `stock.habilitar` | ✔ | | ✔ | ✔ | | | |
+| `stock.vender` | ✔ | | ✔ | | | ✔ | |
+| `stock.entregar` | ✔ | | ✔ | | | | |
+| `stock.atender_en_taller` | ✔ | | ✔ | ✔ | | | ✔ |
+| `stock.recuperar` | ✔ | | ✔ | | | | |
+| `stock.registrar_kilometraje` | ✔ | | ✔ | ✔ | | ✔ | ✔ |
+| `stock.registrar_sustitucion_odometro` | ✔ | | ✔ | | | | ✔ |
+| `stock.corregir_placa` | ✔ | | ✔ | | | | |
+| `stock.corregir_vin` | ✔ | | ✔ | | | | |
+| `stock.anular_vehiculo` | ✔ | | ✔ | | | | |
+| `stock.cargar_migracion_inicial` | ✔ | | ✔ | | | | |
+| `compras.ver` | ✔ | | ✔ | ✔ | ✔ | | |
+| `compras.gestionar_proveedores` | ✔ | | ✔ | ✔ | | | |
+| `compras.gestionar_plantillas` | ✔ | | ✔ | | | | |
+| `compras.gestionar_ordenes` | ✔ | | ✔ | ✔ | | | |
+| `compras.registrar_factura` | ✔ | | ✔ | ✔ | ✔ | | |
+| `compras.registrar_factura_antigua` | ✔ | | ✔ | | ✔ | | |
+| `compras.anular_factura` | ✔ | | ✔ | | ✔ | | |
+| `compras.registrar_nota_credito` | ✔ | | ✔ | | ✔ | | |
+| `pagos.ver` | ✔ | | ✔ | | ✔ | | |
+| `pagos.registrar_pago` | ✔ | | ✔ | | ✔ | | |
+| `pagos.anular_pago` | ✔ | | ✔ | | ✔ | | |
+| `habilitacion.registrar_hitos` | ✔ | | ✔ | ✔ | | | |
+| `habilitacion.gestionar_documentos` | ✔ | | ✔ | ✔ | | | |
+| `habilitacion.gestionar_equipos` | ✔ | | ✔ | ✔ | | | ✔ |
+| `habilitacion.gestionar_llaves` | ✔ | | ✔ | ✔ | | | ✔ |
+| `habilitacion.cargar_archivo_sat` | ✔ | | ✔ | | | | |
+| `habilitacion.ver_cargas` | ✔ | | ✔ | ✔ | ✔ | | |
+| `fondos.ver` | ✔ | | ✔ | | ✔ | | |
+| `fondos.gestionar_fondos` | ✔ | | ✔ | | | | |
+| `fondos.registrar_cesion` | ✔ | | ✔ | | ✔ | | |
+| `fondos.cargar_archivo_garantia` | ✔ | | ✔ | | ✔ | | |
+| `bitacora.ver` | ✔ | | ✔ | | | | |
+| `reportes.ver` | ✔ | | ✔ | ✔ | ✔ | | |
 
-Contabilidad puede registrar facturas atrasadas y Operaciones no: es la excepción que pide la guía funcional, resuelta con un permiso en vez de con una condición escrita en el programa.
+Cómo se lee cada rol: el superadministrador tiene el conjunto completo, porque "el acceso total es una excepción explícita evaluada con las mismas reglas" (§2.5) y porque es lo que le permite crear y asignar cualquier rol bajo las reglas 1 y 2 de §5.5. El administrador de accesos lee la estructura de las empresas, sus colaboradores y los catálogos, porque lo necesita para dar acceso y fijar el alcance de un rol, y nada del negocio: "su trabajo es dar acceso, no registrar facturas" (D-56). El administrador de empresa hace todo lo operativo de su empresa, incluidas las excepciones controladas, y no escribe empresas, sedes, marcas, ubicaciones ni catálogos, que son del superadministrador (§5.2, D-43, §7). Operaciones compra y recibe unidades y las habilita; ve los importes de los documentos que registra, pero no el costo por unidad, y no registra facturas atrasadas. Contabilidad lleva el dinero: facturas, también las atrasadas, notas de crédito, pagos, fondos y los costos; no da de alta unidades ni las mueve. El asesor de ventas ve el stock de toda la empresa (D-14) y, en su sede, vende y registra las lecturas de entrega y devolución. El taller, en su sede, mueve unidades a taller y de vuelta, registra lecturas y sustituciones de odómetro y gestiona equipos y llaves. Quién registra la entrega al cliente (`stock.entregar`) espera al negocio (procesos y pantallas, pregunta 4): hasta entonces, el administrador de la empresa.
+
+Contabilidad puede registrar facturas atrasadas y Operaciones no: es la excepción que pide la guía funcional, resuelta con un permiso en vez de con una condición escrita en el programa. La separación crear proveedor / pagar, o registrar unidad / anular, se cumple en esta matriz, pero es una propiedad de la semilla y no una regla: el diccionario solo separa funciones en las cuentas (D-57).
 
 **Reglas de negocio**
 
-`role_permissions` solo une las dos tablas: indica qué permisos tiene cada rol.
+`role_permissions` dice qué permisos incluye cada rol, y conserva los que dejó de incluir (D-96).
 
 **Por qué los permisos van uno por uno y no se resuelven con el rol.** La guía funcional exige que una factura con más de veinte días de antigüedad solo pueda registrarla un administrador. Si eso se programa como "solo si el rol es administrador", el día que contabilidad necesite hacerlo hay que modificar el programa y volver a instalarlo. Como permiso separado, es marcar una casilla. Lo mismo aplica a corregir una placa ya registrada, anular una unidad o cargar el archivo del SAT: son excepciones controladas y cada una debe poder darse por separado.
 
@@ -1008,6 +1112,8 @@ Las dos reglas nuevas las valida la aplicación: la base no ve dos asignaciones 
 3. **Consecuencia práctica:** como los permisos se suman, dar un rol amplio "por un rato" no se compensa dando además uno restringido. Los roles deben ser estrechos y combinables.
 4. **Los accesos retirados dejan de valer**, pero se conservan para poder reconstruir quién podía hacer qué en una fecha pasada.
 5. **Un acceso que caduca se cierra como si lo hubieran retirado** (D-64): un proceso automático le pone como fecha de retiro la de su caducidad —no la del momento en que pasa el proceso—, con motivo `caducidad`. Tiene que ser así y no quedar abierto con la fecha vencida, porque de lo contrario esa persona no podría recibir de nuevo el mismo acceso —el sistema lo vería como duplicado del que sigue abierto— y el auditor externo que vuelve el año siguiente quedaría fuera. El acceso deja de valer exactamente al caducar, sin esperar al proceso: lo vigente es lo que no está retirado y cuya caducidad no llegó. Si se otorga de nuevo el mismo rol sobre lo mismo antes de que pase el proceso, en ese momento se cierra la asignación vencida con esa misma llave, y solo esa.
+6. **El permiso dice qué; la asignación dice dónde, también al leer** (D-99). Un permiso otorgado por un rol de sede actúa solo en esa sede —y lee toda la empresa, D-14—; por uno de empresa, en toda la empresa; por uno de alcance sistema, en todas. Las lecturas de recursos de empresa se filtran por el permiso y el alcance de la asignación que lo trae, no por la suma de las empresas que la cuenta alcanza con cualquier rol: un permiso que se tiene en Perú no abre lo mismo en Colombia. La frontera entre empresas (D-66) queda como piso.
+7. **Las cuentas y los accesos van por rol, no por permiso** (D-95). Dar acceso, otorgar y retirar roles, bloquear, restablecer contraseñas, registrar colaboradores y sus salidas y regresos, desvincular y crear o editar roles los fijan D-55, D-56, D-57 y D-82 por rol, con sus políticas; ningún permiso del catálogo los habilita, así un rol propio no puede juntar lo que la separación de funciones separa.
 
 ### 5.9 Semilla inicial y protección del acceso
 
@@ -1151,11 +1257,11 @@ El paso 3 completó lo que el bloque 2 había dejado provisional: colaboradores,
 
 | Tema | Hoy | Cuándo se completa |
 |---|---|---|
-| `permissions` y `role_permissions` | No existen. Quién otorga qué lo fija §5.7: el superadministrador otorga cualquier rol y el administrador de accesos cualquiera salvo `SUPERADMIN`, `ADMIN_ACCESOS` y `ADMIN_EMPRESA`. Las reglas 1 a 3 de §5.5 todavía no tienen permisos que comparar, y las operaciones exigen un rol, no un permiso | Cuando se cargue la matriz de permisos por rol, antes del paso 5 (§3, ajuste 3) |
-| Qué lee un rol global | El superadministrador y el administrador de accesos leen los datos de todas las empresas: hoy empresas, marcas, sedes, ubicaciones y colaboradores | Con la matriz de permisos, antes del paso 5 (D-68) |
-| Quién lee los colaboradores | Solo una cuenta de alcance global y una que administra la empresa (D-93). Los roles de empresa y de sede que no la administran no los leen, ni siquiera los de su sede | Con la matriz de permisos, antes del paso 5 (D-68), que decide qué ve cada rol |
-| La marca de una asignación | Acota dónde se otorga un rol, pero todavía no acota lo que se lee: la frontera que aplican la aplicación y la base es la empresa. Hoy ningún dato que se lee pertenece a una marca | Antes del paso 5: los vehículos son el primer dato que pertenece a una marca |
-| `roles.company_id` | No existe todavía: todos los roles son generales, y `code` es único en todo el sistema. Tampoco está decidido quién crea los roles de una empresa, ahora que el administrador de empresa no otorga roles (D-57) | Con la matriz de permisos, antes del paso 5 (D-81), que decide también quién los crea y define la unicidad del código por empresa |
+| `permissions` y `role_permissions` | Existen desde el paso 3b (V45), con los permisos de los pasos 1 a 4 y la matriz de los siete roles del sistema para ellos; cada paso siguiente agrega los suyos con una migración de `iam`. Las operaciones de negocio y las lecturas de datos exigen un permiso; las cuentas y los accesos, un rol (§5.8, D-95) | Cada paso trae sus permisos (§5.6) |
+| Qué lee un rol global | Lo que su matriz le da (D-68): el superadministrador, todo; el administrador de accesos, los catálogos, la estructura de las empresas y sus colaboradores, que necesita para dar acceso, y nada del negocio | Resuelto con la matriz (§5.6) |
+| Quién lee los colaboradores | La fila mínima —nombre, puesto, sede, si está activo— cualquier rol con `configuracion.ver_colaboradores`, que la semilla da a los siete, para los selectores y los nombres de autor; el documento, el teléfono, la foto y la exportación, solo con `configuracion.ver_datos_personales_colaboradores`: los dos roles globales y el administrador de la empresa (D-93, D-105) | Resuelto con la matriz |
+| La marca de una asignación | Acota dónde se otorga un rol, pero todavía no acota lo que se lee: hoy ningún dato que se lee pertenece a una marca. Decidido (D-102): acota lo que se ve y lo que se toca de los datos que pertenecen a una marca, en el código | Con el paso 5: los vehículos son el primer dato que pertenece a una marca |
+| `roles.company_id` | Existe desde el paso 3b (V45): los roles propios de una empresa los crea el superadministrador, con el código único por empresa (D-98) | Resuelto |
 | Registro público | Sigue pidiendo solo correo y contraseña y crea una cuenta sin colaborador, contra D-38. Viene apagado (D-32) | Fuera del alcance del paso 3 (D-83): sigue apagado, y el registro con perfil se construye antes de encenderlo en cualquier entorno, con la forma de listar sedes y tipos de documento sin sesión que fijen las convenciones de la API (§14.16) |
 | Regreso de un colaborador | Reemplaza la fecha de ingreso y borra la de salida: el período anterior en esa empresa se pierde | Necesita un diseño en este diccionario (§14), antes de cargar los colaboradores reales |
 | Restablecer una contraseña | La clave provisional se muestra a quien la restablece, que se la hace llegar a la persona (D-63). Lo ideal es un enlace de un solo uso al correo de la persona, para que nadie más conozca la clave | Cuando exista un servicio de correo. Entonces cambian D-63, §5.4 y §5.12 |
@@ -1724,7 +1830,7 @@ La primera es la lectura de entrega: contra ella se mide todo lo que el cliente 
 | Campo | Tabla | Qué lo admitiría |
 |---|---|---|
 | `transferred_to_customer_id` | `vehicles` | El bloque 12, cuando exista el cliente al que se traspasa la unidad |
-| `requires_permission_id` | `status_change_reasons` | Que algún cambio de estado deba estar reservado a ciertos roles |
+| `requires_permission_id` | `status_change_reasons` | Adoptado (D-100): cada camino nombra el permiso que exige; un camino sin permiso propio exige `stock.cambiar_estado`. Entra con la tabla, en el paso 5 |
 
 
 ---
@@ -2597,7 +2703,7 @@ La primera fila es el caso que más importa: la placa es la llave con que se cru
 
 ## 14. Decisiones
 
-Quedan cuatro decisiones abiertas, cada una con su momento fijado. Las longitudes y el dígito de control de los documentos tributarios de Colombia y México (§4.7, D-75), antes de registrar la primera empresa de cada país (D-52). Cómo se conserva el período anterior de un colaborador que regresa a la misma empresa (§5.3, §5.13), antes de cargar los colaboradores reales: desde entonces, cada regreso borraría un período que ya no se recupera. Quién crea los roles propios de una empresa, con la matriz de permisos, antes del paso 5 (§5.5, D-81). Y cómo lista el registro público, sin sesión, las sedes y los tipos de documento (convenciones de la API, §14.16), antes de encenderlo en un entorno (§5.13, D-83). Lo que falta para construir son datos, no definiciones: la matriz de permisos por rol, que tiene que llegar antes del paso 5 (D-68) y trae con ella `roles.company_id` (D-81), y los datos maestros reales —razón social y documento tributario de la empresa, sedes con su código de establecimiento, marcas, proveedores, colaboradores—. La lista oficial de divisiones de Perú está cargada; los distritos que crean las leyes después entran cuando tienen código oficial (§4.5, D-77).
+Quedan tres decisiones abiertas, cada una con su momento fijado. Las longitudes y el dígito de control de los documentos tributarios de Colombia y México (§4.7, D-75), antes de registrar la primera empresa de cada país (D-52). Cómo se conserva el período anterior de un colaborador que regresa a la misma empresa (§5.3, §5.13), antes de cargar los colaboradores reales: desde entonces, cada regreso borraría un período que ya no se recupera. Y cómo lista el registro público, sin sesión, las sedes y los tipos de documento (convenciones de la API, §14.16), antes de encenderlo en un entorno (§5.13, D-83). La matriz de permisos por rol quedó fijada el 19/10/2026 (§5.6, D-95 a D-105); una de sus celdas espera al negocio: quién registra la entrega al cliente (`stock.entregar`; procesos y pantallas, pregunta 4). Lo que falta para construir son datos: los datos maestros reales —razón social y documento tributario de la empresa, sedes con su código de establecimiento, marcas, proveedores, colaboradores—. La lista oficial de divisiones de Perú está cargada; los distritos que crean las leyes después entran cuando tienen código oficial (§4.5, D-77).
 
 ### Decisiones ya cerradas
 
@@ -2676,6 +2782,17 @@ Quedan cuatro decisiones abiertas, cada una con su momento fijado. Las longitude
 | D-92 | El colaborador vive en `organization`, y pasa a un contexto propio cuando lleguen los contratos laborales, la planilla o la asistencia. El bloque 3b se reparte así: `employees` es de `organization`; `user_roles` es de `iam`, igual que `user_access_suspensions` y el resto del bloque 2 (§3) |
 | D-93 | Leen los colaboradores de una empresa —la lista, cada uno y su exportación— solo una cuenta de alcance global, hoy el superadministrador y el administrador de accesos, y una cuenta que administra esa empresa. Un rol de empresa o de sede que no la administra no los lee: el documento, el teléfono y la foto son datos personales. La matriz de permisos (D-68) decide después qué ve cada rol (§5.3, §5.13) |
 | D-94 | Reactivar es volver a colgar (D-84): una sede, una marca o una ubicación se reactivan solo con su empresa activa, y un colaborador regresa solo a una empresa activa y, si tiene sede, a una sede activa, porque el regreso le devuelve la cuenta. Primero se reactiva la empresa y después lo que cuelga de ella, como D-90 con la sede. Desactivar no espera a nada (§5.3, §6.2 a §6.5) |
+| D-95 | La matriz de permisos por rol queda fijada en §5.6: cincuenta permisos para los pasos 1 a 11, en `<módulo>.<acción>`, y lo que incluye cada uno de los siete roles del sistema. Las operaciones de negocio y las lecturas de datos exigen un permiso; las cuentas, los accesos, los colaboradores y los roles van por rol (§5.8 regla 7). El ejemplo `seguridad.crear_usuario` no existe: dar acceso lo fija D-57 por rol. Cada paso trae sus permisos con una migración de `iam`; ningún otro contexto escribe `permissions` ni `role_permissions` (§5.6, §5.8, §5.13) |
+| D-96 | `role_permissions` conserva la historia: cada permiso que un rol incluye lleva quién lo marcó y cuándo, y quién lo desmarcó y cuándo; nada se borra, y un rol incluye un permiso a lo sumo una vez mientras está vigente (§5.6) |
+| D-97 | Los roles del sistema son inmutables también en su matriz: sus permisos los fijan las migraciones y la pantalla los muestra en solo lectura, también al superadministrador; para variar se crea un rol propio. `roles.is_active` existe: un rol propio inactivo no se otorga y sus asignaciones vigentes siguen válidas; los roles del sistema no se desactivan (§5.5) |
+| D-98 | Los roles propios de una empresa los crea solo el superadministrador, eligiendo la empresa al crearlos; el administrador de empresa y el de accesos los leen. El código es único dentro de cada empresa y entre los generales, nunca el de un rol del sistema; un rol de una empresa no se asigna en otra ni es de alcance sistema. Cierra la decisión que D-81 dejó abierta (§5.5) |
+| D-99 | El permiso dice qué y la asignación dice dónde, también al leer: una lectura de recursos de empresa se filtra por el permiso y el alcance de la asignación que lo trae; la frontera entre empresas de D-66 queda como piso. Un rol de sede lee toda su empresa (D-14) y actúa solo en su sede (§5.8 regla 6) |
+| D-100 | Cada camino de estado nombra el permiso que exige (`status_change_reasons.requires_permission_id`, candidato de §8.6 adoptado); un camino sin permiso propio exige `stock.cambiar_estado`. Quién recorre cada camino es un dato, como los caminos (D-19), y lo mantiene solo el superadministrador con `catalogos.gestionar_estados`. Con los caminos de ejemplo de §8.3: habilitar, vender, entregar, atender en taller y recuperar (§5.6, §8.3) |
+| D-101 | Un rol de sede actúa sobre las unidades que están en la ubicación propia de su sede; las que están en una ubicación de terceros, o sin ubicación, las tocan los roles de empresa. Si un caso real pide que una sede responda por un patio arrendado o una tienda de dealer, se decide un dato nuevo, distinto de `locations.branch_id`, que sigue siendo solo de las propias (§2.5, §6.5) |
+| D-102 | La marca de una asignación acota lo que se ve y lo que se toca de los datos que pertenecen a una marca, aplicada en el código y no en la base; un rol de empresa sin marca ve todas. Los vehículos son el primer dato con marca, en el paso 5 (§2.5, §5.7, §5.13) |
+| D-103 | El tipo de cambio lo corrige a mano el superadministrador, con `catalogos.corregir_tipo_cambio`: `exchange_rates` no tiene empresa y una tasa sirve a todo el sistema, así que un rol de empresa no podría acotarse. Si el negocio quiere que la contabilidad lo corrija, será un rol general nuevo o una regla de acotación nueva (§4.8) |
+| D-104 | Una unidad se anula por las dos vías que describe el diccionario: como consecuencia de una nota de crédito que deja su valor en cero, gobernada por `compras.registrar_nota_credito`, o por acción explícita, que exige `stock.anular_vehiculo` y el candado de §9.6 (§8.1, §9.6) |
+| D-105 | Lo que cada rol ve de los colaboradores, que D-93 dejó a la matriz: la fila mínima —nombre, puesto, sede, si está activo— la lee cualquier rol con `configuracion.ver_colaboradores`, que la semilla da a los siete, para los selectores y los nombres de autor; el documento, el teléfono, la foto y la exportación, solo con `configuracion.ver_datos_personales_colaboradores`, que tienen los dos roles globales y el administrador de la empresa. El campo que no se puede ver no viaja (§2.5, §5.3) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
