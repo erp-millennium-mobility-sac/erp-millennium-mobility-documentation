@@ -283,7 +283,7 @@ GET /api/v1/countries/{id}/geo-divisions?q=lima&level=2&isActive=true&page=0&siz
 
 | Parámetro | Regla |
 |---|---|
-| `q` | Texto que contiene alguno de los campos de búsqueda de la lista, sin distinguir mayúsculas. `%` y `_` se buscan tal cual |
+| `q` | Texto que contiene alguno de los campos de búsqueda de la lista, sin distinguir mayúsculas. `%` y `_` se buscan tal cual. Todavía distingue tildes: "peru" no encuentra "Perú" **(pendiente)**: plegarlas antes de la primera lista que se busque en el servidor mientras se escribe (proveedores, paso 7), como ya lo hace el buscador del frontend con las listas cargadas |
 | `page` | Índice de la página, desde 0. **Con `page`, la respuesta es el sobre de arriba; sin `page`, es el arreglo de todo lo que coincide**, en el mismo orden y con la misma búsqueda y filtros, como lo pide un select |
 | `size` | 50 por omisión, de 1 a 200. Un valor fuera de ese rango se lleva a su borde: más de 200 responde una página de 200, y 0 o un negativo, una página de una fila, nunca todas las filas |
 | `sort` | `campo` o `campo,desc`, con el nombre del campo JSON. Cada lista declara por qué campos ordena; con otro campo usa su orden propio. Los empates se ordenan por el `id` interno, para que una fila no salte de página |
