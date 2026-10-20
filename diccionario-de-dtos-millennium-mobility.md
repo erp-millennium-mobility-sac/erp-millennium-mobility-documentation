@@ -1738,6 +1738,7 @@ Una sola tabla en lugar de dos. Como **todo cambio de estado exige motivo**, el 
 | `on_breach` | VARCHAR(20) | Sí | Qué hacer al vencerse: avisar o mover la unidad sola | El flujograma pide que una unidad Vendida vuelva a Disponible a las 48 horas. Escrito así, ese automatismo se configura en vez de programarse |
 | `auto_transition_to_status_id` | BIGINT FK → `vehicle_statuses` | Sí | A qué estado mover la unidad si el automatismo aplica | — |
 | `is_active` | BOOLEAN | No | Si el motivo sigue disponible | Desactivar todos los motivos de un par cierra ese camino sin borrar el historial de quienes ya lo recorrieron |
+| `is_automatic` | BOOLEAN | No | Si es el motivo automático reservado de un regreso automático: lo crea el sistema, no se ofrece a las personas y no se edita ni se cierra por la API | Es el motivo con que el regreso automático escribe su fila del historial. Sin él, esa fila tendría que nombrar el motivo de otro camino —el de la venta que venció— y el historial diría que la unidad volvió a Disponible por una Venta (D-110) |
 
 **Relaciones.** Apunta dos veces a `vehicle_statuses`, como origen y como destino, y una tercera cuando hay automatismo. Le apunta `vehicle_status_history`.
 
@@ -1748,6 +1749,7 @@ Una sola tabla en lugar de dos. Como **todo cambio de estado exige motivo**, el 
 | *(alta)* | En habilitación | Registro de compra | — | — |
 | En habilitación | Disponible | Habilitación completa | — | — |
 | Disponible | Vendido | Venta | 48 h | Volver a Disponible |
+| Vendido | Disponible | Regreso automático por vencimiento *(automático)* | — | — |
 | Vendido | Activo | Entrega al cliente | — | — |
 | Activo | Mecánica | Mantenimiento preventivo | 72 h | Avisar |
 | Activo | Mecánica | Choque | 480 h | Avisar |
@@ -1755,7 +1757,7 @@ Una sola tabla en lugar de dos. Como **todo cambio de estado exige motivo**, el 
 | Custodia | Puesta a punto | Resolución de contrato | — | — |
 | Puesta a punto | Disponible | Reacondicionada | — | — |
 
-Las dos filas de Mecánica muestran para qué sirve la tabla: mismo camino, distinta expectativa según por qué entró la unidad.
+Las dos filas de Mecánica muestran para qué sirve la tabla: mismo camino, distinta expectativa según por qué entró la unidad. La fila de Vendido a Disponible es el motivo automático que el sistema creó para el regreso de la venta: nadie la elige.
 
 **Reglas de negocio**
 
@@ -1763,12 +1765,15 @@ Las dos filas de Mecánica muestran para qué sirve la tabla: mismo camino, dist
 - Todo cambio registra fecha, hora, usuario y motivo. Es la exigencia del flujograma y no admite excepción.
 - El tiempo límite se cuenta desde el momento del cambio, y la unidad aparece en la lista de vencidas al pasarse.
 - La única transición que ocurre sola es la que tiene configurado un estado de destino al vencerse. Todas las demás las hace una persona.
+- **El regreso automático tiene su propio motivo** (D-110). Al guardar un camino de A a B que, al vencerse, mueve sola la unidad a C, el sistema asegura en la misma operación un motivo automático del camino de B a C: código `REGRESO_AUTOMATICO`, nombre «Regreso automático por vencimiento», abierto, sin permiso propio, sin tolerancia y con `is_automatic` verdadero. Si ese camino ya tiene uno, lo reutiliza: hay uno solo por camino. Con el ejemplo de arriba, la Venta, de Disponible a Vendido, crea el motivo automático de Vendido a Disponible.
+- Un motivo automático no se ofrece a las personas: no figura entre los caminos que se pueden recorrer al mover una unidad, y elegirlo se rechaza. Tampoco se edita ni se cierra por la API: lo mantiene el sistema.
 - Un motivo no se borra: se desactiva, para que el historial siga siendo explicable.
 
 ### 8.4 `vehicle_status_history` — Historial de estados
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
+| `company_id` | BIGINT FK → `companies` | No | La empresa de la unidad, copiada de ella al escribir la fila | El historial se consulta por sí solo y crece con cada cambio: con su propia empresa, la base lo separa por empresa sin pasar por la unidad (§2.5, D-111). La empresa de una unidad no cambia, así que nunca discrepa con la de la unidad |
 | `vehicle_id` | BIGINT FK → `vehicles` | No | La unidad | — |
 | `from_status_id` | BIGINT FK → `vehicle_statuses` | Sí | Estado anterior. Vacío en el alta | — |
 | `to_status_id` | BIGINT FK → `vehicle_statuses` | No | Estado nuevo | — |
@@ -1778,7 +1783,7 @@ Las dos filas de Mecánica muestran para qué sirve la tabla: mismo camino, dist
 | `due_at` | TIMESTAMPTZ | Sí | Cuándo vence la tolerancia de este motivo | Se calcula al registrar el cambio. Se guarda para poder listar las unidades vencidas sin recalcular el plazo de todo el historial en cada consulta |
 | `notes` | TEXT | Sí | Detalle libre | — |
 
-**Relaciones.** Apunta a `vehicles`, a `vehicle_statuses` como origen y destino, a `status_change_reasons` y a `users`.
+**Relaciones.** Apunta a `companies`, a `vehicles`, a `vehicle_statuses` como origen y destino, a `status_change_reasons` y a `users`.
 
 **Ejemplo** — la vida de una unidad en cuatro movimientos:
 
@@ -1794,6 +1799,8 @@ La cuarta fila es la fecha de entrega: no hay un campo aparte para ella.
 **Reglas de negocio**
 
 - El historial no se edita ni se borra. Un error se corrige con un cambio nuevo, no reescribiendo el anterior.
+- La fila de un regreso automático nombra el motivo automático de su camino (§8.3), la firma el usuario del sistema y no lleva vencimiento, porque ese motivo no tiene tolerancia (D-110). Las filas de regresos escritas antes de D-110, con el motivo del camino que venció, no se reescriben.
+- La empresa de cada fila es la de su unidad, y la base separa el historial por esa columna (D-111).
 - De aquí sale la fecha en que la unidad pasó a estar lista para entrega, que el Excel guarda como un campo manual y por eso se desincroniza.
 - También sale de aquí cuánto tiempo pasó la unidad en cada estado, que es lo que alimenta los indicadores de días promedio y de costo por día paralizado.
 
@@ -1805,6 +1812,7 @@ El kilometraje no es un dato que se corrige: es una serie de lecturas. Guardar s
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
+| `company_id` | BIGINT FK → `companies` | No | La empresa de la unidad, copiada de ella al registrar la lectura | Las lecturas se consultan por sí solas y crecen con cada registro: con su propia empresa, la base las separa por empresa sin pasar por la unidad (§2.5, D-111) |
 | `vehicle_id` | BIGINT FK → `vehicles` | No | La unidad | — |
 | `mileage` | INTEGER | No | Kilómetros que marcaba el odómetro | — |
 | `read_at` | TIMESTAMPTZ | No | Cuándo se tomó la lectura | Es la fecha de la lectura, no la del registro: una lectura de taller puede cargarse dos días después |
@@ -1812,7 +1820,7 @@ El kilometraje no es un dato que se corrige: es una serie de lecturas. Guardar s
 | `recorded_by` | BIGINT FK → `users` | Sí | Quién la registró. Vacío cuando la trajo el dispositivo | — |
 | `notes` | TEXT | Sí | Detalle | Para explicar una lectura que rompe la secuencia |
 
-**Relaciones.** Apunta a `vehicles` y a `users`.
+**Relaciones.** Apunta a `companies`, a `vehicles` y a `users`.
 
 **Ejemplo**
 
