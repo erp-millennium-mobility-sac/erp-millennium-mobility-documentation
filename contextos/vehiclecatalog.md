@@ -243,7 +243,7 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 
 ## 5. Relación con otros contextos
 
-**Las dependencias.** `vehiclecatalog` declara `allowedDependencies = {}`, y `ModularityTests` lo verifica: no llama a ningún contexto. El mapa le permite `shared` y `location` (mapa §4), y hoy no usa `location`. La única lectura de una tabla ajena es la de la migración V49, que llena `has_units` con los modelos que ya están en `vehicles.model_id`; es parte de la migración, no del código del contexto, y la migración lo dice.
+**Las dependencias.** `vehiclecatalog` declara `allowedDependencies = {}`, y `ModularityTests` lo verifica: no llama a ningún contexto. Con la primera fase de la segunda ronda de la auditoría declara `documents::acl`, porque la exportación de sus catálogos la pide al módulo `documents` (D-125), y sus permisos los nombra con `PermissionCodes`, de `shared` <!-- verificar al integrar fase 1 -->. El mapa le permite `shared` y `location` (mapa §4), y hoy no usa `location`. La única lectura de una tabla ajena es la de la migración V49, que llena `has_units` con los modelos que ya están en `vehicles.model_id`; es parte de la migración, no del código del contexto, y la migración lo dice.
 
 **Lo que ofrece: `VehicleCatalogContextFacade`**, que consume solo `fleet`, por su `ExternalVehicleCatalogService`.
 

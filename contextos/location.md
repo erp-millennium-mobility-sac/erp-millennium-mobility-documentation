@@ -246,7 +246,7 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 
 ## 5. Relación con otros contextos
 
-`location` no depende de ningún contexto: declara `allowedDependencies = {}` y `ModularityTests` lo verifica. Dentro del contexto, los agregados se referencian por su identificador: la división y el tipo de documento guardan el país, y el país guarda su moneda sugerida por identificador; el código ISO de la moneda lo agrega la vista del país. Los demás lo usan por su fachada, nunca por sus tablas (§3).
+`location` no depende de ningún contexto de negocio: declara `allowedDependencies = {}` y `ModularityTests` lo verifica. Con la primera fase de la segunda ronda de la auditoría declara `documents::acl`, porque sus cuatro exportaciones las pide al módulo `documents` (D-125), y sus permisos los nombra con `PermissionCodes`, de `shared` <!-- verificar al integrar fase 1 -->. Dentro del contexto, los agregados se referencian por su identificador: la división y el tipo de documento guardan el país, y el país guarda su moneda sugerida por identificador; el código ISO de la moneda lo agrega la vista del país. Los demás lo usan por su fachada, nunca por sus tablas (§3).
 
 **Fachada del backend: `LocationContextFacade`.** El detalle de lo que ofrece está en mapa §5.1. Hoy su único consumidor es `organization`, a través de `ExternalLocationService`.
 
