@@ -1472,6 +1472,7 @@ Clasifica la unidad y activa las reglas que dependen del tipo.
 - El tipo de una unidad no se escribe a mano: sale del modelo, y el modelo lo trae del catálogo.
 - Se guardan los dos nombres a propósito. Hoy coinciden uno a uno, pero son conceptos distintos: si algún día se financia un auto bajo un producto que no sea leasing, el nombre comercial deja de servir como tipo y separarlo entonces obligaría a revisar todas las unidades.
 - Cuidado con el nombre: en el documento de Registro de Clientes, "tipo de vehículo" significa `NUEVO / SEMIPREMIUM`, que es otra cosa y se deduce de si la unidad ya tuvo contratos.
+- Un tipo inactivo no se elige para un modelo nuevo ni para cambiar el de un modelo existente, y no se registra una unidad de un modelo de ese tipo. El modelo que ya lo tenía lo conserva al editarse, y sus unidades lo siguen referenciando (D-108).
 
 ### 7.2 `vehicle_brands` — Marcas de vehículo
 
@@ -1498,6 +1499,7 @@ La marca del vehículo: Chevrolet, TVS, Bajaj, Hyundai. Es la columna `MARCA` de
 
 - No confundir con las marcas comerciales de §6.3: aquí está la marca del vehículo; allá, bajo qué nombre lo coloca Millennium. Una moto **TVS King** vendida bajo la marca **Lima Bikes** usa las dos tablas.
 - Una marca nueva se crea antes de poder registrar un modelo suyo.
+- Una marca inactiva no recibe modelos nuevos, y no se registra una unidad de un modelo suyo. Los modelos y las unidades que ya tiene la siguen referenciando y se siguen editando (D-108).
 
 ### 7.3 `vehicle_models` — Modelos
 
@@ -1506,12 +1508,13 @@ La combinación de marca y modelo determina el tipo de vehículo y las reglas es
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
 | `vehicle_brand_id` | BIGINT FK → `vehicle_brands` | No | De qué marca es | El nombre del modelo solo identifica junto a la marca: hay modelos con nombres parecidos de marcas distintas |
-| `vehicle_type_id` | BIGINT FK → `vehicle_types` | No | Si es auto, moto o trimoto | De aquí sale el tipo de cada unidad, sin que nadie lo elija a mano |
+| `vehicle_type_id` | BIGINT FK → `vehicle_types` | No | Si es auto, moto o trimoto. Se corrige mientras el modelo no tenga unidades; desde la primera queda fijo (D-107) | De aquí sale el tipo de cada unidad, sin que nadie lo elija a mano |
 | `name` | VARCHAR(120) | No | Denominación oficial del modelo: `SAIL SEDAN 1.5L LT MT` | Se escribe una vez y todas las unidades la reutilizan |
 | `engine_cc` | INTEGER | Sí | Cilindraje en cc, entero. Vacío si no se conoce o no corresponde | Es uno de los datos que hoy se registra por unidad y que en realidad es del modelo: escribirlo una vez evita que la misma moto figure con cilindrajes distintos |
-| `fuel_type` | VARCHAR(20) | Sí | Combustible: gasolina, GNV, GLP, diésel, eléctrico, híbrido | Determina si la unidad necesita certificado de gas. Sin este dato, esa exigencia habría que recordarla a mano modelo por modelo |
+| `fuel_type` | VARCHAR(20) | Sí | Combustible: gasolina, GNV, GLP, diésel, eléctrico, híbrido. Vacío cuando no se conoce: un modelo nuevo no propone ninguno (D-109) | Determina si la unidad necesita certificado de gas. Sin este dato, esa exigencia habría que recordarla a mano modelo por modelo |
 | `has_factory_screen` | BOOLEAN | No | Si el modelo ya viene con pantalla instalada de fábrica | Es la regla de la pantalla convertida en dato. Hoy está escrita como una comparación de texto —"Chevrolet más Sail Sedan"— y por eso agregar un modelo obliga a tocar el programa |
 | `is_active` | BOOLEAN | No | Si se siguen comprando unidades de este modelo | — |
+| `has_units` | BOOLEAN | No | Si el modelo ya tiene al menos una unidad registrada. Nace falso y pasa a verdadero con la primera unidad; no vuelve atrás, porque una unidad no se borra | Desde la primera unidad, el tipo de vehículo del modelo queda fijo: cambiarlo contradiría el tipo de las unidades que ya existen (D-107). Lo escribe `vehiclecatalog` cuando `fleet` le avisa, por su fachada, que registró una unidad del modelo, en la misma operación que el alta; `vehiclecatalog` nunca lee las tablas de `fleet` |
 | `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | No lleva autor: es un catálogo general (D-42, D-73) |
 
 **Relaciones.** Apunta a `vehicle_brands` y a `vehicle_types`. Le apuntarán los vehículos y las tarifas de costo por kilómetro del bloque de ventas.
@@ -1532,8 +1535,11 @@ La primera fila es el único modelo de auto que hoy requiere instalar pantalla; 
 - La misma marca no puede tener dos modelos con el mismo nombre.
 - Un modelo se crea antes de poder registrar una unidad suya. No se crea al vuelo durante una carga.
 - El tipo de vehículo de una unidad sale de su modelo y no se puede contradecir desde la unidad.
+- **El tipo de vehículo de un modelo se corrige mientras el modelo no tenga unidades** (D-107). Desde la primera queda fijo, el mismo principio que el código de un catálogo (D-48, D-74): corregirlo después cambiaría el tipo de unidades ya registradas, y con él las reglas que dependen del tipo. La API rechaza la corrección y responde si el tipo todavía se puede corregir, para que la pantalla bloquee el campo. La migración que agrega `has_units` la llena con los modelos que ya tienen unidades.
+- Un modelo nuevo es de una marca activa y de un tipo activo; al editarlo, un tipo nuevo tiene que estar activo, y el inactivo que el modelo ya tenía se conserva (D-108, como D-84).
 - La exigencia de pantalla sale de este catálogo, no de comparar textos. Agregar un modelo sin pantalla de fábrica es cargar una fila.
-- Un modelo que deja de comprarse se desactiva: las unidades ya registradas lo siguen referenciando.
+- Un modelo que deja de comprarse se desactiva: las unidades ya registradas lo siguen referenciando. No se registra una unidad nueva con un modelo inactivo, ni con uno cuya marca o tipo estén inactivos (D-108, §8.1).
+- El combustible de un modelo nuevo no se propone: nace vacío y se elige. Proponer uno haría que un modelo de GLP quedara registrado como de gasolina si nadie cambia el valor, y con él la exigencia del certificado de gas (D-109).
 - El cilindraje, cuando se registra, es un número entero de centímetros cúbicos mayor que cero (`vehicle_models_engine_cc_positive_ck`). Se escribe la cifra comercial del modelo, como en los ejemplos —125, 200, 1500—, no la técnica de la ficha (199,26). Un valor con parte decimal (1500,7) se rechaza: no se redondea ni se corta en silencio; 1500,0 es el mismo entero y se acepta. Queda vacío cuando no se conoce o no corresponde, y nunca se escribe 0 para decir «no tiene» (§2.2). No tiene un máximo: nada usa su magnitud (§2.3).
 - Un modelo eléctrico no lleva cilindraje: con `fuel_type` eléctrico, `engine_cc` queda vacío (`vehicle_models_electric_engine_cc_ck`).
 
@@ -1681,6 +1687,7 @@ La segunda unidad todavía no tiene placa: llega con la inmatriculación.
 - La placa no se repite dentro de un mismo país, y se guarda normalizada —mayúsculas, sin guiones ni espacios— porque la restricción de unicidad no distingue `ABC-123` de `ABC123`.
 - Corregir un VIN o una placa ya registrados es un cambio delicado: los cruces con el SAT y con garantía mobiliaria dependen de la placa, así que debe quedar registrado quién lo hizo y cuándo.
 - El tipo de vehículo sale del modelo y no se puede contradecir desde la unidad.
+- Una unidad nueva no se registra con un modelo inactivo, ni con uno cuya marca o tipo de vehículo estén inactivos; la que ya lo tiene lo conserva y se sigue editando (D-108, como D-84). Al registrarla, `fleet` le avisa a `vehiclecatalog` que el modelo ya tiene unidades, en la misma operación, y desde entonces el tipo del modelo queda fijo (§7.3, D-107).
 - La unidad no se borra nunca. Si una nota de crédito anula la compra, se marca como anulada; si se traspasa, se registra la fecha.
 - **El propietario vigente se deduce**: si no hay fecha de traspaso, es la empresa; si la hay, dejó de serlo. No hay un campo que lo diga, para que no pueda contradecir a la fecha.
 
