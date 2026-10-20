@@ -1,8 +1,8 @@
 # Contexto `vehiclecatalog` — ERP Millennium Mobility
 
-**Actualizado:** 20/10/2026 (lo que construyó la auditoría, verificado contra el código integrado: backend `audit/be-integration`, merge `81bb8c1`, con `040ad1e` y `f11e4f6`; frontend `audit/fe-integration`, merge `36210f6`, con `139e513` a `100485d`. Falta llevarlo a `develop`; la exportación, D-116, es la segunda fase) · 20/10/2026 (primera versión: el paso 4 tal como está en `develop`, más lo que decidió la auditoría del 20/10/2026 —D-107, D-108, D-109, D-112 y D-116—) · **Estado:** borrador para validar; el paso 4 sigue abierto · **Fuente:** diccionario de datos v1.24 (§2.2, §2.4, §2.5, §7.1 a §7.7, §8.1 y las decisiones D-15, D-17, D-42, D-48, D-73, D-74, D-84 y D-106 a D-116), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md) (P3 y apartado 3.2), [orden de implementación](../orden-de-implementacion-millennium-mobility.md) (paso 4), el plan de la auditoría del 20/10/2026 y el código de `develop` al 20/10/2026: backend `32d4996` y frontend `23d07ad`, con la carpeta del contexto renombrada `src/app/vehiclecatalog` en `8d4fd27` (rama `audit/fe-base`). Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 20/10/2026 (lo que construyó la auditoría, verificado contra el código integrado: backend `audit/be-integration`, merge `81bb8c1`, con `040ad1e` y `f11e4f6`; frontend `audit/fe-integration`, merge `36210f6`, con `139e513` a `100485d`; la segunda fase, la exportación, D-116, con `be7bdb9` en el backend y `f73a656` en el frontend. Falta llevarlo a `develop`) · 20/10/2026 (primera versión: el paso 4 tal como está en `develop`, más lo que decidió la auditoría del 20/10/2026 —D-107, D-108, D-109, D-112 y D-116—) · **Estado:** borrador para validar; el paso 4 sigue abierto · **Fuente:** diccionario de datos v1.24 (§2.2, §2.4, §2.5, §7.1 a §7.7, §8.1 y las decisiones D-15, D-17, D-42, D-48, D-73, D-74, D-84 y D-106 a D-116), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md) (P3 y apartado 3.2), [orden de implementación](../orden-de-implementacion-millennium-mobility.md) (paso 4), el plan de la auditoría del 20/10/2026 y el código de `develop` al 20/10/2026: backend `32d4996` y frontend `23d07ad`, con la carpeta del contexto renombrada `src/app/vehiclecatalog` en `8d4fd27` (rama `audit/fe-base`). Si este documento y el diccionario no coinciden, manda el diccionario.
 
-**Cómo leerlo.** Las secciones 1 a 3 están escritas para quien conoce el negocio. La 4 y la 6 nombran archivos del código para el equipo. Lo que aprobó el responsable el 20/10/2026 con la auditoría está construido e integrado en las ramas de integración de la auditoría, y se describe como está; lo marcado **(segunda fase)** llega después, sobre la plataforma de documentos ya integrada.
+**Cómo leerlo.** Las secciones 1 a 3 están escritas para quien conoce el negocio. La 4 y la 6 nombran archivos del código para el equipo. Lo que aprobó el responsable el 20/10/2026 con la auditoría está construido e integrado en las ramas de integración de la auditoría, y se describe como está, también su segunda fase, la exportación.
 
 ---
 
@@ -195,7 +195,15 @@ El sistema revisa que los tipos existan (`404 VEHICLETYPE_NOT_FOUND`, con los qu
 
 ### F7 · Exportar un catálogo
 
-**Segunda fase** (D-116): las cuatro listas y los modelos de una marca se exportan a Excel desde su propio endpoint, con la búsqueda, los filtros y el orden de la pantalla, por la plataforma de documentos (convenciones §8): cada lista declara su tipo de documento, con su `kind`, su alcance —el de un catálogo general, tener `catalogos.ver`, como los de `location`— y la versión de las tablas que lee. La plataforma ya está integrada; las exportaciones de este contexto todavía no existen <!-- verificar fase 2 -->.
+**Rol:** superadministrador. **Pantalla:** las cuatro listas y la lista de modelos de la ficha de una marca, botón "Exportar" (D-116; segunda fase de la auditoría).
+
+1. Busca y filtra la lista como siempre, y pulsa "Exportar".
+2. El archivo sale de su propio endpoint (`GET /vehicle-types`, `/vehicle-brands`, `/vehicle-brands/{id}/vehicle-models`, `/colors` y `/equipment-types`, con el `Accept` de Excel), con la misma búsqueda, los mismos filtros y el mismo orden, y todas las filas que coinciden, por la plataforma de documentos (convenciones §8): `303` al documento, que el frontend consulta hasta que está listo y descarga. Un pedido igual reutiliza el documento mientras no cambien los datos.
+3. Cada lista es un tipo de documento de `VehicleCatalogDocumentKinds` —`vehicle-types`, `vehicle-brands`, `vehicle-models`, `vehicle-colors` y `equipment-types`—, con el alcance de un catálogo general, tener `catalogos.ver`, y la versión de las tablas que lee su exportación.
+
+**Qué lleva cada archivo** (`tipos-de-vehiculo`, `marcas-de-vehiculo`, `modelos-de-vehiculo`, `colores`, `tipos-de-equipamiento`, con la fecha de hoy en Lima): los tipos, Código, Tipo de vehículo, Nombre comercial y Estado; las marcas, Marca y Estado; los modelos de una marca, Marca, Modelo, Código de tipo de vehículo, Tipo de vehículo, Cilindraje (cc), Combustible —traducido—, Pantalla de fábrica y Estado; los colores, Color y Estado; los equipamientos, Código, Equipamiento, Bloquea la disponibilidad, Exige número de serie, Aplica a («Nombre (CÓDIGO)», …) y Estado. Nunca un identificador (D-51); el tipo de vehículo va también por su código, porque su nombre puede repetirse.
+
+**Errores que ve:** una marca que no existe responde `404 VEHICLEBRAND_NOT_FOUND` a la exportación de sus modelos; ante cualquier fallo, la pantalla dice "No se pudo descargar el archivo. Inténtelo de nuevo." (`data-manager.export-error`).
 
 ---
 
@@ -229,7 +237,7 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 | VCT-R22 | La semilla trae los tres tipos con sus dos nombres, y el GPS y la pantalla con sus banderas y sus tipos | §7.1, §7.5 | Base: V35 | `VehicleCatalogMigrationTests.theThreeVehicleTypesComeWithTheirTwoNames`, `theGpsAndTheScreenBlockAvailabilityAndOnlyTheGpsRecordsASerial` y `theGpsAppliesToEveryVehicleTypeAndTheScreenOnlyToCars` | ✅ |
 | VCT-R23 | Desactivar un registro pregunta antes, con su nombre | DESIGN.md; como Estados y motivos (FLT-R25) | Frontend: `deactivationQuestion` (`vehiclecatalog/presentation/components`), con las claves `vehicle-catalog.confirm.*` y `destructive: true`, en las cuatro listas, en la ficha de la marca y en sus modelos (`929443a`, `9c254bf`) | `deactivation-question.spec`; `vehicle-types-view.spec`, `brands-and-models-view.spec`, `colors-view.spec` y `equipment-types-view.spec` ("asks before deactivating…, as a destructive action"); `brand-profile-view.spec` ("asks before deactivating the brand, then deactivates it", "asks before deactivating a model of the brand…"); e2e (alta, edición, duplicado y desactivación en cada catálogo) | ✅ |
 | VCT-R24 | Las listas se buscan, se filtran, se ordenan y se paginan en el servidor; un filtro por un tipo de vehículo que no existe no coincide con ninguna fila | Convenciones §6.2 | Persistencia: los `*RepositoryImpl`, con su `SORTABLE`. Frontend: `PagedList` en cada store | `VehicleTypesControllerTests.withAPageTheListAnswersOnePageInOrderAndHowManyMatch` y `theSearchReadsTheNamesAndTakesItsWildcardsLiterally`; `EquipmentTypeQueryServiceImplTests.anUnknownVehicleTypeMatchesNoEquipmentType`; `VehicleModelQueryServiceImplTests.anUnknownVehicleTypeMatchesNoModel`; e2e ("asks the server for the vehicle types of the status filter") | ✅ |
-| VCT-R25 | Los cuatro catálogos y los modelos de una marca se exportan a Excel desde su propio endpoint | D-116 | **Segunda fase**, sobre la plataforma de documentos ya integrada; todavía no existe <!-- verificar fase 2 --> | Sin prueba | ❌ |
+| VCT-R25 | Los cuatro catálogos y los modelos de una marca se exportan a Excel desde su propio endpoint | D-116 | Servicio: `VehicleCatalogDocumentKinds` y el `@GetMapping(produces = SpreadsheetExporter.MEDIA_TYPE)` de los cinco controladores, sobre la plataforma de documentos (`be7bdb9`). Frontend: `exportVehicleTypes`, `exportBrands`, `exportModels`, `exportColors` y `exportEquipmentTypes` en los stores, y las cinco listas `exportable` (`f73a656`) | `VehicleCatalogExportsIntegrationTests` (`theVehicleTypesExportTheirCodeNamesAndState`, `theBrandsExportTheirNameAndStateInTheOrderOfTheList`, `theModelsOfABrandExportTheBrandTheVehicleTypeAndTheFuelWithTheirFilters`, `theModelsOfAnUnknownBrandAnswerItsNotFound`, `theColorsExportTheirNameAndState`, `theEquipmentTypesExportTheVehicleTypesTheyApplyTo`, `inEnglishTheHeadersAndTheFuelAreInEnglish`); los specs de los cinco stores ("downloads the … on screen as the Excel file the backend generates, and says when it fails") y de las vistas ("offers the … as an Excel file…"); e2e ("downloads the vehicle types with the status filter of the list (D-116)" y los demás) | ✅ |
 
 ---
 
@@ -244,13 +252,14 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 | `fetchVehicleModelSummaryByPublicId` | El modelo del alta de una unidad: si existe, si está activo y si lo están su marca y su tipo (D-108) |
 | `fetchColorSummaryByPublicId` | El color del alta y de la edición, con si está activo |
 | `fetchVehicleModelSummariesByIds`, `fetchColorSummariesByIds` | Los modelos y los colores de una lista de unidades, en una lectura, para las vistas |
+| `fetchDataVersion()` | La versión de los datos que muestra —tipos, marcas, modelos y colores—, para que el Inventario de `fleet` no se sirva desde un documento viejo cuando uno cambia (D-106; segunda fase, `be7bdb9`) |
 | `markModelInUse(Long modelId)` | La única escritura: pone `has_units` en verdadero cuando `fleet` registra una unidad del modelo. Es idempotente y corre en la transacción de quien llama, así que si el alta falla, el modelo tampoco queda marcado (D-107) |
 
-`VehicleModelSummary` lleva `id`, `publicId`, `name`, `isActive`, `brandIsActive` y `vehicleTypeIsActive`, y nada más: `brandId`, `vehicleTypeId`, `engineCc`, `fuelType` y `hasFactoryScreen` no tenían consumidor y salieron, con el `toLowerCase` del combustible (`040ad1e`, cambio incompatible de la fachada). `ColorSummary` lleva `id`, `publicId`, `name` e `isActive`.
+`VehicleModelSummary` lleva `id`, `publicId`, `name`, `isActive`, `brandIsActive` y `vehicleTypeIsActive`; `brandId`, `vehicleTypeId`, `engineCc`, `fuelType` y `hasFactoryScreen` no tenían consumidor y salieron, con el `toLowerCase` del combustible (`040ad1e`, cambio incompatible de la fachada). La segunda fase le sumó `brandName`, `vehicleTypeCode` y `vehicleTypeName`, que nombran la marca y el tipo en la exportación del Inventario (`be7bdb9`). `ColorSummary` lleva `id`, `publicId`, `name` e `isActive`.
 
 **Sin ciclo.** Que `fleet` escriba por la fachada no invierte el sentido de la dependencia: `fleet` llama a `vehiclecatalog`, como para leer, y `vehiclecatalog` no llama a `fleet` ni lee sus tablas (mapa §6.4).
 
-**Los puertos de `shared`.** Los controladores exigen su permiso con `@PermissionRequired`, y las listas usan `PageParams`, `PageQuery` y `PageRequests`. No lee `CurrentAccessScope`: un catálogo general no se acota por empresa. Las exportaciones usarán la plataforma de documentos de `shared` (D-106, D-116), en la segunda fase.
+**Los puertos de `shared`.** Los controladores exigen su permiso con `@PermissionRequired`, y las listas usan `PageParams`, `PageQuery` y `PageRequests`. No lee `CurrentAccessScope`: un catálogo general no se acota por empresa. Las exportaciones usan la plataforma de documentos de `shared` (D-106, D-116): `DocumentKind`, `DocumentScopes.holding`, `DataVersions` y `DocumentCommandService`.
 
 **Frontend.** `VehicleCatalogFacade` (`vehiclecatalog.facade.ts`) ofrece a `fleet` vistas mínimas: los tipos de vehículo activos, las marcas activas y todas, los colores, los modelos activos de una marca (`loadActiveModels`) y un modelo por su identificador (`loadModelOption`), leídos por los stores del contexto. Desde la auditoría (`a2ef8f2`), cada catálogo que ofrece tiene su propio estado, apartado del de las pantallas: los stores dueños guardan para la fachada sus filas, su carga y su error externos (`loadingExternal`, `externalError`, `clearExternalError()`), y la fachada los expone como `vehicleTypesLoading` y `vehicleTypesError`, `brandsLoading` y `brandsError`, `colorsLoading` y `colorsError`, cada error con su `clear…Error()`, como `LocationFacade`. Una lectura de `fleet` nunca deja su error, su carga ni sus filas en las pantallas de catálogos. Los miembros que nadie usaba salieron (`139e513`), y la fachada ya no lee el equipamiento.
 
@@ -258,7 +267,7 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 
 ## 6. Estado y pendientes para cerrar
 
-**Estado al 20/10/2026: construido en `develop`, abierto.** Falta lo que el orden de implementación pide para cerrar el paso: los modelos reales conciliados (§7.3), y la validación de este documento por el responsable. Lo que aprobó la auditoría del 20/10/2026 está construido e integrado en `audit/be-integration` (merge `81bb8c1`) y `audit/fe-integration` (merge `36210f6`), y falta llevarlo a `develop`; la exportación (D-116) es la segunda fase.
+**Estado al 20/10/2026: construido en `develop`, abierto.** Falta lo que el orden de implementación pide para cerrar el paso: los modelos reales conciliados (§7.3), y la validación de este documento por el responsable. Lo que aprobó la auditoría del 20/10/2026 está construido e integrado en `audit/be-integration` (merge `81bb8c1`) y `audit/fe-integration` (merge `36210f6`), con su segunda fase, la exportación (D-116), y falta llevarlo a `develop`.
 
 **Cómo se llegó.** El 17/10/2026 el backend tomó el catálogo de `feature/vehiclecatalog` (johanncamiloaga, coautor de esos commits) y lo adaptó al diccionario v1.19: el esquema y sus semillas en V35 (`368619c`), las rutas sin prefijo de contexto (`d8af95a`), la búsqueda en el servidor (`88f4dcd`), la aplicabilidad que se desactiva en vez de borrarse, con su cambio registrado como una modificación del equipamiento (`bebc940`), el cilindraje entero y sin máximo (`d31ed73`, `3769edd`), el eléctrico sin cilindraje (`0f2e46f`) y el código corregible salvo el que lee el programa (`4f80289`, `9f1b443`). El paso 3b le puso los permisos (`a39e111`), y el paso 5 la fachada que usa `fleet` (`7ff2949`, `d54b8d4`). El frontend se construyó el mismo 17/10/2026, con los modelos anidados bajo su marca (`d0a9440`) y las listas en el servidor (`d035363`); el 20/10/2026 la ficha de la marca empezó en sus datos (`71907ad`) y la carpeta pasó a llamarse como el contexto (`8d4fd27`, en `audit/fe-base`).
 
@@ -270,11 +279,11 @@ Las de origen: los catálogos son del sistema (D-15) y se mantienen aunque tenga
 2. **D-108.** Ni modelos bajo una marca o un tipo inactivos, ni unidades con un modelo, una marca o un tipo inactivos; lo que un registro ya tiene se conserva.
 3. **D-109.** El combustible de un modelo nuevo nace vacío.
 4. **D-112.** Marcas y modelos es una lista con la ficha de cada marca, no un maestro-detalle.
-5. **D-116.** Los catálogos y los modelos de una marca se exportan a Excel, en una segunda fase.
+5. **D-116.** Los catálogos y los modelos de una marca se exportan a Excel, construido en la segunda fase.
 
 ### b) Lo que construyó la auditoría
 
-Los hallazgos son del plan de la auditoría del 20/10/2026 (B1 a B17). Están construidos e integrados, salvo B10, hecho antes (`8d4fd27`), B14, que queda fuera de esta ronda, y la exportación, en la segunda fase.
+Los hallazgos son del plan de la auditoría del 20/10/2026 (B1 a B17). Están construidos e integrados, salvo B10, hecho antes (`8d4fd27`), y B14, que queda fuera de esta ronda. La exportación llegó en la segunda fase.
 
 | Hallazgo | Qué cambió | Commits |
 |---|---|---|
@@ -288,7 +297,7 @@ Los hallazgos son del plan de la auditoría del 20/10/2026 (B1 a B17). Están co
 | B13 | La ficha de la marca con Activar y Desactivar, con su línea junto a la insignia, y sin "Nuevo modelo" cuando está inactiva | Frontend `9c254bf`, `51e8cf4` |
 | D-109 | El combustible de un modelo nuevo nace vacío (VCT-R12) | Frontend `23a7e9a` |
 | B15 a B17 | Las pruebas de la fachada, del bloqueo del tipo, de la marca y el tipo inactivos, de la carrera, y las de extremo a extremo del alta, la edición, el duplicado y la desactivación en los cinco catálogos | Backend `040ad1e`; frontend `100485d` |
-| B1, B9, D-116 | La exportación de los cinco catálogos y de los modelos (VCT-R25) | **Segunda fase** <!-- verificar fase 2 --> |
+| B1, B9, D-116 | La exportación de los cinco catálogos y de los modelos (VCT-R25), en la segunda fase | Backend `be7bdb9`; frontend `f73a656` |
 
 ### c) Pendientes, cada uno con su momento
 
@@ -296,9 +305,7 @@ Los hallazgos son del plan de la auditoría del 20/10/2026 (B1 a B17). Están co
 |---|---|
 | Los modelos reales, conciliados entre los dos catálogos entregados, que no coinciden (§7.3, advertencia para la carga inicial) | El negocio entrega los datos; criterio de cierre del paso 4 |
 | Validar este documento | El responsable |
-| Llevar a `develop` lo que construyó la auditoría, ya integrado y verificado en este documento el 20/10/2026 | El integrador, al cerrar la ronda |
-| La exportación de los cinco catálogos y de los modelos de una marca (D-116, VCT-R25) | Segunda fase de la auditoría |
-| La ficha de la unidad descarga los catálogos completos para nombrar la marca y el color (B14) | Fuera de esta ronda; seguimiento del frontend |
+| Llevar a `develop` lo que construyó la auditoría, ya integrado y verificado en este documento el 20/10/2026 | El integrador, al cerrar la ronda || La ficha de la unidad descarga los catálogos completos para nombrar la marca y el color (B14) | Fuera de esta ronda; seguimiento del frontend |
 | Las pantallas se abren por el rol `SUPERADMIN` (`RouteAccess` por roles), no por `catalogos.gestionar_flota`: un rol propio con ese permiso (D-98) no ve las opciones, aunque la API le responda | Seguimiento del frontend, para toda pantalla que exige un permiso (procesos, apartado 3.1) |
 | El código de un equipamiento que una instalación usa queda fijo (D-74), y si una unidad requiere pantalla lo responde la fachada | Paso 9, con `vehicle_equipments` |
 | `q` todavía distingue tildes (convenciones §6.2) | Antes del paso 7 |
