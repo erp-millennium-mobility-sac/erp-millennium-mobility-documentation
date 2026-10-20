@@ -954,12 +954,12 @@ Un rol incluye un permiso a lo sumo una vez mientras está vigente.
 | `stock.entregar` | stock | acciones_especiales | El camino Vendido → Activo | 5 |
 | `stock.atender_en_taller` | stock | acciones_especiales | Los caminos hacia Mecánica y Puesta a punto, y de vuelta a Disponible | 5 |
 | `stock.recuperar` | stock | acciones_especiales | Los caminos por morosidad y resolución de contrato (Custodia) | 5 |
-| `stock.registrar_kilometraje` | stock | acciones_especiales | Lecturas de taller, entrega, devolución y manuales (§8.5) | 5 |
+| `stock.registrar_kilometraje` | stock | crear | Lecturas de taller, entrega, devolución y manuales (§8.5) | 5 |
 | `stock.registrar_sustitucion_odometro` | stock | acciones_especiales | El cambio de tablero, el hecho distinto que admite que la siguiente lectura sea menor (§8.5) | 5 |
 | `stock.corregir_placa` | stock | acciones_especiales | Corregir una placa ya registrada, con motivo (§13.1) | 5, 6 |
 | `stock.corregir_vin` | stock | acciones_especiales | Corregir un VIN ya registrado, con motivo (§13.1) | 5, 6 |
 | `stock.anular_vehiculo` | stock | desactivar_anular | Anular una unidad por acción explícita, con el candado de §9.6 (D-104) | 7 |
-| `stock.cargar_migracion_inicial` | stock | crear | La carga del Excel que da de alta unidades (D-18) | 5 |
+| `stock.cargar_migracion_inicial` | stock | acciones_especiales | La carga del Excel que da de alta unidades (D-18) | 5 |
 | `compras.ver` | compras | ver | Proveedores, órdenes, facturas y notas de crédito, con sus importes | 7 |
 | `compras.gestionar_proveedores` | compras | gestionar | Crear y editar proveedores, con su dirección y su estado (§9.1) | 7 |
 | `compras.gestionar_plantillas` | compras | gestionar | Plantillas de orden de compra y sus tipos (D-35) | 7 |
@@ -996,7 +996,7 @@ Un rol incluye un permiso a lo sumo una vez mientras está vigente.
 | `seguridad.desvincular_cuentas` | seguridad | acciones_especiales | Deshacer el vínculo equivocado de un colaborador con su cuenta; solo del superadministrador (D-82) | 3b |
 | `seguridad.asignar_roles_sin_tenerlos` | seguridad | acciones_especiales | Otorgar roles no reservados cuyos permisos no se tienen; solo del administrador de accesos (D-56, D-120) | 3b |
 
-<!-- verificar al integrar fase 2: las descripciones y las categorías que siembran V53 y V54, en especial la de stock.cargar_migracion_inicial y stock.registrar_kilometraje (los dos repartos dan 6/2/1/6/10) -->
+<!-- verificar al integrar fase 2: las descripciones y las categorías que siembran V53 y V54 -->
 
 En total: catorce de ver, seis de crear, dos de editar, quince de gestionar, cuatro de desactivar o anular y veintiuno de acciones especiales.
 
