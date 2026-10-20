@@ -1,6 +1,6 @@
 # Convenciones de la API REST — ERP Millennium Mobility
 
-**Actualizado:** 19/10/2026 (paso 3b, construido en `feature/permissions-matrix`, diccionario v1.23: las rutas de los roles y del catálogo de permisos, con `RoleDetailResponse`; `permissions` en `/me`; los códigos de los roles y de la matriz; `ACCESS_DENIED` también por el permiso que falta o no actúa, D-99; la política de acceso por permiso en §9.2; los tres campos del colaborador que se omiten, D-105; `role_permissions` sin `public_id`; §14.20 y §14.21 con D-104 y el catálogo) · 18/10/2026 (seguimiento de `organization`, construido en `feature/organization-followup`, diccionario v1.22: el `403` de las lecturas de colaboradores, D-93; `COMPANY_INACTIVE` al reactivar y el orden del regreso, D-94; `EMPLOYEE_TERMINATION_BEFORE_HIRE` en la edición; el `400` de un número hecho solo de separadores; las columnas de las exportaciones de colaboradores y ubicaciones) · 18/10/2026 (cierre de `organization`, diccionario v1.21: la empresa nombra su país y su moneda por su código, D-13, y §13 filas 21 y 22; `locationType` en minúsculas; el campo `context` del error; vincular la cuenta de otra persona con confirmación, D-82; `PUT /companies/{id}/tax-id`, D-85; `POST /employees/{id}/account-unlinking`, D-82; los códigos de lo que se cuelga de algo inactivo, D-84, de la fecha de ingreso, D-88, y de la ubicación propia de una sede, D-90; `employeeCompanyIds`; `sort` por el nombre del campo en ubicaciones y colaboradores) · 18/10/2026 (cierre de `location`: códigos propios de la dirección, del dígito de control y de la ubicación; la ubicación corrige o muda su dirección por su subrecurso, D-79; identificadores sin guiones, espacios ni puntos; un duplicado en carrera responde el código de su recurso; página de 1 a 200; español por omisión; §13 fila 14 resuelta) · 16/10/2026 (rutas, códigos y política de acceso de `iam` del paso 3; `/me`; `/users?companyId` y `managedBySuperadmin`; filtro de alcance construido) · 14/10/2026 (`location` nombra el país y la moneda por su código; escalones e hijos de una división como listas cortas; campos derivados del dueño) · 06/10/2026 (direcciones anidadas en su dueño, errores elegidos por `code`, fechas del Excel en ISO, rutas sin prefijo de contexto) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.23 (§2.2 normalización, §2.4 identificadores, §2.5 separación por empresa, §2.6 fechas, §4.6 direcciones, §4.7 tipos de documento, §5.3 colaboradores, §5.5 y §5.6 roles y permisos, §5.8 cómo se resuelven, §5.12 sesiones, §6.2 a §6.5, D-8, D-13, D-38, D-40, D-42, D-43, D-49, D-51, D-53, D-75, D-78, D-79, D-82, D-84 a D-91 y D-95 a D-105), reglas de arquitectura de la skill `backend-module`, [mapa de contextos](mapa-de-contextos-millennium-mobility.md) y el backend construido. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 20/10/2026 (auditoría del 20/10/2026, diccionario v1.24: §8 reescrita como Documentos, generados una vez y reutilizados, D-106 y D-116; `/documents/{id}` y su archivo; `vehicleTypeLocked` y `allowedActions` como datos derivados, D-115; lo que buscan y ordenan los catálogos de flota, `/vehicles`, el historial, las lecturas y `/roles`, que pagina en el servidor; los estados y los caminos como tercera lista corta, D-113, y §14.23 adoptada; los códigos de los catálogos de flota, D-107 y D-108, de `fleet`, D-110, y de los documentos; un solo prefijo por agregado, D-114, que rechaza la primera parte de §14.11 y resuelve §13 fila 13) · 19/10/2026 (paso 3b, construido en `feature/permissions-matrix`, diccionario v1.23: las rutas de los roles y del catálogo de permisos, con `RoleDetailResponse`; `permissions` en `/me`; los códigos de los roles y de la matriz; `ACCESS_DENIED` también por el permiso que falta o no actúa, D-99; la política de acceso por permiso en §9.2; los tres campos del colaborador que se omiten, D-105; `role_permissions` sin `public_id`; §14.20 y §14.21 con D-104 y el catálogo) · 18/10/2026 (seguimiento de `organization`, construido en `feature/organization-followup`, diccionario v1.22: el `403` de las lecturas de colaboradores, D-93; `COMPANY_INACTIVE` al reactivar y el orden del regreso, D-94; `EMPLOYEE_TERMINATION_BEFORE_HIRE` en la edición; el `400` de un número hecho solo de separadores; las columnas de las exportaciones de colaboradores y ubicaciones) · 18/10/2026 (cierre de `organization`, diccionario v1.21: la empresa nombra su país y su moneda por su código, D-13, y §13 filas 21 y 22; `locationType` en minúsculas; el campo `context` del error; vincular la cuenta de otra persona con confirmación, D-82; `PUT /companies/{id}/tax-id`, D-85; `POST /employees/{id}/account-unlinking`, D-82; los códigos de lo que se cuelga de algo inactivo, D-84, de la fecha de ingreso, D-88, y de la ubicación propia de una sede, D-90; `employeeCompanyIds`; `sort` por el nombre del campo en ubicaciones y colaboradores) · 18/10/2026 (cierre de `location`: códigos propios de la dirección, del dígito de control y de la ubicación; la ubicación corrige o muda su dirección por su subrecurso, D-79; identificadores sin guiones, espacios ni puntos; un duplicado en carrera responde el código de su recurso; página de 1 a 200; español por omisión; §13 fila 14 resuelta) · 16/10/2026 (rutas, códigos y política de acceso de `iam` del paso 3; `/me`; `/users?companyId` y `managedBySuperadmin`; filtro de alcance construido) · 14/10/2026 (`location` nombra el país y la moneda por su código; escalones e hijos de una división como listas cortas; campos derivados del dueño) · 06/10/2026 (direcciones anidadas en su dueño, errores elegidos por `code`, fechas del Excel en ISO, rutas sin prefijo de contexto) · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.24 (§2.2 normalización, §2.4 identificadores, §2.5 separación por empresa, §2.6 fechas, §4.6 direcciones, §4.7 tipos de documento, §5.3 colaboradores, §5.5 y §5.6 roles y permisos, §5.8 cómo se resuelven, §5.12 sesiones, §6.2 a §6.5, D-8, D-13, D-38, D-40, D-42, D-43, D-49, D-51, D-53, D-75, D-78, D-79, D-82, D-84 a D-91 y D-95 a D-116), reglas de arquitectura de la skill `backend-module`, [mapa de contextos](mapa-de-contextos-millennium-mobility.md) y el backend construido. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 La API es REST: expone **recursos** con sustantivos, los manipula con los **métodos de HTTP** según su semántica y responde con **códigos de estado** que dicen qué pasó. El único cliente hoy es el frontend del ERP, que se sirve desde el mismo origen.
 
@@ -49,7 +49,7 @@ Mapa de rutas objetivo, agrupado por contexto dueño; las rutas no llevan el con
 | `vehiclecatalog` | `/vehicle-types` · `/vehicle-brands` · `/vehicle-brands/{id}/vehicle-models` · `/vehicle-models/{id}` · `/colors` · `/equipment-types`, cada uno con `/{id}` y `/{id}/status` |
 | `fleet` | `/vehicles` · `/vehicles/{id}` · `/vehicles/{id}/plate` · `/vehicles/{id}/vin` · `/vehicles/{id}/annulment` **(propuesta, §14.20)** · `/vehicles/{id}/status-changes` · `/status-changes/{id}` · `/vehicles/{id}/mileage-readings` · `/mileage-readings/{id}` · `/vehicles/{id}/odometer-replacements` **(propuesta, §14.22)** · `/vehicles/{id}/documents` · `/vehicle-documents/{id}` · `/vehicle-documents/{id}/file` · `/vehicles/{id}/equipments` · `/vehicle-equipments/{id}` · `/vehicle-equipments/{id}/removal` · `/vehicles/{id}/keys` · `/vehicle-keys/{id}` · `/vehicles/{id}/fund-assignments` · `/vehicles/{id}/tax-declarations` · `/vehicle-statuses` · `/vehicle-statuses/{id}` · `/vehicle-statuses/{id}/status` · `/status-change-reasons` (D-113) · `/status-change-reasons/{id}` · `/status-change-reasons/{id}/status` · `/document-types` · `/document-types/{id}` · `/document-types/{id}/status` · `/funds` · `/funds/{id}` · `/funds/{id}/status` · `/tax-declaration-imports` y `/fund-assignment-imports` **(propuesta, §14.18)** |
 | `procurement` | `/suppliers` · `/suppliers/{id}/status` · `/suppliers/{id}/address` · `/suppliers/{id}/balance` · `/purchase-order-types` · `/purchase-order-types/{id}/status` · `/purchase-order-templates` · `/purchase-order-templates/{id}/status` · `/purchase-order-templates/{id}/issuer-address` · `/purchase-orders` · `/purchase-orders/{id}/sending` · `/purchase-orders/{id}/annulment` · `/purchase-orders/{id}/fulfillment` **(propuesta, §14.22)** · `/purchase-orders/{id}/pdf` · `/purchase-invoices` · `/purchase-invoices/{id}/annulment` · `/credit-notes` · `/supplier-payments` · `/supplier-payments/{id}/annulment`, cada colección con `/{id}` |
-| Plataforma (`shared`) | `/change-log` · `/imports` · `/imports/{id}` · `/imports/{id}/error-report` |
+| Plataforma (`shared`) | `/change-log` · `/imports` · `/imports/{id}` · `/imports/{id}/error-report` · `/documents/{id}` · `/documents/{id}/file` (D-106, §8) |
 | Capa de lectura | `/reports/stock-export` · `/reports/day-gaps` · `/reports/down-payment-differences` · `/reports/vehicle-costs?vehicleId=…` **(propuesta, §14.19)** |
 
 - Los recursos de empresa sin anidar (`/vehicles`, `/funds`, los de `procurement`) reciben `companyId` como filtro (§6.1).
@@ -400,7 +400,7 @@ Todo error responde el mismo recurso, también los que ocurren antes del control
 - Las fábricas de `ApplicationError` (`notFound`, `conflict`, `businessRuleViolation`, `validationError`…) producen los códigos genéricos de la tabla. Por omisión, un duplicado es `ApplicationError.conflict(...)`, que responde `<RECURSO>_CONFLICT`.
 - **Un duplicado que llega a la base en una carrera responde el código de su recurso**, el mismo que el servicio da sin carrera. Dos peticiones simultáneas pueden pasar las dos la comprobación del servicio; la restricción única de la base detiene a la segunda, y el adaptador del repositorio traduce esa violación en el fallo de su clave natural ([patrones de persistencia](patrones-de-persistencia-millennium-mobility.md)). En `location` responden así `CURRENCY_CONFLICT`, `COUNTRY_ISO_ALPHA2_CONFLICT`, `COUNTRY_ISO_ALPHA3_CONFLICT`, `GEODIVISION_CONFLICT` y `TAXIDTYPE_CONFLICT` (`409`). En `organization`, desde el 18/10/2026, `COMPANY_COUNTRY_CONFLICT`, `COMPANY_TAX_ID_CONFLICT`, `BRANCH_CODE_CONFLICT`, `BRANCH_TAX_ESTABLISHMENT_CODE_CONFLICT`, `COMMERCIALBRAND_CONFLICT`, `LOCATION_CODE_CONFLICT`, `LOCATION_BRANCH_CONFLICT`, `EMPLOYEE_DOCUMENT_NUMBER_CONFLICT` y `EMPLOYEE_ACCOUNT_IN_COMPANY_CONFLICT`. En `vehiclecatalog`, desde el 20/10/2026, `VEHICLETYPE_CONFLICT`, `VEHICLEBRAND_CONFLICT`, `VEHICLEMODEL_CONFLICT`, `COLOR_CONFLICT` y `EQUIPMENTTYPE_CONFLICT`, sobre `vehicle_types_code_uq`, `vehicle_brands_name_uq`, `vehicle_models_brand_name_uq`, `colors_name_uq` y `equipment_types_code_uq` (V35). En `fleet`, `VEHICLE_VIN_CONFLICT`, `VEHICLE_PLATE_CONFLICT` y `STATUSCHANGEREASON_REGISTRATION_CONFLICT`. Solo un duplicado que su adaptador todavía no traduce llega al manejador global y responde el genérico `RESOURCE_CONFLICT` (`409`), sin el texto de la base.
 - Cuando un agregado tiene dos o más reglas de unicidad, cada una lleva su código propio `<RECURSO>_<CAMPO>_CONFLICT`, que produce `ApplicationError.conflict(recurso, campo, …)`, para que el cliente sepa cuál falló: `COMPANY_COUNTRY_CONFLICT` y `COMPANY_TAX_ID_CONFLICT` en la empresa, que ya los emite; `VEHICLE_VIN_CONFLICT` y `VEHICLE_PLATE_CONFLICT` en la unidad; `BRANCH_CODE_CONFLICT` y `BRANCH_TAX_ESTABLISHMENT_CODE_CONFLICT` en la sede (diccionario §6.4). Un agregado con una sola regla se queda con el genérico.
-- El estado de un código propio sale de su sufijo: `_NOT_FOUND` responde `404`, `_CONFLICT` responde `409` y cualquier otro, `422`. Por eso un código propio de duplicado termina siempre en `_CONFLICT`: con otro sufijo saldría como regla rota. Un código propio que no es un duplicado, como `COMPANY_FISCAL_ADDRESS_MISSING` (§3.3), responde `422`. Los cuatro `403` propios de la tabla (`ACCOUNT_SUSPENDED`, `ACCOUNT_MANAGED_BY_SUPERADMIN`, `OWN_ACCOUNT_FORBIDDEN` y `ACTOR_EMPLOYEE_REQUIRED`) son la excepción: no tienen un sufijo que dé su estado, así que `ErrorResponseAssembler` los nombra uno por uno.
+- El estado de un código propio sale de su sufijo: `_NOT_FOUND` responde `404`, `_CONFLICT` responde `409` y cualquier otro, `422`. Por eso un código propio de duplicado termina siempre en `_CONFLICT`: con otro sufijo saldría como regla rota. Un código propio que no es un duplicado, como `COMPANY_FISCAL_ADDRESS_MISSING` (§3.3), responde `422`. Los cuatro `403` propios de la tabla (`ACCOUNT_SUSPENDED`, `ACCOUNT_MANAGED_BY_SUPERADMIN`, `OWN_ACCOUNT_FORBIDDEN` y `ACTOR_EMPLOYEE_REQUIRED`) son la excepción: no tienen un sufijo que dé su estado, así que `ErrorResponseAssembler` los nombra uno por uno. Lo mismo `DOCUMENT_EXPIRED` (`410`) y `DOCUMENTS_BUSY` (`503`), desde el 20/10/2026 <!-- verificar al integrar: que ErrorResponseAssembler los nombre así -->.
 - Un `403` dice por qué cuando la pantalla tiene que explicarlo: cada causa tiene su código, y `ACCESS_DENIED` queda para la falta de rol o de permiso, y para el permiso que no actúa en la empresa (D-99). El rol o el permiso de la ruta se revisa antes que la existencia: quien no lo tiene en ninguna empresa recibe `403` aunque el recurso no exista; la exportación de colaboradores lo exige en su método, así que quien no tiene `configuracion.ver_datos_personales_colaboradores` en ninguna empresa recibe `403` antes de que se busque la empresa. Quien lo tiene en otra empresa recibe `404 COMPANY_NOT_FOUND` por una fuera de su alcance, y `403` por una alcanzada donde el permiso no actúa (D-99).
 - Como todo `Result.failure` es un fallo esperado, un código propio nunca responde `500`. Su texto en el servidor se busca en `error.<código-en-kebab>.message`, por ejemplo `error.vehicle-vin-conflict.message`, y el frontend tiene su propia clave en `es.json` (§7.1).
 - `<RECURSO>` es el nombre del agregado en mayúsculas y sin separar sus palabras, como lo producen las fábricas: `notFound("GeoDivision", …)` produce `GEODIVISION_NOT_FOUND`. **Cada agregado tiene un solo prefijo** (D-114, decidido el 20/10/2026): sus códigos propios usan el mismo que su `_NOT_FOUND`, sin guion bajo interno. Así `fleet` pasó de `VEHICLE_STATUS_*` a `VEHICLESTATUS_*` y de `STATUS_CHANGE_REASON_*` a `STATUSCHANGEREASON_*` (abajo), y la propuesta de separar las palabras con guion bajo (§14.11) queda rechazada.
@@ -511,6 +511,14 @@ Todo error responde el mismo recurso, también los que ocurren antes del control
 
 El cambio es incompatible y se hizo en los dos repositorios a la vez (§1): el frontend elige sus textos por los códigos nuevos.
 
+**Los códigos de los documentos** (registrado el 20/10/2026; D-106, §8). Los responde `shared`, con su clave en los dos idiomas.
+
+| `code` | Estado | Operación | Cuándo |
+|---|---|---|---|
+| `DOCUMENT_NOT_FOUND` | `404` | `GET /documents/{id}`, `GET /documents/{id}/file` | El documento no existe, o es de otro alcance que el de quien pregunta: las dos respuestas son iguales |
+| `DOCUMENT_EXPIRED` | `410` | `GET /documents/{id}`, `GET /documents/{id}/file` | El documento venció y su archivo ya no se entrega. El frontend repite una vez el pedido original, que genera otro |
+| `DOCUMENTS_BUSY` | `503` | El `GET` de una lista con el `Accept` de Excel | No hubo un lugar libre para generar dentro de `documents.permit-wait` (§8.3). El documento queda fallido, y el pedido se puede repetir |
+
 **Los códigos de las cuentas y de la salida y el regreso** (registrado el 16/10/2026). Cada causa que la pantalla tiene que distinguir lleva su código, y el frontend tiene un mensaje para cada uno. Todos responden `422` salvo que se indique otro estado. "Los cuatro `403`" son `ACCESS_DENIED`, `OWN_ACCOUNT_FORBIDDEN`, `ACTOR_EMPLOYEE_REQUIRED` y `ACCOUNT_MANAGED_BY_SUPERADMIN`.
 
 | Operación | Códigos |
@@ -534,33 +542,62 @@ Los códigos que dicen que la pantalla quedó vieja —entre otros `ACCESS_SUSPE
 
 ---
 
-## 8. Archivos
+## 8. Documentos
+
+Un documento es un archivo que entra o sale del sistema: el que se sube —un documento del vehículo, una carga— y el que el sistema genera para que alguien lo descargue —una lista exportada a Excel, el PDF de una orden de compra—. Todo documento que sale lo genera el backend, y el frontend solo lo descarga (D-106).
 
 | Caso | Petición | Respuesta |
 |---|---|---|
 | Subir un documento o una carga | `POST` en `multipart/form-data`: el archivo en `file` y los datos en `data`, como JSON. La ruta de las cargas de flota depende de §14.18 | `201` con el recurso |
-| Descargar | `GET .../file`, `.../pdf` o `.../error-report` | El archivo con su `Content-Type` y `Content-Disposition: attachment; filename="…"` |
-| Exportar una lista | El mismo `GET` de la lista con `Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (§8.1) | El `.xlsx` con `Content-Disposition: attachment; filename="monedas-2026-10-06.xlsx"` |
-| Exportar un reporte | `GET /reports/...` con el mismo `Accept` | El archivo |
+| Descargar un archivo subido | `GET .../file` o `.../error-report` | El archivo con su `Content-Type` y `Content-Disposition: attachment; filename="…"` |
+| Exportar una lista | El mismo `GET` de la lista con el `Accept` de Excel (§8.1) | `303 See Other` con `Location: /api/v1/documents/{id}`; el archivo se descarga de `/documents/{id}/file` |
+| Generar un PDF | El `GET .../pdf` del recurso, con `Accept: application/pdf` (§8.2) | El mismo flujo. Sin construir |
+| Exportar un reporte | `GET /reports/...` con el `Accept` de su formato | El mismo flujo |
 
-Los archivos se guardan fuera de la base; la API nunca devuelve `file_path`.
+Los archivos que se suben se guardan fuera de la base. Los documentos que genera el sistema, en la base o en DigitalOcean Spaces, nunca en la memoria ni en el disco del proceso (§8.3). La API nunca devuelve `file_path` ni la llave de un objeto en Spaces.
 
 ### 8.1 Exportar a Excel
 
-El archivo lo arma siempre el backend, con fastexcel (`org.dhatim:fastexcel`: escribe en streaming, pesa poco y no arrastra Apache POI). El frontend nunca arma un archivo: lo pide y el navegador lo guarda con el nombre que manda el backend.
+El archivo lo arma siempre el backend, con fastexcel (`org.dhatim:fastexcel`: escribe en streaming, pesa poco y no arrastra Apache POI). El frontend nunca arma un archivo: lo pide, espera a que esté listo y lo descarga con el nombre que manda el backend.
 
-**Cómo funciona**
+**Qué lleva el archivo**
 
-- Una lista se exporta desde **su propio endpoint**. El `GET` que devuelve el JSON, pedido con el `Accept` de Excel, devuelve el archivo con la misma búsqueda (`q`), los mismos filtros y el mismo orden (`sort`), y **todas** las filas que coinciden: ignora `page` y `size` (§6.2). No hay rutas `/export` aparte.
-- El controlador declara un segundo método en la misma ruta con `produces = SpreadsheetExporter.MEDIA_TYPE`, que llama a la misma consulta y pasa las filas a `SpreadsheetExporter` (`shared.interfaces.rest.export`) con sus columnas (`SpreadsheetColumn`).
-- Cada columna es una clave de `messages.properties` para el encabezado y una función que lee la fila. Encabezados y textos salen en el idioma de la petición (`Accept-Language`), igual que los mensajes de error, y en español si la petición no nombra un idioma que la API hable (§7.1).
+- Una lista se exporta desde **su propio endpoint**. El `GET` que devuelve el JSON, pedido con el `Accept` de Excel, genera el archivo con la misma búsqueda (`q`), los mismos filtros y el mismo orden (`sort`), y **todas** las filas que coinciden: ignora `page` y `size` (§6.2). No hay rutas `/export` aparte. Todo catálogo y toda lista principal se exporta así (D-116).
+- Cada columna es una clave de `messages.properties` para el encabezado y una función que lee la fila (`SpreadsheetColumn`). Encabezados y textos salen en el idioma de la petición (`Accept-Language`), igual que los mensajes de error, y en español si la petición no nombra un idioma que la API hable (§7.1).
 - Los valores conservan su tipo, para que la hoja sume, filtre y ordene: un número es número; una fecha, fecha; un momento, fecha y hora; un booleano, "Sí" o "No". Un texto que se traduce, como un estado o el tipo de una ubicación («Sede propia», «Own site»), se devuelve como `SpreadsheetColumn.Message`.
 - Las fechas y los momentos se escriben en ISO, nunca en el formato de pantalla (diccionario §2.6, D-40, D-49). Una fecha es una celda de fecha con la máscara `AAAA-MM-DD`; un momento, una celda de fecha y hora con la máscara `AAAA-MM-DD hh:mm:ss`. Una celda de Excel no guarda la zona, así que todos los momentos de un archivo van en **una sola zona, nombrada en el encabezado** de cada columna de momentos: «Último acceso (America/Lima)». Nunca se mezclan zonas en una columna.
-- Esa zona sale de la regla de "hoy" (diccionario §2.6) aplicada al alcance de la exportación: la sede si la lista es de una sede; si no, el país de la empresa si es de una empresa; si no, `America/Lima`. `SpreadsheetExporter` recibe la zona como parámetro y usa `America/Lima` si no se la pasan, que es lo que corresponde hoy a todas las listas. Desde el paso 3, cada controlador que exporte momentos de una empresa o una sede le pasa la zona de ese alcance.
-- Una hoja con el nombre de la lista y la fila de encabezados fija y en negrita. El archivo se llama `<lista>-<fecha>.xlsx`, con la fecha de hoy en Lima y un nombre sin tildes, para que todos los navegadores lo guarden igual. La zona del nombre del archivo es independiente de la zona de los momentos.
+- Esa zona sale de la regla de "hoy" (diccionario §2.6) aplicada al alcance de la exportación: la sede si la lista es de una sede; si no, el país de la empresa si es de una empresa; si no, `America/Lima`. `SpreadsheetExporter` recibe la zona como parámetro y usa `America/Lima` si no se la pasan. La zona entra en la llave del documento (§8.3).
+- Una hoja con el nombre de la lista y la fila de encabezados fija y en negrita. El archivo se llama `<lista>-<fecha>.xlsx`: el nombre base lo declara el tipo de documento, sin tildes, para que todos los navegadores lo guarden igual, y la fecha es la de hoy en Lima al descargarlo. La zona del nombre del archivo es independiente de la zona de los momentos.
 - El `id` interno y el `public_id` nunca se exportan (§4.2; diccionario §2.4, D-51). Las columnas muestran lo que lee una persona: nombres y códigos de negocio, no identificadores. La única excepción del diccionario es un archivo pensado para editarse y volver a subirse a actualizar registros, que lleva además el `public_id` como llave estable; hoy no hay ninguno.
 - Una referencia cuyo nombre puede repetirse se exporta también por su código. Dos sedes de una empresa pueden llamarse igual (diccionario §6.4), así que desde el 18/10/2026 la exportación de colaboradores lleva Nombre completo, Documento, Puesto, Código de sede, Sede, Fecha de ingreso y Estado, y la de ubicaciones, Código, Nombre de ubicación, Tipo de ubicación, Código de sede (de una ubicación propia), Instalación / Dirección y Estado.
-- Un error responde JSON aunque se haya pedido Excel (§7): el país que no existe es `404` y la falta de permiso, `403`.
+
+**El flujo** (desde el 20/10/2026, D-106) <!-- verificar al integrar: la plataforma de documentos se construye en paralelo -->
+
+1. El frontend pide la lista con `Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/json;q=0.9`. Spring elige el método de Excel del controlador (`@GetMapping(produces = SpreadsheetExporter.MEDIA_TYPE)`), que recibe los mismos parámetros que la lista y delega en el servicio de documentos de `shared`.
+2. El servicio calcula la llave del pedido y la reclama (§8.3). Si la gana, genera el archivo en el mismo hilo de la petición, para que conserve la sesión, el alcance y Row Level Security: `SpreadsheetExporter` lo escribe a un archivo temporal, el servicio lo guarda en el almacenamiento y marca el documento listo. Si no la gana, reutiliza el documento listo o espera al que se está generando.
+3. Responde `303 See Other` con `Location: /api/v1/documents/{id}`. El navegador sigue la redirección solo, con el mismo `Accept`, y `GET /documents/{id}` responde JSON (`DocumentResource`):
+
+   ```json
+   {
+     "id": "019a0b3c-5b1c-7a3e-9d4f-0a1b2c3d4e5f",
+     "status": "ready",
+     "fileName": "monedas-2026-10-20.xlsx",
+     "downloadUrl": "/api/v1/documents/019a0b3c-5b1c-7a3e-9d4f-0a1b2c3d4e5f/file",
+     "expiresAt": "2026-10-20T15:40:00Z"
+   }
+   ```
+
+   - `status` es `generating`, `ready` o `failed`.
+   - `fileName` es `<nombre base>-<fecha de hoy en Lima>.<extensión>`.
+   - `downloadUrl` es `/api/v1/documents/{id}/file`, y viaja solo cuando el documento está listo <!-- verificar al integrar: null u omitido mientras no lo está -->.
+   - `expiresAt` es hasta cuándo se reutiliza el documento <!-- verificar al integrar: que sea valid_until -->.
+4. Mientras `generating`, el frontend vuelve a consultar `GET /documents/{id}` cada segundo, hasta 120 segundos. En `ready`, descarga navegando a `downloadUrl` con un enlace oculto, sin pasar el archivo por la memoria de la página. Un `410` repite una vez el pedido original.
+5. `GET /documents/{id}/file` vuelve a comprobar el alcance y entrega el archivo: desde la base, con `Content-Disposition: attachment; filename="…"`; desde Spaces, con un `302` a una URL firmada que vale 5 minutos y lleva `response-content-disposition=attachment`.
+
+- `GET /documents/{id}` y `GET /documents/{id}/file` exigen sesión y nada más: la guarda es el alcance (§9.2). Recalculan el alcance efectivo del tipo de documento para quien pregunta y, si no coincide con el del documento, responden `404 DOCUMENT_NOT_FOUND`, como si no existiera. Uno vencido responde `410 DOCUMENT_EXPIRED`.
+- Un error responde JSON aunque se haya pedido Excel (§7): el país que no existe es `404` y la falta de permiso, `403`. Si la generación falla, el documento queda fallido y el error sale como cualquier otro. Sin un lugar libre para generar, `503 DOCUMENTS_BUSY`.
+- Una prueba demuestra que Spring elige el método de Excel con ese `Accept`, y que `/documents/{id}` responde JSON con el mismo `Accept` después de la redirección.
+- Del lado del frontend, el contrato de los stores no cambia: `exportX()`, `exporting` y, en un fallo, `data-manager.export-error`. `exportSpreadsheet()` de `BaseApiEndpoint` manda el `Accept`, lee el `DocumentResource` y descarga.
 
 **Casos**
 
@@ -570,17 +607,57 @@ El archivo lo arma siempre el backend, con fastexcel (`org.dhatim:fastexcel`: es
 | Lista de un registro padre | `GET /countries/{countryId}/tax-id-types` | Los del padre; si el padre no existe, `404` |
 | Lista filtrada en el servidor | `GET /countries/{countryId}/geo-divisions?q=lima&level=3&isActive=true&sort=name,asc`, `/companies?countryId=…` | Lo mismo que la lista con esos parámetros, sin página: el frontend manda los de la pantalla |
 | Columnas de otro contexto | Empresas: país, documento tributario y moneda | Los nombres los resuelve la consulta por la fachada del dueño (`ExternalLocationService`), en lote: una llamada por tipo de referencia con todos los identificadores, nunca una por fila ni con un `join` |
-| Reporte que cruza contextos | El exportable de stock de 52 columnas | Lo arma la capa de lectura en `/reports/...` (mapa de contextos §7), con el mismo `SpreadsheetExporter` |
+| Reporte que cruza contextos | El exportable de stock de 52 columnas | Lo arma la capa de lectura en `/reports/...` (mapa de contextos §7), con el mismo `SpreadsheetExporter` y el mismo flujo. Es otro documento que el Inventario (D-116) |
+
+Pasan al flujo del 20/10/2026 las exportaciones que ya existían: monedas, países, divisiones y tipos de documento (`location`); empresas, sedes, marcas comerciales, ubicaciones y colaboradores (`organization`); y cuentas (`iam`). Sus pruebas siguen la redirección y descargan de `/documents/{id}/file`. Llegan después, en una segunda fase, sobre la plataforma ya integrada (D-116): los cinco catálogos de flota, los modelos de una marca (`GET /vehicle-brands/{id}/vehicle-models`) y el Inventario (`GET /vehicles`), con los nombres de sus referencias resueltos en lote por las fachadas.
 
 **Lo que no hace**
 
 - No exporta solo la página visible: siempre todo lo que coincide con la búsqueda y los filtros.
-- No genera CSV ni otros formatos. Si hace falta uno, se agrega otro `produces` al mismo endpoint.
+- No responde el archivo en el mismo pedido: lo entrega siempre `/documents/{id}/file`, para que un documento ya generado se reutilice.
+- No genera CSV ni otros formatos. Si hace falta uno, se agrega otro `produces` al mismo endpoint, con el mismo flujo.
 
 **Cómo se agrega a una lista**
 
-1. Backend: en el controlador, el método `@GetMapping(produces = SpreadsheetExporter.MEDIA_TYPE)` con los mismos `@RequestParam` de la lista y `PageParams`, que lee todas las filas con `pageParams.toAllRowsQuery()`, y las claves `export.<lista>.*` en `messages.properties` y `messages_es.properties`. Una prueba lee el archivo de vuelta con `fastexcel-reader`.
+1. Backend: en el controlador, el método `@GetMapping(produces = SpreadsheetExporter.MEDIA_TYPE)` con los mismos `@RequestParam` de la lista y `PageParams`, que delega en el servicio de documentos. El tipo de documento se declara en su registro: su `kind`, su nombre de archivo base, su función de alcance y de visibilidad, su versión de los datos y su generador, que lee todas las filas con `pageParams.toAllRowsQuery()` y escribe el archivo con los mismos criterios. Las claves `export.<lista>.*` van en `messages.properties` y `messages_es.properties`. Una prueba sigue la redirección, descarga de `/documents/{id}/file` y lee el archivo con `fastexcel-reader`.
 2. Frontend: el endpoint llama a `exportSpreadsheet()` de `BaseApiEndpoint` con los filtros y `listQueryParams()` de la búsqueda y el orden; la API del módulo lo expone; el store tiene `exporting` y `export<Lista>()`, que lee la consulta de su `PagedList` y en un fallo deja `data-manager.export-error`. En la vista, `<mm-data-manager exportable [exporting]="store.exporting()" (exportRequested)="store.exportX()">`.
+
+### 8.2 PDF
+
+Sigue el mismo flujo, con `Accept: application/pdf`: el endpoint del recurso —`GET /purchase-orders/{id}/pdf` (§2.2)— delega en el servicio de documentos con su tipo, responde `303` a `/documents/{id}`, y el archivo se descarga de `/documents/{id}/file`. La llave, la reutilización y el almacenamiento son los de §8.3, con el formato `pdf`. **Sin construir**: llega con el primer PDF, el de las órdenes de compra del paso 7.
+
+### 8.3 Reutilización
+
+Un pedido igual nunca genera dos veces el mismo documento: lo reutiliza, o espera al que se está generando (D-106). El estado de cada documento está en `generated_documents` (diccionario §2.7).
+
+**La llave.** El SHA-256 del JSON canónico de:
+- el tipo (`kind`) y el formato;
+- los criterios normalizados: `q` sin espacios sobrantes y en minúsculas; los filtros en un orden fijo, sin los nulos; `sort`; nunca `page` ni `size`;
+- la llave del alcance;
+- el idioma de la petición y la zona de los momentos;
+- la versión de los datos.
+
+**La llave del alcance** (`scopeKey`) es el SHA-256 del alcance efectivo de quien pide: las empresas en que actúa —o `SYSTEM`—, sus restricciones de sede y de marca, y las banderas de visibilidad propias del tipo, como los datos personales de los colaboradores (D-105). Nunca la cuenta: dos personas con el mismo alcance comparten el documento, y una con otro alcance nunca lo ve.
+
+**La versión de los datos** la da cada tipo: una consulta barata, en la misma transacción y con Row Level Security, que cuenta las filas de las tablas que lee y toma su último `updated_at`, o su último `id` en las tablas que solo reciben filas. Como nada se borra (§3.1), cualquier alta, cambio o desactivación la mueve, y el pedido siguiente genera un documento nuevo.
+
+**El vencimiento.** Un documento listo se reutiliza durante `documents.reuse-for` (por omisión `PT10M`). Pasado ese plazo, el pedido igual lo da por vencido y genera otro. Cada 15 minutos, una tarea programada vence lo listo que ya pasó su plazo y vacía su contenido; corre en una sola instancia a la vez, con un candado de PostgreSQL (`pg_try_advisory_lock`) que usan también las demás tareas programadas (`shared.infrastructure.scheduling`). Los objetos de Spaces los borra la regla de ciclo de vida del bucket. Las filas no se borran nunca.
+
+**La generación única.**
+1. El servicio reclama la llave con un `INSERT … ON CONFLICT DO NOTHING` sobre `generated_documents_active_key_uq`, el índice único parcial que admite a lo sumo un documento `generando` o `listo` por llave.
+2. Si gana, genera. Antes toma un lugar de un semáforo de `documents.max-concurrent-generations` lugares (por omisión 2) y lo espera hasta `documents.permit-wait` (por omisión `PT30S`); si no lo consigue, marca el documento fallido y responde `503 DOCUMENTS_BUSY`. Mientras genera, el documento lleva su `lease_until` <!-- verificar al integrar: la duración del lease no la fija el plan -->.
+3. Si no gana, lee el documento activo de esa llave:
+   - listo y vigente: lo reutiliza;
+   - listo y vencido: lo pasa a vencido con un `UPDATE` condicionado y vuelve a reclamar la llave;
+   - generándose, con su `lease_until` vigente: lo espera consultando la base hasta `documents.wait-for` (por omisión `PT10S`), y después responde igual, y el frontend sigue consultando `/documents/{id}` <!-- verificar al integrar -->;
+   - generándose, con su `lease_until` vencido —la instancia que lo generaba se apagó en un despliegue—: lo toma con un `UPDATE` condicionado y lo genera.
+4. En todos los casos responde `303` a `/documents/{id}`.
+
+**El almacenamiento.** Un puerto `DocumentStorage` con dos adaptadores:
+- `base`, por omisión: el archivo en la columna `content`.
+- `spaces`: DigitalOcean Spaces, con el cliente `s3` de AWS SDK v2 y su firmador de URL. Se enciende solo si `documents.storage.spaces.bucket` no está vacío. Sus variables son `DOCUMENTS_SPACES_BUCKET`, `DOCUMENTS_SPACES_REGION`, `DOCUMENTS_SPACES_ENDPOINT`, `DOCUMENTS_SPACES_ACCESS_KEY` y `DOCUMENTS_SPACES_SECRET_KEY`: están en `.env.example` y, comentadas, en `.do/app.yaml`, para no exigir valores que todavía no existen. Sus pruebas usan un cliente S3 simulado; todavía no hay bucket.
+
+**Por qué así en App Platform.** El backend corre en App Platform, donde el disco de una instancia se pierde al reiniciarla y, durante cada despliegue, la instancia vieja y la nueva atienden a la vez. Un documento guardado en la memoria o en el disco del proceso desaparecería con el reinicio, o lo pediría la otra instancia sin encontrarlo. Por eso el estado vive en PostgreSQL, que ven las dos instancias, y el archivo en la base o en Spaces; `lease_until` cubre la instancia que se apaga a mitad de una generación, y el semáforo evita que varias exportaciones grandes a la vez agoten la memoria de una instancia.
 
 ---
 
@@ -599,6 +676,7 @@ El archivo lo arma siempre el backend, con fastexcel (`org.dhatim:fastexcel`: es
 |---|---|
 | `sign-in`, `sign-up`, `sign-up/status`, `sign-up/companies`, documentación de la API, `actuator/health` | Público. `sign-up/companies` responde solo mientras el registro está encendido, y solo nombres (diccionario §5.2). Las listas de sedes y de tipos de documento del registro: pendiente (§14.16) |
 | `me`, `change-password` | Con sesión, aunque la contraseña sea provisional |
+| `/documents/{id}` y `/documents/{id}/file` | Con sesión. No exigen un permiso propio: la guarda es el alcance del documento, que se vuelve a calcular para quien pregunta; uno de otro alcance responde `404 DOCUMENT_NOT_FOUND` (§8.1, D-106). El permiso lo exigió la lista al pedirlo |
 | Lectura de catálogos generales (monedas, países, escalones, divisiones y tipos de documento tributario) y de catálogos de flota | `catalogos.ver`, que la semilla da a los siete roles del sistema (diccionario §5.6, D-43). Hasta el paso 3b, cualquier cuenta con un rol vigente |
 | Escritura de catálogos generales | `catalogos.gestionar_generales`, que la semilla da solo a `SUPERADMIN` (D-43) |
 | Escritura de catálogos de flota | `catalogos.gestionar_flota`, que la semilla da solo a `SUPERADMIN` (diccionario §7, D-15) |
