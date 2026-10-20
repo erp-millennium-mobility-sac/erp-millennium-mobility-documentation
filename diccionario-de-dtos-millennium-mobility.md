@@ -56,7 +56,7 @@ No documenta pantallas ni procesos. Cuando una regla de negocio determina una re
 
 La regla de moneda no es teórica. La guía funcional tuvo que enunciar como norma que una nota de crédito debe estar en la misma moneda que su factura (decisión A-06). Esa regla no debería necesitar enunciarse: debería ser imposible violarla.
 
-**Tablas técnicas.** Las que administran las librerías —el historial de migraciones (`flyway_schema_history`), el registro de eventos entre contextos (`event_publications`) y las sesiones (`spring_session` y `spring_session_attributes`, §5.12)— conservan la estructura que exige su librería y no siguen estas convenciones: no llevan `public_id` ni forman parte del modelo del negocio.
+**Tablas técnicas.** Las que administran las librerías no siguen estas convenciones, y las propias de la plataforma no pertenecen a ninguna empresa: las dos clases están en §2.7.
 
 ### 2.3 Criterio de admisión de campos
 
@@ -131,6 +131,48 @@ Decisiones D-40 y D-49. Las reglas valen para la base, la API, los archivos expo
 | "Hoy" y las fechas de operación se calculan en la zona de la sede donde ocurre el hecho. Sin sede, en la del país de la empresa del registro; si el registro no pertenece a ninguna empresa —una cuenta, un bloqueo—, en `America/Lima` | Una factura registrada a las 11 de la noche en Lima es de ese día en Lima, aunque en UTC ya sea el siguiente. De esto dependen la antigüedad de 20 días de una factura, los vencimientos y los cortes del día |
 | Una hora local futura o que se repite —un corte diario a las 18:00, un horario de atención— no es un momento: se guarda como hora local junto con la zona de la sede, y se convierte a UTC recién al usarla. Hoy ninguna tabla lo necesita | Si un país cambia su horario, una hora futura guardada en UTC quedaría corrida. Lo que ya ocurrió sí se guarda en UTC, porque ese momento no cambia |
 | El formato de pantalla es `dd/mm/aaaa` y `dd/mm/aaaa hh:mm`, solo al mostrar | Nunca se guarda ni se transmite así. Los ejemplos de este documento usan el formato de pantalla para que se lean fácil |
+
+### 2.7 Tablas técnicas
+
+Sostienen la plataforma y no guardan un dato del negocio, así que no figuran en ningún bloque. Son de dos clases.
+
+**Las que administran las librerías** —el historial de migraciones (`flyway_schema_history`), el registro de eventos entre contextos (`event_publications`) y las sesiones (`spring_session` y `spring_session_attributes`, §5.12)— conservan la estructura que exige su librería y no siguen estas convenciones: no llevan `public_id` ni forman parte del modelo del negocio.
+
+**Las propias de la plataforma** son de `shared`, porque las usan todos los contextos y no son de ninguno. Siguen las convenciones de §2.2 —`id`, `public_id`, columnas de registro, nada se borra—, pero no pertenecen a una empresa. Hoy hay una: `generated_documents`.
+
+#### `generated_documents` — Documentos generados
+
+Cada documento que el sistema genera para que alguien lo descargue —una lista exportada a una hoja de cálculo y, cuando lleguen, los PDF— con su estado y dónde quedó el archivo (D-106). Existe para que un mismo pedido no genere dos veces el mismo archivo: si dos personas con el mismo alcance exportan la misma lista con los mismos criterios, la segunda recibe el archivo de la primera, o espera a que termine.
+
+| Variable | Tipo | Nulo | Descripción | Por qué importa |
+|---|---|---|---|---|
+| `document_key` | CHAR(64) | No | La huella del pedido: el SHA-256 de su tipo, su formato, sus criterios ya normalizados, su alcance, el idioma, la zona de los momentos y la versión de los datos que lee | Dos pedidos iguales dan la misma huella, y por ella el segundo encuentra el documento del primero. La página y el tamaño de página no entran: un documento lleva siempre todas las filas |
+| `scope_key` | CHAR(64) | No | La huella del alcance efectivo de quien lo pidió: las empresas en que actúa —o `SYSTEM`—, sus restricciones de sede y de marca, y las banderas de visibilidad propias del documento, como si lleva los datos personales de los colaboradores. Nunca la cuenta | Es la guarda de la tabla: cada lectura la vuelve a calcular para quien pregunta, y un documento de otro alcance no existe para él. Que no lleve la cuenta es lo que deja reutilizar el documento entre dos personas con el mismo alcance |
+| `kind` | VARCHAR(60) | No | Qué documento es: `currencies`, `vehicle-colors` | Cada tipo declara cómo se genera, su alcance y la versión de sus datos |
+| `format` | VARCHAR(10) | No | `xlsx` o `pdf` | — |
+| `status` | VARCHAR(12) | No | `generando`, `listo`, `fallido` o `vencido` | Uno `generando` hace esperar al pedido igual; uno `listo` y vigente se reutiliza; uno `vencido` ya no se entrega |
+| `file_base_name` | VARCHAR(100) | No | El nombre del archivo, sin fecha ni extensión y sin tildes: `monedas` | La fecha se agrega al descargar, la de hoy en Lima, para que todos los navegadores lo guarden igual |
+| `content_type` | VARCHAR(120) | No | El tipo del archivo, el que recibe el navegador | — |
+| `storage` | VARCHAR(10) | No | Dónde quedó el archivo: `base`, en la columna `content`, o `spaces`, en DigitalOcean Spaces | Nunca en la memoria ni en el disco del proceso: en App Platform el disco se pierde al reiniciar, y en un despliegue conviven la instancia vieja y la nueva, así que el pedido siguiente puede llegar a la otra (D-106) |
+| `storage_key` | VARCHAR(255) | Sí | La llave del objeto en Spaces. Vacía cuando el archivo está en la base | — |
+| `content` | BYTEA | Sí | El archivo, cuando se guarda en la base. Se vacía al vencer | — |
+| `size_bytes` | BIGINT | Sí | Cuánto pesa el archivo. Vacío mientras se genera | — |
+| `generated_at` | TIMESTAMPTZ | Sí | Cuándo quedó listo | — |
+| `valid_until` | TIMESTAMPTZ | Sí | Hasta cuándo se reutiliza | Pasado ese momento, un pedido igual genera uno nuevo, aunque los datos no hayan cambiado |
+| `lease_until` | TIMESTAMPTZ | Sí | Hasta cuándo la generación en curso se da por viva | Si la instancia que generaba se apagó en un despliegue, otra toma la generación cuando vence, en vez de esperar para siempre |
+| `failure_code` | VARCHAR(60) | Sí | El código de error de una generación que falló | — |
+| `created_at` / `created_by` | TIMESTAMPTZ / FK `users` | No / Sí <!-- verificar al integrar --> | Cuándo se pidió y quién lo pidió primero | Quien lo reutiliza después no queda registrado: el documento es del alcance, no de la persona |
+| `updated_at` / `updated_by` | TIMESTAMPTZ / FK `users` | No / Sí <!-- verificar al integrar --> | Último cambio de estado | — |
+
+**Relaciones.** Apunta a `users`, por sus columnas de registro. No le apunta nadie.
+
+**Reglas de negocio**
+
+- **Un documento se genera una sola vez por huella.** A lo sumo hay un documento `generando` o `listo` por `document_key` (`generated_documents_active_key_uq`, un índice único parcial). Cuando dos pedidos iguales llegan a la vez, la base deja reclamar la huella a uno solo; el otro espera a que termine.
+- **La versión de los datos va en la huella.** Cada tipo de documento la calcula con una consulta barata sobre las tablas que lee —cuántas filas hay y el último momento de cambio, o el último `id` en las tablas que solo reciben filas—, con el alcance de quien pregunta. Como en este sistema nada se borra, cualquier alta, cambio o desactivación cambia la versión, y el pedido siguiente genera un documento nuevo.
+- **No lleva `company_id` ni Row Level Security**, a diferencia de toda tabla que se consulta por sí sola (§2.5). Un documento no es de una empresa: el de un rol de alcance sistema abarca todas, y el de un catálogo general, ninguna. Su guarda es `scope_key`, que la aplicación comprueba en cada lectura: quien pregunta por un documento de otro alcance recibe la misma respuesta que si no existiera. Es una excepción a esa regla de §2.5, por ser una tabla técnica.
+- **Las filas no se borran.** La cuenta de la aplicación lee, inserta y actualiza, y no tiene permiso de borrar, como en el resto del sistema (§2.5). Al vencer, la fila pasa a `vencido` y su `content` se vacía: el archivo deja de ocupar espacio, y la fila queda como constancia de qué se generó, para qué alcance y cuándo. Un proceso programado lo hace cada 15 minutos, en una sola instancia a la vez. Los archivos de Spaces los borra la regla de ciclo de vida del bucket, no la aplicación.
+- Un documento no se edita: un pedido con otros criterios, otro alcance u otros datos es otro documento.
 
 ---
 
@@ -2808,7 +2850,7 @@ Quedan tres decisiones abiertas, cada una con su momento fijado. Las longitudes 
 | D-103 | El tipo de cambio lo corrige a mano el superadministrador, con `catalogos.corregir_tipo_cambio`: `exchange_rates` no tiene empresa y una tasa sirve a todo el sistema, así que un rol de empresa no podría acotarse. Si el negocio quiere que la contabilidad lo corrija, será un rol general nuevo o una regla de acotación nueva (§4.8) |
 | D-104 | Una unidad se anula por las dos vías que describe el diccionario: como consecuencia de una nota de crédito que deja su valor en cero, gobernada por `compras.registrar_nota_credito`, o por acción explícita, que exige `stock.anular_vehiculo` y el candado de §9.6 (§8.1, §9.6) |
 | D-105 | Lo que cada rol ve de los colaboradores, que D-93 dejó a la matriz: la fila sin sus datos personales —nombre, puesto, sede, fechas de ingreso y salida, si está activo y si tiene cuenta— la lee cualquier rol con `configuracion.ver_colaboradores`, que la semilla da a los siete, para los selectores y los nombres de autor; el documento, el teléfono, la foto y la exportación, solo con `configuracion.ver_datos_personales_colaboradores`, que tienen los dos roles globales y el administrador de la empresa. El campo que no se puede ver no viaja (§2.5, §5.3) |
-| D-106 | Todo documento que sale del sistema —una hoja de cálculo, un PDF u otro formato— lo genera el backend, y el frontend lo descarga. Un pedido igual —el mismo tipo, formato, criterios, alcance efectivo, idioma, zona y versión de los datos— reutiliza el documento ya generado, o espera al que se está generando: nunca se genera dos veces. El estado de cada documento vive en PostgreSQL (`generated_documents`); sus archivos, en la base o en DigitalOcean Spaces, nunca en la memoria ni en el disco del proceso, porque en App Platform el disco es efímero y en cada despliegue conviven dos instancias (§2.7; convenciones de la API, §8) |
+| D-106 | Todo documento que sale del sistema —una hoja de cálculo, un PDF u otro formato— lo genera el backend, y el frontend lo descarga. Un pedido igual —el mismo tipo, formato, criterios, alcance efectivo, idioma, zona y versión de los datos— reutiliza el documento ya generado, o espera al que se está generando: nunca se genera dos veces. El estado de cada documento vive en PostgreSQL (`generated_documents`); sus archivos, en la base o en DigitalOcean Spaces, nunca en la memoria ni en el disco del proceso, porque en App Platform el disco es efímero y en cada despliegue conviven la instancia vieja y la nueva (§2.7; convenciones de la API, §8) |
 | D-107 | El tipo de vehículo de un modelo se corrige mientras el modelo no tenga unidades; desde la primera queda fijo, el mismo principio que D-48 y D-74. `fleet` se lo avisa a `vehiclecatalog` por su fachada al registrar la primera unidad del modelo, y `vehiclecatalog` guarda el hecho en `vehicle_models.has_units`: no lee las tablas de `fleet` (§7.3) |
 | D-108 | No se crea un modelo de una marca inactiva ni de un tipo de vehículo inactivo, y no se registra una unidad cuyo modelo, marca o tipo estén inactivos. Lo retirado que un registro ya tiene se conserva al editarlo, como D-84 (§7.1 a §7.3, §8.1) |
 | D-109 | El combustible de un modelo nuevo no se propone: nace vacío y se elige, y queda vacío cuando no se conoce (§7.3) |
