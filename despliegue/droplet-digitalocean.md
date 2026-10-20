@@ -1,6 +1,6 @@
 # Despliegue del backend en un Droplet de DigitalOcean
 
-**Actualizado:** 20/10/2026 · **Evidencias al:** 20/10/2026 (auditoría de solo lectura en el Droplet) · **Estado:** servidor preparado, sin ningún despliegue · **Fuente:** el manual técnico v5.0 del 18/10/2026 (capturas y salidas de terminal del operador) contrastado con el código de `develop` del backend (`6d73031`). Si este documento y el código no coinciden, manda el código; si el README del backend y este documento no coinciden en cómo se despliega, ver la [§1](#1-qué-se-está-montando-y-qué-ya-existe).
+**Actualizado:** 20/10/2026 · **Evidencias al:** 20/10/2026 (auditoría de solo lectura en el Droplet) · **Estado:** alternativa a App Platform (decisión del 20/10/2026); servidor preparado, sin ningún despliegue · **Fuente:** el manual técnico v5.0 del 18/10/2026 (capturas y salidas de terminal del operador) contrastado con el código de `develop` del backend (`6d73031`). Si este documento y el código no coinciden, manda el código; si el README del backend y este documento no coinciden en cómo se despliega, ver la [§1](#1-qué-se-está-montando-y-qué-ya-existe).
 
 Este documento junta tres cosas: cómo quedó configurado el Droplet, lo que hay que saber para configurarlo (o repetirlo en otro servidor) y las lecciones de la configuración. Los comandos en orden, fase por fase y con su comprobación, están en [droplet-paso-a-paso.md](droplet-paso-a-paso.md). No dice que algo funcione si no se vio funcionar: cada estado lleva su evidencia.
 
@@ -31,8 +31,8 @@ GitHub develop ── Actions: ci.yml (pruebas) ── deploy-dev.yml (por crear
 Tres hechos del código que fijan esta forma:
 
 1. **El navegador nunca llama al Droplet.** La cookie de sesión es `HttpOnly`, `Secure` y `SameSite=Strict`, y el frontend tiene que estar en el mismo origen que la API (`application.yaml`, `WebSecurityConfiguration`). Por eso el frontend se publica en Cloudflare Pages y su *Pages Function* reenvía `/api/` al backend (README del frontend, "Despliegue en Cloudflare Pages"). `api.leasing.dev.millennium.ky` es el `BACKEND_ORIGIN` de esa función, no una URL para el navegador, y no hace falta CORS.
-2. **El repositorio ya tiene otro despliegue.** `.do/app.yaml` y el `Dockerfile` publican `develop` en DigitalOcean App Platform en cada push (README del backend, "Despliegue en DigitalOcean"), y `orden-de-implementacion` registra despliegues de `develop` sin errores el 18/10/2026. El Droplet es un segundo camino, no el primero.
-3. **Los dos apuntan a la misma base** si `DATABASE_NAME` es la de App Platform. Antes del primer arranque en el Droplet hay que decidir qué pasa con App Platform ([§9](#9-decisiones-pendientes)).
+2. **El despliegue en uso es App Platform** (decisión del responsable, 20/10/2026). `.do/app.yaml` y el `Dockerfile` publican `develop` en DigitalOcean App Platform en cada push (README del backend, "Despliegue en DigitalOcean"), y `orden-de-implementacion` registra despliegues de `develop` sin errores el 18/10/2026. El Droplet queda como alternativa: este documento se conserva para montarlo si algún día se deja App Platform.
+3. **Los dos apuntan a la misma base** si `DATABASE_NAME` es la de App Platform. Por eso el Droplet no arranca contra esa base mientras App Platform siga activo ([§9](#9-decisiones-pendientes)).
 
 ---
 
@@ -403,7 +403,7 @@ curl -i --max-time 8 http://127.0.0.1:8080/actuator/health
 
 Antes del primero:
 
-1. Decidir la convivencia con App Platform ([§9](#9-decisiones-pendientes)).
+1. Apagar App Platform o darle al Droplet otra base: el Droplet es la alternativa y nunca convive con App Platform sobre la misma base ([§9](#9-decisiones-pendientes)).
 2. Confirmar que `backend.env` quedó guardado con `prod`, `PORT=8080` y `SERVER_ADDRESS=127.0.0.1`, y quitar `DO_ADMIN_*`.
 3. Probar con `psql` la conexión, el TLS y las dos cuentas desde el Droplet.
 4. Tener un respaldo restaurable de la base.
@@ -473,7 +473,7 @@ La vuelta atrás se prueba de verdad solo cuando haya dos versiones sanas. Las v
 
 Las decide el responsable; este documento no las toma.
 
-1. **App Platform y el Droplet.** `.do/app.yaml` despliega `develop` en cada push contra la base de `DATABASE_NAME`. Si el Droplet arranca contra la misma base mientras App Platform sigue activo, dos versiones distintas migran y leen el mismo esquema, y el proceso programado de `iam` corre dos veces. Opciones: apagar App Platform al pasar al Droplet (y entonces actualizar el README del backend, `.do/app.yaml` y el `Dockerfile`), o darle al Droplet otra base.
+1. **App Platform y el Droplet: decidida el 20/10/2026.** App Platform es el despliegue en uso y el Droplet queda como alternativa. Si algún día se activa el Droplet, nunca contra la misma base mientras App Platform siga activo: dos versiones distintas migrarían y leerían el mismo esquema, y los procesos programados de `iam` y `fleet` correrían dos veces. Entonces se apaga App Platform (y se actualizan el README del backend, `.do/app.yaml` y el `Dockerfile`) o el Droplet recibe otra base.
 2. **La verificación completa (`verify-full`) en la conexión a PostgreSQL**, que pide un cambio en `application-prod.yaml` ([§5](#5-lo-que-hay-que-saber)).
 3. **Despliegue automático en cada push a `develop`**, solo después de varios despliegues manuales sanos y una vuelta atrás probada.
 4. **Retención de versiones y de logs** (`logrotate`), respaldos de la base con prueba de restauración, y alertas.
@@ -491,7 +491,7 @@ Las decide el responsable; este documento no las toma.
 - [ ] Llave de administrador, y después SSH sin contraseña y sin root por contraseña.
 - [ ] Firewall (`ufw` o Cloud Firewall) y swap.
 - [ ] Volver a cargar `DROPLET_KNOWN_HOSTS` con la línea de `137.184.231.160` verificada por huella.
-- [ ] Decidir la convivencia con App Platform.
+- [x] Decidir la convivencia con App Platform: App Platform en uso y el Droplet como alternativa (20/10/2026).
 - [ ] Probar con `psql` desde el Droplet la conexión con TLS y las dos cuentas.
 - [ ] Respaldo restaurable de la base.
 - [ ] Agregar a la unidad `StartLimit*` y las opciones de memoria de la JVM.

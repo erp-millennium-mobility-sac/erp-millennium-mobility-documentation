@@ -1,12 +1,14 @@
 # Despliegue — ERP Millennium Mobility
 
-**Actualizado:** 19/10/2026
+**Actualizado:** 20/10/2026
 
 Aquí se guarda cómo se configuran los servidores en los que corre el sistema, lo que hay que saber para repetirlo y lo que se aprendió montándolos. Cómo se compila, se prueba y qué variables lee la aplicación está en el README de cada repositorio; esta carpeta cubre lo que vive fuera del código: el servidor, la red, los certificados y los secretos.
 
+**El backend corre en DigitalOcean App Platform** (decisión del responsable, 20/10/2026): `.do/app.yaml` y el `Dockerfile` del backend publican `develop` en cada push, y el README del backend ("Despliegue en DigitalOcean") dice cómo se crea la app. **El Droplet queda como alternativa**: sus guías se conservan para montarlo si algún día se deja App Platform, pero no es el camino en uso.
+
 | Documento | Qué cubre | Estado |
 |---|---|---|
-| [droplet-digitalocean.md](droplet-digitalocean.md) | El backend en un Droplet Ubuntu con Nginx, systemd, Cloudflare y PostgreSQL administrado, desplegado desde GitHub Actions: estado, porqué de cada pieza, lo que hay que saber, diagnóstico y lecciones | Servidor preparado, sin ningún despliegue |
+| [droplet-digitalocean.md](droplet-digitalocean.md) | El backend en un Droplet Ubuntu con Nginx, systemd, Cloudflare y PostgreSQL administrado, desplegado desde GitHub Actions: estado, porqué de cada pieza, lo que hay que saber, diagnóstico y lecciones | Alternativa a App Platform: servidor preparado, sin ningún despliegue |
 | [linux-basico.md](linux-basico.md) | Las carpetas de un servidor Linux y qué se configura en cada una, los comandos básicos por tema, los permisos y los hábitos que evitan romper el servidor | Referencia |
 | [droplet-paso-a-paso.md](droplet-paso-a-paso.md) | La configuración ideal como plantilla genérica, con `<marcadores>` para cualquier implementación: el mapa del servidor y los comandos en orden, de un Droplet nuevo al backend corriendo. Cada fase la compara con nuestro Droplet, y un cuadro inicial resume qué le falta y qué tan importante es | Plantilla; el contraste, al 20/10/2026 |
 
