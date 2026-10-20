@@ -896,7 +896,7 @@ Roles que trae el sistema:
 
 El administrador de accesos da acceso a los colaboradores, asigna y retira roles, bloquea cuentas y restablece contraseñas, en todas las empresas del grupo (D-55). Es un rol para todo el grupo, no uno por empresa, y por eso su alcance es todo el sistema: ve todas las empresas. Pueden tenerlo varias personas, para que los accesos no se detengan cuando una falta. No registra colaboradores ni sus salidas o regresos (D-57), y sus tres límites están en la excepción a la regla 2. Una misma cuenta no tiene a la vez este rol y el de administrador de empresa (D-71).
 
-### 5.6 `permissions` y `role_permissions` — Permisos
+### 5.6 `permissions`, `role_permissions` y `permission_incompatibilities` — Permisos
 Cada acción concreta que se puede autorizar por separado. Un rol es un conjunto de permisos.
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
@@ -904,8 +904,9 @@ Cada acción concreta que se puede autorizar por separado. Un rol es un conjunto
 | `code` | VARCHAR(60) UNIQUE | No | Nombre corto de la acción, con el módulo adelante: `compras.registrar_factura` | Al llevar el módulo adelante, se pueden otorgar todos los permisos de un área de una sola vez |
 | `module` | VARCHAR(30) | No | A qué parte del sistema pertenece: stock, compras, seguridad | Ordena la pantalla donde se asignan. Con cien permisos sueltos, nadie encuentra el que busca |
 | `description` | VARCHAR(150) | No | Qué habilita exactamente este permiso | Es lo que lee quien asigna. Sin explicación se otorgan permisos por el nombre y se termina dando de más |
+| `category` | VARCHAR(20) | No | Qué clase de acción es: `ver`, `crear`, `editar`, `gestionar`, `desactivar_anular` o `acciones_especiales` (D-118) | Ordena la matriz dentro de cada módulo: quien asigna encuentra juntos los permisos que solo leen y aparte las excepciones controladas. No hay "eliminar", porque nada se borra |
 
-**Relaciones.** `permissions` no apunta a nadie: es un catálogo fijo que se carga con el sistema; cada paso trae los suyos con una migración de `iam` (D-95). `role_permissions` es la tabla intermedia que une roles con permisos, con su historia (D-96):
+**Relaciones.** `permissions` no apunta a nadie: es un catálogo fijo que se carga con el sistema; cada paso trae los suyos con una migración de `iam` (D-95). Le apuntan `role_permissions` y `permission_incompatibilities`, dos veces (D-119, más abajo). `role_permissions` es la tabla intermedia que une roles con permisos, con su historia (D-96):
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
@@ -918,62 +919,78 @@ Cada acción concreta que se puede autorizar por separado. Un rol es un conjunto
 
 Un rol incluye un permiso a lo sumo una vez mientras está vigente.
 
-**El catálogo** (D-95). Cincuenta permisos para los pasos 1 a 11, en `<módulo>.<acción>`, en minúsculas y en español. "Ver" es una lectura; "gestionar" agrupa crear, editar y desactivar un recurso; lo que lleva nombre propio es una excepción controlada que se puede dar por separado. Cada paso carga los suyos cuando construye sus operaciones; hoy existen los de los pasos 1 a 4.
+**El catálogo** (D-95, D-117). Sesenta y dos permisos: cincuenta para los pasos 1 a 11 y doce de seguridad, en `<módulo>.<acción>`, en minúsculas y en español. Cada uno lleva su categoría (D-118): "ver" es una lectura; "crear", "editar" y "desactivar_anular" hacen solo eso; "gestionar" agrupa crear, editar y desactivar un recurso y no se parte; "acciones_especiales" son las excepciones controladas y los hechos con nombre propio, que se dan por separado. Cada paso carga los suyos cuando construye sus operaciones; hoy existen los de los pasos 1 a 5 (V45, V46) y, con la segunda ronda de la auditoría, los doce de seguridad (V54) <!-- verificar al integrar fase 2: V53 a V55 -->. La categoría de los permisos de los pasos 6 a 11 la confirma la migración de su paso.
 
-| code | module | description | Paso |
-|---|---|---|---|
-| `catalogos.ver` | catalogos | Leer monedas, tipos de cambio, países, divisiones, documentos tributarios, catálogos de flota, estados y motivos, documentos del vehículo (D-43) | 1, 4, 5 |
-| `catalogos.gestionar_generales` | catalogos | Monedas, países y sus escalones, divisiones, tipos de documento tributario (D-43) | 1 |
-| `catalogos.gestionar_flota` | catalogos | Tipos de vehículo, marcas y modelos, colores, equipamiento (§7) | 4 |
-| `catalogos.gestionar_estados` | catalogos | Estados del vehículo, motivos y caminos con el permiso que exige cada uno, tipos de documento del vehículo (D-100) | 5, 9 |
-| `catalogos.corregir_tipo_cambio` | catalogos | Corregir a mano una tasa cargada por el proceso automático (§4.8, D-103) | 7 |
-| `configuracion.ver_estructura` | configuracion | Empresas, sedes, marcas comerciales y ubicaciones del alcance | 2 |
-| `configuracion.gestionar_empresas` | configuracion | Crear y editar empresas, corregir su documento, activarlas y desactivarlas (D-85) | 2 |
-| `configuracion.gestionar_sedes_y_marcas` | configuracion | Sedes y marcas comerciales, con sus direcciones y su estado | 2 |
-| `configuracion.gestionar_ubicaciones` | configuracion | Ubicaciones, con sus direcciones y su estado (D-79, D-90) | 2 |
-| `configuracion.ver_colaboradores` | configuracion | La fila de cada colaborador sin sus datos personales: nombre, puesto, sede, fechas y si tiene cuenta (D-105) | 3 |
-| `configuracion.ver_datos_personales_colaboradores` | configuracion | Documento, teléfono y foto, y la exportación de colaboradores (D-93, D-105) | 3 |
-| `stock.ver` | stock | Inventario y ficha de la unidad: datos, historial de estados, lecturas, documentos, equipos, llaves y cesiones; vencidas; habilitación. Toda la empresa (D-14), sin costos | 5, 9, 10 |
-| `stock.ver_costos` | stock | El costo visto desde la unidad: valor de factura, notas de crédito y valor del vehículo en la ficha, la columna de costo del exportable y los indicadores derivados de costos (§2.5) | 5, 7, 11 |
-| `stock.crear_vehiculo` | stock | Dar de alta una unidad | 5 |
-| `stock.editar_vehiculo` | stock | Color, motor, año, marca comercial, ubicación actual | 5 |
-| `stock.cambiar_estado` | stock | Recorrer un camino que no exige un permiso propio (D-100) | 5 |
-| `stock.habilitar` | stock | El camino En habilitación → Disponible | 5 |
-| `stock.vender` | stock | El camino Disponible → Vendido | 5 |
-| `stock.entregar` | stock | El camino Vendido → Activo | 5 |
-| `stock.atender_en_taller` | stock | Los caminos hacia Mecánica y Puesta a punto, y de vuelta a Disponible | 5 |
-| `stock.recuperar` | stock | Los caminos por morosidad y resolución de contrato (Custodia) | 5 |
-| `stock.registrar_kilometraje` | stock | Lecturas de taller, entrega, devolución y manuales (§8.5) | 5 |
-| `stock.registrar_sustitucion_odometro` | stock | El cambio de tablero, el hecho distinto que admite que la siguiente lectura sea menor (§8.5) | 5 |
-| `stock.corregir_placa` | stock | Corregir una placa ya registrada, con motivo (§13.1) | 5, 6 |
-| `stock.corregir_vin` | stock | Corregir un VIN ya registrado, con motivo (§13.1) | 5, 6 |
-| `stock.anular_vehiculo` | stock | Anular una unidad por acción explícita, con el candado de §9.6 (D-104) | 7 |
-| `stock.cargar_migracion_inicial` | stock | La carga del Excel que da de alta unidades (D-18) | 5 |
-| `compras.ver` | compras | Proveedores, órdenes, facturas y notas de crédito, con sus importes | 7 |
-| `compras.gestionar_proveedores` | compras | Crear y editar proveedores, con su dirección y su estado (§9.1) | 7 |
-| `compras.gestionar_plantillas` | compras | Plantillas de orden de compra y sus tipos (D-35) | 7 |
-| `compras.gestionar_ordenes` | compras | Crear, editar el borrador, enviar, cerrar a mano y anular órdenes (§9.2) | 7 |
-| `compras.registrar_factura` | compras | Registrar una factura de compra con sus líneas | 7 |
-| `compras.registrar_factura_antigua` | compras | Una factura de más de veinte días (§9.3) | 7 |
-| `compras.anular_factura` | compras | Anular un comprobante completo (§9.3) | 7 |
-| `compras.registrar_nota_credito` | compras | Registrar una nota de crédito y su reparto; con motivo "anulación de unidad", anula la línea y, si el valor llega a cero, la unidad (§9.4 a §9.6) | 7 |
-| `pagos.ver` | pagos | Pagos, aplicaciones, imputaciones y el saldo con cada proveedor, con sus importes | 8 |
-| `pagos.registrar_pago` | pagos | Registrar, aplicar e imputar un pago (§10.1 a §10.3) | 8 |
-| `pagos.anular_pago` | pagos | Anular un pago mal registrado (§10.1) | 8 |
-| `habilitacion.registrar_hitos` | habilitacion | Ingreso físico, inmatriculación y el primer registro de la placa (§11.1) | 9 |
-| `habilitacion.gestionar_documentos` | habilitacion | Cargar los documentos del vehículo (§11.3, D-28) | 9 |
-| `habilitacion.gestionar_equipos` | habilitacion | Instalar y retirar equipamiento (§11.4) | 9 |
-| `habilitacion.gestionar_llaves` | habilitacion | Registrar las llaves y dónde están (§11.5, D-29) | 9 |
-| `habilitacion.cargar_archivo_sat` | habilitacion | La declaración del impuesto vehicular (§11.7) | 9 |
-| `habilitacion.ver_cargas` | habilitacion | Las cargas de archivos y sus errores (§11.8) | 9 |
-| `fondos.ver` | fondos | La pantalla de fondos y las cesiones por fondo (§12) | 10 |
-| `fondos.gestionar_fondos` | fondos | Crear y editar fondos (§12.1) | 10 |
-| `fondos.registrar_cesion` | fondos | Ceder una unidad a un fondo o cerrar la cesión a mano (§12.2) | 10 |
-| `fondos.cargar_archivo_garantia` | fondos | El archivo de garantía mobiliaria (D-30) | 10 |
-| `bitacora.ver` | bitacora | La bitácora de cambios de la empresa (§13.1) | 6 |
-| `reportes.ver` | reportes | Exportable de stock, brecha de días, diferencia por inicial; los costos siguen a `stock.ver_costos` (§10.5) | 11 |
+| code | module | category | description | Paso |
+|---|---|---|---|---|
+| `catalogos.ver` | catalogos | ver | Leer monedas, tipos de cambio, países, divisiones, documentos tributarios, catálogos de flota, estados y motivos, documentos del vehículo (D-43) | 1, 4, 5 |
+| `catalogos.gestionar_generales` | catalogos | gestionar | Monedas, países y sus escalones, divisiones, tipos de documento tributario (D-43) | 1 |
+| `catalogos.gestionar_flota` | catalogos | gestionar | Tipos de vehículo, marcas y modelos, colores, equipamiento (§7) | 4 |
+| `catalogos.gestionar_estados` | catalogos | gestionar | Estados del vehículo, motivos y caminos con el permiso que exige cada uno, tipos de documento del vehículo (D-100) | 5, 9 |
+| `catalogos.corregir_tipo_cambio` | catalogos | acciones_especiales | Corregir a mano una tasa cargada por el proceso automático (§4.8, D-103) | 7 |
+| `configuracion.ver_estructura` | configuracion | ver | Empresas, sedes, marcas comerciales y ubicaciones del alcance | 2 |
+| `configuracion.gestionar_empresas` | configuracion | gestionar | Crear y editar empresas, corregir su documento, activarlas y desactivarlas (D-85) | 2 |
+| `configuracion.gestionar_sedes_y_marcas` | configuracion | gestionar | Sedes y marcas comerciales, con sus direcciones y su estado | 2 |
+| `configuracion.gestionar_ubicaciones` | configuracion | gestionar | Ubicaciones, con sus direcciones y su estado (D-79, D-90) | 2 |
+| `configuracion.ver_colaboradores` | configuracion | ver | La fila de cada colaborador sin sus datos personales: nombre, puesto, sede, fechas y si tiene cuenta (D-105) | 3 |
+| `configuracion.ver_datos_personales_colaboradores` | configuracion | ver | Documento, teléfono y foto, y la exportación de colaboradores (D-93, D-105) | 3 |
+| `stock.ver` | stock | ver | Inventario y ficha de la unidad: datos, historial de estados, lecturas, documentos, equipos, llaves y cesiones; vencidas; habilitación. Toda la empresa (D-14), sin costos | 5, 9, 10 |
+| `stock.ver_costos` | stock | ver | El costo visto desde la unidad: valor de factura, notas de crédito y valor del vehículo en la ficha, la columna de costo del exportable y los indicadores derivados de costos (§2.5) | 5, 7, 11 |
+| `stock.crear_vehiculo` | stock | crear | Dar de alta una unidad | 5 |
+| `stock.editar_vehiculo` | stock | editar | Color, motor, año, marca comercial, ubicación actual | 5 |
+| `stock.cambiar_estado` | stock | acciones_especiales | Recorrer un camino que no exige un permiso propio (D-100) | 5 |
+| `stock.habilitar` | stock | acciones_especiales | El camino En habilitación → Disponible | 5 |
+| `stock.vender` | stock | acciones_especiales | El camino Disponible → Vendido | 5 |
+| `stock.entregar` | stock | acciones_especiales | El camino Vendido → Activo | 5 |
+| `stock.atender_en_taller` | stock | acciones_especiales | Los caminos hacia Mecánica y Puesta a punto, y de vuelta a Disponible | 5 |
+| `stock.recuperar` | stock | acciones_especiales | Los caminos por morosidad y resolución de contrato (Custodia) | 5 |
+| `stock.registrar_kilometraje` | stock | acciones_especiales | Lecturas de taller, entrega, devolución y manuales (§8.5) | 5 |
+| `stock.registrar_sustitucion_odometro` | stock | acciones_especiales | El cambio de tablero, el hecho distinto que admite que la siguiente lectura sea menor (§8.5) | 5 |
+| `stock.corregir_placa` | stock | acciones_especiales | Corregir una placa ya registrada, con motivo (§13.1) | 5, 6 |
+| `stock.corregir_vin` | stock | acciones_especiales | Corregir un VIN ya registrado, con motivo (§13.1) | 5, 6 |
+| `stock.anular_vehiculo` | stock | desactivar_anular | Anular una unidad por acción explícita, con el candado de §9.6 (D-104) | 7 |
+| `stock.cargar_migracion_inicial` | stock | crear | La carga del Excel que da de alta unidades (D-18) | 5 |
+| `compras.ver` | compras | ver | Proveedores, órdenes, facturas y notas de crédito, con sus importes | 7 |
+| `compras.gestionar_proveedores` | compras | gestionar | Crear y editar proveedores, con su dirección y su estado (§9.1) | 7 |
+| `compras.gestionar_plantillas` | compras | gestionar | Plantillas de orden de compra y sus tipos (D-35) | 7 |
+| `compras.gestionar_ordenes` | compras | gestionar | Crear, editar el borrador, enviar, cerrar a mano y anular órdenes (§9.2) | 7 |
+| `compras.registrar_factura` | compras | crear | Registrar una factura de compra con sus líneas | 7 |
+| `compras.registrar_factura_antigua` | compras | acciones_especiales | Una factura de más de veinte días (§9.3) | 7 |
+| `compras.anular_factura` | compras | desactivar_anular | Anular un comprobante completo (§9.3) | 7 |
+| `compras.registrar_nota_credito` | compras | crear | Registrar una nota de crédito y su reparto; con motivo "anulación de unidad", anula la línea y, si el valor llega a cero, la unidad (§9.4 a §9.6) | 7 |
+| `pagos.ver` | pagos | ver | Pagos, aplicaciones, imputaciones y el saldo con cada proveedor, con sus importes | 8 |
+| `pagos.registrar_pago` | pagos | crear | Registrar, aplicar e imputar un pago (§10.1 a §10.3) | 8 |
+| `pagos.anular_pago` | pagos | desactivar_anular | Anular un pago mal registrado (§10.1) | 8 |
+| `habilitacion.registrar_hitos` | habilitacion | editar | Ingreso físico, inmatriculación y el primer registro de la placa (§11.1) | 9 |
+| `habilitacion.gestionar_documentos` | habilitacion | gestionar | Cargar los documentos del vehículo (§11.3, D-28) | 9 |
+| `habilitacion.gestionar_equipos` | habilitacion | gestionar | Instalar y retirar equipamiento (§11.4) | 9 |
+| `habilitacion.gestionar_llaves` | habilitacion | gestionar | Registrar las llaves y dónde están (§11.5, D-29) | 9 |
+| `habilitacion.cargar_archivo_sat` | habilitacion | acciones_especiales | La declaración del impuesto vehicular (§11.7) | 9 |
+| `habilitacion.ver_cargas` | habilitacion | ver | Las cargas de archivos y sus errores (§11.8) | 9 |
+| `fondos.ver` | fondos | ver | La pantalla de fondos y las cesiones por fondo (§12) | 10 |
+| `fondos.gestionar_fondos` | fondos | gestionar | Crear y editar fondos (§12.1) | 10 |
+| `fondos.registrar_cesion` | fondos | acciones_especiales | Ceder una unidad a un fondo o cerrar la cesión a mano (§12.2) | 10 |
+| `fondos.cargar_archivo_garantia` | fondos | acciones_especiales | El archivo de garantía mobiliaria (D-30) | 10 |
+| `bitacora.ver` | bitacora | ver | La bitácora de cambios de la empresa (§13.1) | 6 |
+| `reportes.ver` | reportes | ver | Exportable de stock, brecha de días, diferencia por inicial; los costos siguen a `stock.ver_costos` (§10.5) | 11 |
+| `seguridad.ver_cuentas` | seguridad | ver | Leer y exportar las cuentas: todas con alcance sistema; con una empresa, las de sus colaboradores (D-122) | 3b |
+| `seguridad.ver_roles` | seguridad | ver | Leer los roles, el catálogo de permisos y la matriz: los del sistema, los generales y los de una empresa donde actúa (D-122) | 3b |
+| `seguridad.dar_acceso` | seguridad | crear | Crear la cuenta de un colaborador o vincularlo a la que ya tiene; solo con alcance sistema (D-58, D-122) | 3b |
+| `seguridad.gestionar_colaboradores` | seguridad | gestionar | Registrar y modificar colaboradores, en la empresa o la sede de la asignación (D-122) | 3b |
+| `seguridad.gestionar_roles` | seguridad | gestionar | Crear, copiar, editar, activar y desactivar roles propios y marcar sus permisos; solo con alcance sistema (D-123, D-124) | 3b |
+| `seguridad.bloquear_cuentas` | seguridad | desactivar_anular | Bloquear cuentas, levantar o cancelar sus bloqueos y leerlos; solo con alcance sistema (§5.4) | 3b |
+| `seguridad.registrar_salidas_y_regresos` | seguridad | acciones_especiales | Registrar la salida y el regreso de un colaborador, en la empresa o la sede de la asignación (§5.3, D-122) | 3b |
+| `seguridad.asignar_roles` | seguridad | acciones_especiales | Otorgar y retirar roles y leer las asignaciones de una cuenta; solo con alcance sistema (§5.7) | 3b |
+| `seguridad.restablecer_contrasenas` | seguridad | acciones_especiales | Restablecer la contraseña de otra cuenta con una provisional; solo con alcance sistema (D-63) | 3b |
+| `seguridad.confirmar_vinculo` | seguridad | acciones_especiales | Vincular la cuenta de otra persona, o una sin colaborador, después de ver a sus titulares; solo del superadministrador (D-82) | 3b |
+| `seguridad.desvincular_cuentas` | seguridad | acciones_especiales | Deshacer el vínculo equivocado de un colaborador con su cuenta; solo del superadministrador (D-82) | 3b |
+| `seguridad.asignar_roles_sin_tenerlos` | seguridad | acciones_especiales | Otorgar roles no reservados cuyos permisos no se tienen; solo del administrador de accesos (D-56, D-120) | 3b |
 
-Quedan fuera del catálogo, a propósito, las operaciones que fija un rol (§5.8 regla 7): dar acceso, otorgar y retirar roles, bloquear y restablecer contraseñas (D-55, D-56), registrar y modificar colaboradores y sus salidas y regresos (D-57), desvincular (D-82), crear y editar roles (§5.5) y leer cuentas (§2.5). Y esperan otra decisión las correcciones delicadas de un monto de factura y de una fecha ya reportada (convenciones de la API, §14.21), que llevarán un permiso cada una cuando tengan su ruta; el bloque 12 traerá los suyos, entre ellos `clientes.ver_cartera_completa`.
+<!-- verificar al integrar fase 2: las descripciones y las categorías que siembran V53 y V54, en especial la de stock.cargar_migracion_inicial y stock.registrar_kilometraje (los dos repartos dan 6/2/1/6/10) -->
+
+En total: catorce de ver, seis de crear, dos de editar, quince de gestionar, cuatro de desactivar o anular y veintiuno de acciones especiales.
+
+Desde D-117, las cuentas, los accesos, los colaboradores y los roles tienen sus permisos en el catálogo: antes los fijaba un rol (D-95). Esperan otra decisión las correcciones delicadas de un monto de factura y de una fecha ya reportada (convenciones de la API, §14.21), que llevarán un permiso cada una cuando tengan su ruta; el bloque 12 traerá los suyos, entre ellos `clientes.ver_cartera_completa`.
 
 **La matriz** (D-95). Lo que incluye cada rol del sistema. SA = `SUPERADMIN` · AA = `ADMIN_ACCESOS` · AE = `ADMIN_EMPRESA` · OP = `OPERACIONES` · CO = `CONTABILIDAD` · AV = `ASESOR_VENTAS` · TA = `TALLER`.
 
@@ -1029,10 +1046,49 @@ Quedan fuera del catálogo, a propósito, las operaciones que fija un rol (§5.8
 | `fondos.cargar_archivo_garantia` | ✔ | | ✔ | | ✔ | | |
 | `bitacora.ver` | ✔ | | ✔ | | | | |
 | `reportes.ver` | ✔ | | ✔ | ✔ | ✔ | | |
+| `seguridad.ver_cuentas` | ✔ | ✔ | ✔ | | | | |
+| `seguridad.ver_roles` | ✔ | ✔ | ✔ | | | | |
+| `seguridad.dar_acceso` | ✔ | ✔ | | | | | |
+| `seguridad.gestionar_colaboradores` | ✔ | | ✔ | | | | |
+| `seguridad.gestionar_roles` | ✔ | | | | | | |
+| `seguridad.bloquear_cuentas` | ✔ | ✔ | | | | | |
+| `seguridad.registrar_salidas_y_regresos` | ✔ | | ✔ | | | | |
+| `seguridad.asignar_roles` | ✔ | ✔ | | | | | |
+| `seguridad.restablecer_contrasenas` | ✔ | ✔ | | | | | |
+| `seguridad.confirmar_vinculo` | ✔ | | | | | | |
+| `seguridad.desvincular_cuentas` | ✔ | | | | | | |
+| `seguridad.asignar_roles_sin_tenerlos` | | ✔ | | | | | |
 
-Cómo se lee cada rol: el superadministrador tiene el conjunto completo, porque "el acceso total es una excepción explícita evaluada con las mismas reglas" (§2.5) y porque es lo que le permite crear y asignar cualquier rol bajo las reglas 1 y 2 de §5.5. El administrador de accesos lee la estructura de las empresas, sus colaboradores y los catálogos, porque lo necesita para dar acceso y fijar el alcance de un rol, y nada del negocio: "su trabajo es dar acceso, no registrar facturas" (D-56). El administrador de empresa hace todo lo operativo de su empresa, incluidas las excepciones controladas, y no escribe empresas, sedes, marcas, ubicaciones ni catálogos, que son del superadministrador (§5.2, D-43, §7). Operaciones compra y recibe unidades y las habilita; ve los importes de los documentos que registra, pero no el costo por unidad, y no registra facturas atrasadas. Contabilidad lleva el dinero: facturas, también las atrasadas, notas de crédito, pagos, fondos y los costos; no da de alta unidades ni las mueve. El asesor de ventas ve el stock de toda la empresa (D-14) y, en su sede, vende y registra las lecturas de entrega y devolución. El taller, en su sede, mueve unidades a taller y de vuelta, registra lecturas y sustituciones de odómetro y gestiona equipos y llaves. Quién registra la entrega al cliente (`stock.entregar`) espera al negocio (procesos y pantallas, pregunta 4): hasta entonces, el administrador de la empresa.
+Las doce filas de seguridad suman 22 marcas: once del superadministrador, siete del administrador de accesos y cuatro del administrador de empresa (D-117). Con ellas, las marcas vigentes de los roles del sistema pasan de 76 a 98.
 
-Contabilidad puede registrar facturas atrasadas y Operaciones no: es la excepción que pide la guía funcional, resuelta con un permiso en vez de con una condición escrita en el programa. La separación crear proveedor / pagar, o registrar unidad / anular, se cumple en esta matriz, pero es una propiedad de la semilla y no una regla: el diccionario solo separa funciones en las cuentas (D-57).
+Cómo se lee cada rol: el superadministrador tiene todos los permisos salvo `seguridad.asignar_roles_sin_tenerlos`, porque "el acceso total es una excepción explícita evaluada con las mismas reglas" (§2.5) y porque es lo que le permite crear cualquier rol bajo la regla 1 de §5.5; otorga cualquier rol, también uno que incluya el permiso que no tiene, porque los reservados los otorga solo él y la regla 2 se aplica a los demás (D-121). El administrador de accesos lee la estructura de las empresas, sus colaboradores y los catálogos, porque lo necesita para dar acceso y fijar el alcance de un rol, y nada del negocio: "su trabajo es dar acceso, no registrar facturas" (D-56); de seguridad tiene los siete permisos de las cuentas, los accesos y los roles, y la excepción a la regla 2 (D-120). El administrador de empresa hace todo lo operativo de su empresa, incluidas las excepciones controladas, y no escribe empresas, sedes, marcas, ubicaciones ni catálogos, que son del superadministrador (§5.2, D-43, §7); de seguridad, lee las cuentas y los roles y registra a sus colaboradores, sus salidas y sus regresos. Operaciones compra y recibe unidades y las habilita; ve los importes de los documentos que registra, pero no el costo por unidad, y no registra facturas atrasadas. Contabilidad lleva el dinero: facturas, también las atrasadas, notas de crédito, pagos, fondos y los costos; no da de alta unidades ni las mueve. El asesor de ventas ve el stock de toda la empresa (D-14) y, en su sede, vende y registra las lecturas de entrega y devolución. El taller, en su sede, mueve unidades a taller y de vuelta, registra lecturas y sustituciones de odómetro y gestiona equipos y llaves. Quién registra la entrega al cliente (`stock.entregar`) espera al negocio (procesos y pantallas, pregunta 4): hasta entonces, el administrador de la empresa.
+
+Contabilidad puede registrar facturas atrasadas y Operaciones no: es la excepción que pide la guía funcional, resuelta con un permiso en vez de con una condición escrita en el programa. La separación crear proveedor / pagar, o registrar unidad / anular, se cumple en esta matriz, pero es una propiedad de la semilla y no una regla: el diccionario separa funciones solo con los pares de seguridad de D-119 (abajo).
+
+**Los pares incompatibles** (D-119). `permission_incompatibilities` guarda los pares de permisos que ningún rol propio incluye juntos y que ninguna cuenta junta entre sus roles vigentes, en ninguna empresa. Quien registra a los colaboradores no es quien les da acceso: así nadie inventa un colaborador y le da acceso (D-57).
+
+| Variable | Tipo | Nulo | Descripción | Por qué importa |
+|---|---|---|---|---|
+| `permission_a_id` | BIGINT FK → `permissions` | No | Uno de los dos permisos del par | — |
+| `permission_b_id` | BIGINT FK → `permissions` | No | El otro. Siempre el de identificador mayor (`CHECK (permission_a_id < permission_b_id)`) | Un par se guarda una sola vez, en un solo orden, y el `UNIQUE` lo detecta repetido |
+
+<!-- verificar al integrar fase 2: los nombres de las columnas y de las restricciones de V55 -->
+
+Es un catálogo del sistema, como `permissions`: lo carga la migración de `iam` y la aplicación solo lo lee; no lleva `public_id`, columnas de registro ni Row Level Security. Los catorce pares, ✕ = no se juntan:
+
+| Permiso | `seguridad.gestionar_colaboradores` | `seguridad.registrar_salidas_y_regresos` |
+|---|---|---|
+| `seguridad.dar_acceso` | ✕ | ✕ |
+| `seguridad.asignar_roles` | ✕ | ✕ |
+| `seguridad.bloquear_cuentas` | ✕ | ✕ |
+| `seguridad.restablecer_contrasenas` | ✕ | ✕ |
+| `seguridad.confirmar_vinculo` | ✕ | ✕ |
+| `seguridad.desvincular_cuentas` | ✕ | ✕ |
+| `seguridad.asignar_roles_sin_tenerlos` | ✕ | ✕ |
+
+- **En un rol propio**, guardar o copiar uno que junta un par se rechaza (`ROLE_PERMISSIONS_INCOMPATIBLE`).
+- **En una cuenta**, se suman los permisos de todos sus roles vigentes, en todas sus empresas, salvo los de sus asignaciones de `SUPERADMIN`: el superadministrador hace las dos cosas (D-57), y su matriz es la única de un rol vigente que junta pares. Otorgar un rol que dejaría a la cuenta con un par se rechaza (`ROLE_ASSIGNMENT_DUTIES_INCOMPATIBLE`), y también editar un rol de modo que alguno de sus titulares quede con uno (`ROLE_HOLDERS_DUTIES_INCOMPATIBLE`). Así `ADMIN_ACCESOS` y `ADMIN_EMPRESA` siguen sin juntarse, como pedía D-71, y tampoco dos roles propios que los imiten.
+- **Lo que lo sostiene en una carrera.** La base no ve dos asignaciones ni dos roles a la vez, así que lo revisa la aplicación, y para que dos operaciones simultáneas no lo burlen, guardar un rol, asignar uno, restablecer una contraseña y otorgar un acceso toman un mismo candado de transacción; guardar un rol bloquea además cada cuenta titular, en orden de identificador.
 
 **Reglas de negocio**
 
