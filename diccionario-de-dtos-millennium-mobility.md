@@ -1277,7 +1277,7 @@ Cómo se mantiene iniciada la sesión de alguien (decisión D-33). No es un dato
 
 | Regla | Valor | Por qué importa |
 |---|---|---|
-| Cierre por inactividad | 30 minutos | Una sesión olvidada en una computadora compartida no queda abierta indefinidamente |
+| Cierre por inactividad | 2 horas (D-127) | Una sesión olvidada en una computadora compartida no queda abierta indefinidamente, y una pausa larga en el patio o el taller no hace perder el trabajo |
 | Duración máxima | 8 horas, aunque se esté usando | Obliga a volver a entrar en cada jornada |
 | Cambio de contraseña | Se cierran las demás sesiones de la persona; sigue abierta la que hizo el cambio | Quien conocía la contraseña anterior pierde el acceso en ese momento |
 | Restablecimiento de la contraseña por un administrador | Se cierran todas las sesiones de la persona | Nadie sigue dentro con la contraseña anterior (§5.4) |
@@ -2777,7 +2777,7 @@ Quedan tres decisiones abiertas, cada una con su momento fijado. Las longitudes 
 | D-31 | La diferencia por inicial mide lo que Millennium no desembolsó porque el cliente pagó al concesionario. Se calcula del lado de compras y se valida contra la inicial registrada en el contrato |
 | D-32 | Existe un registro público de cuentas, habilitable por la variable de entorno `IAM_PUBLIC_SIGN_UP_ENABLED` y apagado por defecto. Registra el perfil de colaborador y la cuenta en la misma operación, sin paso de validación, y se rechaza si el documento ya existe en esa empresa o si el correo ya tiene cuenta. La cuenta nace sin roles, y la cuenta y el perfil figuran creados por `SYSTEM` (§5.2) |
 | — | Los identificadores internos y sus llaves foráneas son `BIGINT`, el `Long` del código (§2.2) |
-| D-33 | Las sesiones se guardan en el servidor y el navegador solo recibe una cookie `HttpOnly`. Se cierran por 30 minutos de inactividad, a las 8 horas en cualquier caso, al cerrar sesión, al cambiar la contraseña (las demás) y al bloquear la cuenta (§5.12) |
+| D-33 | Las sesiones se guardan en el servidor y el navegador solo recibe una cookie `HttpOnly`. Se cierran por 2 horas de inactividad (30 minutos hasta D-127), a las 8 horas en cualquier caso, al cerrar sesión, al cambiar la contraseña (las demás) y al bloquear la cuenta (§5.12) |
 | D-34 | El primer superadministrador lo crea la aplicación al arrancar, desde variables de entorno y con contraseña provisional; no la migración (§5.2) |
 | D-35 | Las órdenes de compra se emiten con plantillas. Todas tienen los mismos campos; sus valores cambian según la línea de negocio y el tipo de orden (vehículos, taller, otros), que es un catálogo administrable. Los datos del emisor se proponen desde la empresa y se pueden editar; los contactos de atención y soporte son texto (§9.2) |
 | D-36 | Cada plantilla tiene su serie y cada serie su correlativo, que se reinicia cada año: `OC-LBT-2026-0001`. El número se asigna al crear la orden, con el año en la hora local del país de la empresa, y no se reutiliza (§9.2) |
@@ -2861,6 +2861,7 @@ Quedan tres decisiones abiertas, cada una con su momento fijado. Las longitudes 
 | D-114 | Los códigos de error de un agregado llevan un solo prefijo, sin guion bajo interno: `VEHICLESTATUS_*` y `STATUSCHANGEREASON_*`, los que ya produce la fábrica de `*_NOT_FOUND`. Así cada agregado tiene un prefijo y no dos (convenciones de la API, §7.2) |
 | D-115 | `allowedActions` de la unidad y `vehicleTypeLocked` del modelo son datos derivados del recurso, que calcula su dueño y nunca se guardan, como `isoCodesLocked` del país y `codeLocked` del tipo de equipamiento (convenciones de la API, §4.2). El kilometraje de la unidad (`currentMileage`) no es uno de ellos: es una de las dos excepciones que se guardan además en la unidad (§2.2, §11.1) |
 | D-116 | Todo catálogo y toda lista principal se exporta a una hoja de cálculo desde su propio endpoint: también los cinco catálogos de flota, los modelos de una marca y el inventario de unidades. El exportable de stock del paso 11 es otro documento (D-106; convenciones de la API, §8) |
+| D-127 | La sesión se cierra por 2 horas de inactividad, antes 30 minutos (enmienda D-33); el tope de 8 horas desde que se abrió se mantiene. Una jornada con pausas largas en el patio o el taller no pierde el trabajo, y el tope de 8 horas sigue protegiendo la computadora compartida (§5.12; decisión del responsable, 20/10/2026) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
