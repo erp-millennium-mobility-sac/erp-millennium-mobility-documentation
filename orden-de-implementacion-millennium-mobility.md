@@ -245,7 +245,7 @@ El diccionario ordena los bloques por sus dependencias. La implementación lo si
 
 1. **La bitácora va apenas después del vehículo**, no al final.
 2. `advisor_assignments` **se construye con ventas**, aunque figure en el bloque 3b.
-3. **El bloque 2 se terminó con la matriz de permisos, en el paso 3b.** El paso 3 se construyó sin `permissions` ni `role_permissions`, porque faltaba el dato: qué permisos lleva cada rol. El 19/10/2026 la matriz quedó fijada (§5.6, D-95 a D-105) y el paso 3b la construyó el mismo día, antes del paso 5: desde él, las operaciones de negocio y las lecturas de datos exigen un permiso, las cuentas y los accesos siguen por rol (§5.8 regla 7), un rol global lee lo que su matriz le da (D-68) y existen los roles propios de una empresa, que crea solo el superadministrador (D-81, D-98). Cada paso siguiente trae sus permisos y sus marcas con una migración de `iam`.
+3. **El bloque 2 se terminó con la matriz de permisos, en el paso 3b.** El paso 3 se construyó sin `permissions` ni `role_permissions`, porque faltaba el dato: qué permisos lleva cada rol. El 19/10/2026 la matriz quedó fijada (§5.6, D-95 a D-105) y el paso 3b la construyó el mismo día, antes del paso 5: desde él, las operaciones de negocio y las lecturas de datos exigen un permiso, las cuentas y los accesos siguieron por rol hasta la segunda ronda de la auditoría, que los pasa a permisos (§5.8 regla 7, D-117), un rol global lee lo que su matriz le da (D-68) y existen los roles propios de una empresa, que crea solo el superadministrador (D-81, D-98, D-123). Cada paso siguiente trae sus permisos y sus marcas con una migración de `iam`.
 4. **Desde el vehículo hay dos ramas independientes**, que se pueden alternar.
 
 
@@ -282,7 +282,7 @@ El diccionario ordena los bloques por sus dependencias. La implementación lo si
 ## Cuándo un paso está terminado
 
 - Las migraciones de Flyway crean sus tablas, y una migración ya aplicada nunca se edita.
-- El backend sigue la estructura de contextos, con sus pruebas, y todo endpoint de negocio exige un permiso del catálogo (D-95); solo las cuentas, los accesos, los colaboradores y los roles exigen un rol (§5.8 regla 7). Cada paso trae sus permisos y sus marcas en la matriz con una migración de `iam`.
+- El backend sigue la estructura de contextos, con sus pruebas, y todo endpoint exige un permiso del catálogo (D-95), también los de las cuentas, los accesos, los colaboradores y los roles desde la segunda ronda de la auditoría (§5.8 regla 7, D-117); ningún `@PreAuthorize` del backend exige un rol. Cada paso trae sus permisos y sus marcas en la matriz con una migración de `iam`.
 - El frontend tiene sus pantallas y las opciones del menú del paso ya no llevan `pending: true`.
 - Pasan las pruebas del backend, las unitarias del frontend y las de extremo a extremo, con las capturas de referencia revisadas.
 - Si el paso tiene pantallas, se cierra con una corrida del spec en vivo contra el backend real, sin la API simulada, y su resultado queda anotado en [retroalimentacion/](retroalimentacion/README.md).
