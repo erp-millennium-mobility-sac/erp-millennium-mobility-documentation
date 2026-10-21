@@ -105,7 +105,7 @@ Los campos que no pasan el filtro quedan listados como **candidatos**, con el cr
 - Toda tabla que se consulte por sí sola o que acumule volumen lleva su `company_id`, aunque se pudiera deducir siguiendo la cadena de relaciones. Las filas que solo se leen a través de su padre se apoyan en él.
 - Los catálogos generales —monedas, países, divisiones territoriales, tipos de documento tributario, permisos— no se filtran: son iguales para todos.
 - Los usuarios no pertenecen a una empresa. Quien tiene `seguridad.ver_cuentas` por una asignación de empresa —el administrador de esa empresa— ve las cuentas vinculadas a colaboradores de esa empresa —también las de quienes ya salieron, para comprobar que la salida les quitó el acceso—, con los roles vigentes que tienen en ella y los de alcance sistema; con alcance sistema, las ve todas (D-122). Verlas no es modificarlas: dar acceso, otorgar y retirar roles, bloquear cuentas y restablecer contraseñas exigen sus permisos con alcance sistema, así que ningún rol de una empresa los hace; hoy son del administrador de accesos y del superadministrador (D-57, D-122).
-- Los permisos de los colaboradores actúan donde su asignación dice (D-122): `seguridad.gestionar_colaboradores` y `seguridad.registrar_salidas_y_regresos` por un rol de empresa, en toda la empresa; por uno de sede, en esa sede. Un colaborador sin sede es de toda la empresa, y moverlo de sede exige actuar en la de origen y en la de destino.
+- Los permisos de los colaboradores actúan donde su asignación dice (D-122, D-130): `seguridad.registrar_colaboradores`, `seguridad.modificar_colaboradores` y `seguridad.registrar_salidas_y_regresos` por un rol de empresa, en toda la empresa; por uno de sede, en esa sede. Un colaborador sin sede es de toda la empresa, y moverlo de sede exige actuar en la de origen y en la de destino.
 - El stock es visible para toda la empresa. La sede limita dónde se puede actuar, no qué se ve.
 - Un rol de sede actúa sobre las unidades que están en la ubicación propia de su sede; las que están en una ubicación de terceros, o todavía sin ubicación, las tocan los roles de empresa (D-101). La marca de una asignación acota lo que se ve y lo que se toca de los datos que pertenecen a una marca, desde los vehículos (D-102).
 - Hay campos que no ve cualquiera aunque vea la fila. Cuando falta el permiso, el campo no sale de la base: ocultarlo en la pantalla no alcanza.
@@ -681,7 +681,7 @@ El tercero no tiene cuenta en el sistema y existe igual.
 - **Si a la cuenta no le queda ningún colaborador activo, la salida la cierra** desde el momento en que se registra, aunque la fecha de salida sea anterior, porque un bloqueo no se registra en el pasado (§5.4). La cuenta se bloquea con motivo `baja`, salvo que ya tenga una `baja` en curso. Se retiran sus demás roles con motivo `baja_cuenta` (§5.9) y se cierran sus sesiones. Si la persona estaba de vacaciones o de licencia, ese bloqueo termina en ese momento, y los bloqueos programados de la línea laboral se cancelan. Un bloqueo por `seguridad`, en curso o programado, no se toca: corre en su propia línea de tiempo (§5.4).
 - **La salida siempre quita el acceso** (D-60), también el de una cuenta protegida (§5.5): quien se fue no conserva el acceso mientras alguien con más permisos se entera. Una salida equivocada se corrige con un regreso. El único freno es la protección del último superadministrador (§5.9).
 - **Desvincular una cuenta funciona como una salida** (D-82). Lo hace solo un superadministrador, con `seguridad.desvincular_cuentas` (D-117, D-122), para corregir un vínculo equivocado, y la operación queda registrada en `employee_account_link_events` (§5.4). El colaborador sigue registrado, ahora sin cuenta, y la cuenta pierde sus roles en esa empresa, retirados con motivo `retiro`: el colaborador no salió, alguien corrigió un error. Si a la cuenta no le queda ningún colaborador activo, se cierra como en una salida (reglas anteriores): `baja`, `baja_cuenta` para sus demás roles y sesiones cerradas, con el mismo freno de la protección del último superadministrador.
-- **Registran y modifican colaboradores** quienes tienen `seguridad.gestionar_colaboradores`, y registran sus salidas y regresos quienes tienen `seguridad.registrar_salidas_y_regresos`, cada uno donde su asignación actúa (D-117, D-122): un rol de empresa, en toda la empresa; uno de sede, en su sede. Un colaborador sin sede exige actuar en toda la empresa, y cambiarlo de sede, en la de origen y en la de destino. La semilla da los dos permisos al superadministrador y al administrador de la empresa (D-57). El administrador de accesos no los tiene: quien da acceso no puede también crear al colaborador que lo recibe, y los pares de D-119 impiden que una cuenta junte las dos funciones. Nadie registra su propia salida ni su propio regreso (D-70). Registrar y modificar colaboradores no exige que quien lo hace esté vinculado a uno, así el superadministrador sin vincular crea el suyo; las salidas y los regresos sí lo exigen (D-89, D-122).
+- **Registran colaboradores** quienes tienen `seguridad.registrar_colaboradores` y **los modifican** quienes tienen `seguridad.modificar_colaboradores`; registran sus salidas y regresos quienes tienen `seguridad.registrar_salidas_y_regresos`, cada uno donde su asignación actúa (D-117, D-122, D-130): un rol de empresa, en toda la empresa; uno de sede, en su sede. Un colaborador sin sede exige actuar en toda la empresa, y cambiarlo de sede, en la de origen y en la de destino. La semilla da esos permisos al superadministrador y al administrador de la empresa (D-57, D-130). El administrador de accesos no los tiene: quien da acceso no puede también crear al colaborador que lo recibe, y los pares de D-119 impiden que una cuenta junte las dos funciones. Nadie registra su propia salida ni su propio regreso (D-70). Registrar y modificar colaboradores no exige que quien lo hace esté vinculado a uno, así el superadministrador sin vincular crea el suyo; las salidas y los regresos sí lo exigen (D-89, D-122).
 - **Leen los colaboradores de una empresa** quienes tienen el permiso (D-93, D-105): la fila sin sus datos personales —nombre, puesto, sede, fechas de ingreso y salida, si está activo y si tiene cuenta— cualquier rol con `configuracion.ver_colaboradores`, para elegir quién instaló un equipo o nombrar a quien registró algo; el documento, el teléfono, la foto y la exportación, solo con `configuracion.ver_datos_personales_colaboradores`, que la matriz da al superadministrador, al administrador de accesos y al administrador de la empresa. Un rol de empresa o de sede que no la administra no ve esos datos personales: quien atiende un local no necesita la planilla de toda la empresa. El campo que no se puede ver no viaja (§2.5).
 - **La fecha de ingreso no puede ser posterior a hoy** (D-88), al registrar al colaborador y al modificarlo, como la salida y el regreso. Hoy se calcula como fija §2.6: en la zona de la sede del colaborador; sin sede, en la del país de su empresa. Un colaborador con ingreso futuro podría recibir acceso y roles antes de empezar a trabajar, y no se le podría registrar la salida hasta corregir su ingreso.
 - **Un colaborador se registra en una empresa activa y, si tiene sede, en una sede activa** (D-84). El que ya está registrado sigue siendo válido y se sigue modificando aunque su empresa o su sede se hayan desactivado, mientras no cambie de sede; si cambia, la nueva tiene que estar activa.
@@ -874,9 +874,9 @@ Los siete roles que trae el sistema (cuadro al final de esta sección) son el pu
 
 | Quién lo crea | Dónde queda disponible |
 |---|---|
-| Quien tiene `seguridad.gestionar_roles` con alcance sistema; hoy, solo el superadministrador (D-122, D-123) | En todas las empresas (`company_id` vacío), o solo en una empresa concreta (`company_id` lleno), eligiéndola al crearlo (D-98) |
+| Quien tiene `seguridad.crear_roles` con alcance sistema; hoy, solo el superadministrador (D-122, D-130) | En todas las empresas (`company_id` vacío), o solo en una empresa concreta (`company_id` lleno), eligiéndola al crearlo (D-98) |
 
-Un rol propio nace vacío o como copia exacta de otro (D-124, más abajo). Leen los roles quienes tienen `seguridad.ver_roles` (D-122): con alcance sistema, todos; con una empresa, los del sistema, los generales y los de esa empresa. Hoy lo tienen los tres administradores: el administrador de accesos los lee todos, porque es quien los otorga y necesita saber qué incluye cada uno, y el de una empresa, los de la suya (D-98). Ninguno de los dos crea roles: `seguridad.gestionar_roles` solo cuenta con alcance sistema, y la semilla se lo da solo al superadministrador.
+Un rol propio nace vacío o como copia exacta de otro (D-124, más abajo). Leen los roles quienes tienen `seguridad.ver_roles` (D-122): con alcance sistema, todos; con una empresa, los del sistema, los generales y los de esa empresa. Hoy lo tienen los tres administradores: el administrador de accesos los lee todos, porque es quien los otorga y necesita saber qué incluye cada uno, y el de una empresa, los de la suya (D-98). Ninguno de los dos crea roles: `seguridad.crear_roles`, `editar_roles`, `desactivar_roles` y `marcar_permisos_de_roles` solo cuentan con alcance sistema, y la semilla se los da solo al superadministrador (D-130).
 
 **Los roles propios de una empresa existen desde la matriz de permisos** (D-81, D-98): `roles.company_id` apunta a la empresa, o queda vacío en los roles generales y en los del sistema; el código es único dentro de cada empresa y entre los generales, y un rol propio nunca usa el código de un rol del sistema. Un rol de una empresa solo se asigna dentro de esa empresa, y no puede ser de alcance sistema.
 
@@ -903,9 +903,9 @@ Los roles marcados como propios del sistema no se pueden editar ni borrar, aunqu
 - Agregar o quitar un permiso privilegiado en un rol que tiene titulares vigentes es solo del superadministrador.
 - Volver reservado un rol se rechaza (`ROLE_RESERVED_HOLDERS_INVALID`) mientras alguno de sus titulares tenga una asignación acotada a una marca, una contraseña provisional o una asignación que no otorgó un superadministrador: esos titulares no cumplirían lo que un rol reservado exige.
 
-**Dónde se marcan los permisos de accesos y roles** (D-122). Los ocho que solo cuentan con alcance sistema —`dar_acceso`, `asignar_roles`, `asignar_roles_sin_tenerlos`, `bloquear_cuentas`, `restablecer_contrasenas`, `confirmar_vinculo`, `desvincular_cuentas` y `gestionar_roles`— solo se marcan en roles de alcance `SYSTEM`, que por eso son generales: marcarlos o copiarlos en otro rol se rechaza (`ROLE_PERMISSION_REQUIRES_SYSTEM_SCOPE`). `confirmar_vinculo`, `desvincular_cuentas` y `asignar_roles_sin_tenerlos` no se marcan en ningún rol propio (D-117).
+**Dónde se marcan los permisos de accesos y roles** (D-122, D-130). Los once que solo cuentan con alcance sistema —`dar_acceso`, `asignar_roles`, `asignar_roles_sin_tenerlos`, `bloquear_cuentas`, `restablecer_contrasenas`, `confirmar_vinculo`, `desvincular_cuentas`, `crear_roles`, `editar_roles`, `desactivar_roles` y `marcar_permisos_de_roles`— solo se marcan en roles de alcance `SYSTEM`, que por eso son generales: marcarlos o copiarlos en otro rol se rechaza (`ROLE_PERMISSION_REQUIRES_SYSTEM_SCOPE`). `confirmar_vinculo`, `desvincular_cuentas` y `asignar_roles_sin_tenerlos` no se marcan en ningún rol propio (D-117).
 
-**Copiar un rol** (D-124). Un rol propio se crea también como copia exacta de los permisos de otro, del sistema o propio: "Crear rol propio a partir de este". La copia no se recorta: si quien la hace no posee alguno de los permisos, se rechaza nombrando los que faltan (regla 1); si junta un par, se rechaza (D-119); y si el rol nuevo no es de alcance sistema y la copia trae alguno de los ocho de arriba, también. Copiar `SUPERADMIN` o `ADMIN_ACCESOS` se rechaza siempre: el primero junta pares, y el segundo trae `asignar_roles_sin_tenerlos`, que nadie más posee. La pantalla lo dice antes de intentarlo.
+**Copiar un rol** (D-124). Un rol propio se crea también como copia exacta de los permisos de otro, del sistema o propio: "Crear rol propio a partir de este". La copia no se recorta: si quien la hace no posee alguno de los permisos, se rechaza nombrando los que faltan (regla 1); si junta un par, se rechaza (D-119); y si el rol nuevo no es de alcance sistema y la copia trae alguno de los once de arriba, también. Copiar `SUPERADMIN` o `ADMIN_ACCESOS` se rechaza siempre: el primero junta pares, y el segundo trae `asignar_roles_sin_tenerlos`, que nadie más posee. La pantalla lo dice antes de intentarlo.
 
 **Una excepción a la regla 2, con nombre propio** (D-56, D-120). El administrador de accesos asigna roles cuyos permisos no tiene: es el permiso `seguridad.asignar_roles_sin_tenerlos`, que tiene solo él y no se marca en un rol propio. Su trabajo es dar acceso, no registrar facturas ni dar de alta unidades, y no tendría sentido darle todos los permisos del sistema solo para que pueda asignarlos. La excepción tiene tres límites, que son los que la hacen segura (D-55):
 
@@ -915,7 +915,7 @@ Los roles marcados como propios del sistema no se pueden editar ni borrar, aunqu
 
 Con esos límites, la excepción no abre el camino que la regla 2 cierra: el administrador de accesos no puede convertirse en superadministrador ni convertir a otro, ni quitarle el acceso a quien lo controla. Tampoco puede tomar la cuenta de un administrador de empresa —restablecerle la contraseña y entrar como él— para inventar un colaborador y darle acceso. Todo lo que otorga queda con su nombre en `granted_by`. Es la única excepción a la regla 2; extenderla a otro rol requiere una decisión nueva.
 
-**Límite de lo que la base puede garantizar.** La consistencia entre la empresa del rol y la empresa de la asignación no se puede exigir con una llave foránea, porque el campo admite vacío para los roles generales. Se resuelve con una validación programada que rechaza asignar un rol de una empresa dentro de otra. Las reglas 1 a 3, la excepción del administrador de accesos y sus límites, los roles reservados y los pares incompatibles en las cuentas también viven en la aplicación: la base no sabe qué permisos ni qué roles tiene quien está ejecutando la operación. Lo que sí revisa la base, en la migración que los siembra, es que ningún rol vigente salvo `SUPERADMIN` junte un par y que ninguno que no sea de alcance sistema tenga alguno de los ocho de D-122.
+**Límite de lo que la base puede garantizar.** La consistencia entre la empresa del rol y la empresa de la asignación no se puede exigir con una llave foránea, porque el campo admite vacío para los roles generales. Se resuelve con una validación programada que rechaza asignar un rol de una empresa dentro de otra. Las reglas 1 a 3, la excepción del administrador de accesos y sus límites, los roles reservados y los pares incompatibles en las cuentas también viven en la aplicación: la base no sabe qué permisos ni qué roles tiene quien está ejecutando la operación. Lo que sí revisa la base, en la migración que los siembra, es que ningún rol vigente salvo `SUPERADMIN` junte un par y que ninguno que no sea de alcance sistema tenga alguno de los once de D-122 y D-130.
 
 **Reglas de negocio**
 
@@ -956,19 +956,52 @@ Cada acción concreta que se puede autorizar por separado. Un rol es un conjunto
 
 Un rol incluye un permiso a lo sumo una vez mientras está vigente.
 
-**El catálogo** (D-95, D-117). Sesenta y dos permisos: cincuenta para los pasos 1 a 11 y doce de seguridad, en `<módulo>.<acción>`, en minúsculas y en español. Cada uno lleva su categoría (D-118): "ver" es una lectura; "crear", "editar" y "desactivar_anular" hacen solo eso; "gestionar" agrupa crear, editar y desactivar un recurso y no se parte; "acciones_especiales" son las excepciones controladas y los hechos con nombre propio, que se dan por separado. Cada paso carga los suyos cuando construye sus operaciones; hoy existen los de los pasos 1 a 5 (V45, V46) y, con la segunda ronda de la auditoría, los doce de seguridad (V57); la categoría de todos la trajo V56. La categoría de los permisos de los pasos 6 a 11 la confirma la migración de su paso.
+**El catálogo** (D-95, D-117, D-130). Ciento un permisos: los sesenta y dos de antes más treinta y nueve que parten, en ver, crear, editar y desactivar, las ocho acciones `gestionar_*` de las pantallas ya construidas. Esos ocho códigos siguen en la tabla, para la historia de lo que un rol llegó a incluir, y ninguna pantalla los pide ni la matriz los ofrece; V62 les quitó la marca a los roles del sistema. Una pantalla que todavía no existe, como Facturas, no tiene casilla hasta el paso que la construye, y entonces nace ya partida, no como un `gestionar_*` nuevo. Cada uno lleva su categoría (D-118): "ver" es una lectura; "crear", "editar" y "desactivar_anular" hacen solo eso; "gestionar" queda solo en lo que aún no tiene pantalla; "acciones_especiales" son las excepciones controladas y los hechos con nombre propio, que se dan por separado. Cada paso carga los suyos cuando construye sus operaciones.
 
 | code | module | category | description | Paso |
 |---|---|---|---|---|
 | `catalogos.ver` | catalogos | ver | Leer monedas, tipos de cambio, países, divisiones, documentos tributarios, catálogos de flota, estados y motivos, documentos del vehículo (D-43) | 1, 4, 5 |
-| `catalogos.gestionar_generales` | catalogos | gestionar | Monedas, países y sus escalones, divisiones, tipos de documento tributario (D-43) | 1 |
-| `catalogos.gestionar_flota` | catalogos | gestionar | Tipos de vehículo, marcas y modelos, colores, equipamiento (§7) | 4 |
-| `catalogos.gestionar_estados` | catalogos | gestionar | Estados del vehículo, motivos y caminos con el permiso que exige cada uno, tipos de documento del vehículo (D-100) | 5, 9 |
+| `catalogos.gestionar_generales` | catalogos | gestionar | Quedó en el catálogo; ninguna pantalla lo pide (D-130). Lo partieron crear, editar y desactivar monedas y países | 1 |
+| `catalogos.crear_monedas` | catalogos | crear | Registrar monedas (D-130) | 1 |
+| `catalogos.editar_monedas` | catalogos | editar | Corregir monedas (D-130) | 1 |
+| `catalogos.desactivar_monedas` | catalogos | desactivar_anular | Activar y desactivar monedas (D-130) | 1 |
+| `catalogos.crear_paises` | catalogos | crear | Registrar países (D-130) | 1 |
+| `catalogos.editar_paises` | catalogos | editar | Corregir un país y, en uno que ya existe, sus escalones, divisiones y documentos tributarios (D-130) | 1 |
+| `catalogos.desactivar_paises` | catalogos | desactivar_anular | Activar y desactivar divisiones y documentos tributarios. Un escalón no se desactiva (D-45, D-130) | 1 |
+| `catalogos.gestionar_flota` | catalogos | gestionar | Quedó en el catálogo; ninguna pantalla lo pide (D-130) | 4 |
+| `catalogos.crear_tipos_vehiculo` | catalogos | crear | Registrar tipos de vehículo (D-130) | 4 |
+| `catalogos.editar_tipos_vehiculo` | catalogos | editar | Corregir tipos de vehículo (D-130) | 4 |
+| `catalogos.desactivar_tipos_vehiculo` | catalogos | desactivar_anular | Activar y desactivar tipos de vehículo (D-130) | 4 |
+| `catalogos.crear_marcas_y_modelos` | catalogos | crear | Registrar marcas y modelos (D-130) | 4 |
+| `catalogos.editar_marcas_y_modelos` | catalogos | editar | Corregir marcas y modelos (D-130) | 4 |
+| `catalogos.desactivar_marcas_y_modelos` | catalogos | desactivar_anular | Activar y desactivar marcas y modelos (D-130) | 4 |
+| `catalogos.crear_colores` | catalogos | crear | Registrar colores (D-130) | 4 |
+| `catalogos.editar_colores` | catalogos | editar | Corregir colores (D-130) | 4 |
+| `catalogos.desactivar_colores` | catalogos | desactivar_anular | Activar y desactivar colores (D-130) | 4 |
+| `catalogos.crear_equipamiento` | catalogos | crear | Registrar equipamiento (D-130) | 4 |
+| `catalogos.editar_equipamiento` | catalogos | editar | Corregir equipamiento (D-130) | 4 |
+| `catalogos.desactivar_equipamiento` | catalogos | desactivar_anular | Activar y desactivar equipamiento (D-130) | 4 |
+| `catalogos.gestionar_estados` | catalogos | gestionar | Quedó en el catálogo; ninguna pantalla lo pide (D-130). Los caminos siguen pidiendo el permiso que cada uno nombra (D-100) | 5, 9 |
+| `catalogos.crear_estados` | catalogos | crear | Registrar estados y motivos (D-130) | 5 |
+| `catalogos.editar_estados` | catalogos | editar | Corregir estados y motivos (D-130) | 5 |
+| `catalogos.desactivar_estados` | catalogos | desactivar_anular | Activar y desactivar estados y motivos (D-130) | 5 |
 | `catalogos.corregir_tipo_cambio` | catalogos | acciones_especiales | Corregir a mano una tasa cargada por el proceso automático (§4.8, D-103) | 7 |
 | `configuracion.ver_estructura` | configuracion | ver | Empresas, sedes, marcas comerciales y ubicaciones del alcance | 2 |
-| `configuracion.gestionar_empresas` | configuracion | gestionar | Crear y editar empresas, corregir su documento, activarlas y desactivarlas (D-85) | 2 |
-| `configuracion.gestionar_sedes_y_marcas` | configuracion | gestionar | Sedes y marcas comerciales, con sus direcciones y su estado | 2 |
-| `configuracion.gestionar_ubicaciones` | configuracion | gestionar | Ubicaciones, con sus direcciones y su estado (D-79, D-90) | 2 |
+| `configuracion.gestionar_empresas` | configuracion | gestionar | Quedó en el catálogo; ninguna pantalla lo pide (D-130) | 2 |
+| `configuracion.crear_empresas` | configuracion | crear | Registrar empresas. Crear una empresa sigue exigiendo alcance de todo el sistema (D-130) | 2 |
+| `configuracion.editar_empresas` | configuracion | editar | Corregir una empresa, su documento y su dirección fiscal (D-85, D-130) | 2 |
+| `configuracion.desactivar_empresas` | configuracion | desactivar_anular | Activar y desactivar empresas (D-130) | 2 |
+| `configuracion.gestionar_sedes_y_marcas` | configuracion | gestionar | Quedó en el catálogo; ninguna pantalla lo pide (D-130) | 2 |
+| `configuracion.crear_sedes` | configuracion | crear | Registrar sedes (D-130) | 2 |
+| `configuracion.editar_sedes` | configuracion | editar | Corregir sedes y sus direcciones (D-130) | 2 |
+| `configuracion.desactivar_sedes` | configuracion | desactivar_anular | Activar y desactivar sedes (D-130) | 2 |
+| `configuracion.crear_marcas_comerciales` | configuracion | crear | Registrar marcas comerciales (D-130) | 2 |
+| `configuracion.editar_marcas_comerciales` | configuracion | editar | Corregir marcas comerciales (D-130) | 2 |
+| `configuracion.desactivar_marcas_comerciales` | configuracion | desactivar_anular | Activar y desactivar marcas comerciales (D-130) | 2 |
+| `configuracion.gestionar_ubicaciones` | configuracion | gestionar | Quedó en el catálogo; ninguna pantalla lo pide (D-130) | 2 |
+| `configuracion.crear_ubicaciones` | configuracion | crear | Registrar ubicaciones (D-130) | 2 |
+| `configuracion.editar_ubicaciones` | configuracion | editar | Corregir ubicaciones y sus direcciones (D-79, D-90, D-130) | 2 |
+| `configuracion.desactivar_ubicaciones` | configuracion | desactivar_anular | Activar y desactivar ubicaciones (D-130) | 2 |
 | `configuracion.ver_colaboradores` | configuracion | ver | La fila de cada colaborador sin sus datos personales: nombre, puesto, sede, fechas y si tiene cuenta (D-105) | 3 |
 | `configuracion.ver_datos_personales_colaboradores` | configuracion | ver | Documento, teléfono y foto, y la exportación de colaboradores (D-93, D-105) | 3 |
 | `stock.ver` | stock | ver | Inventario y ficha de la unidad: datos, historial de estados, lecturas, documentos, equipos, llaves y cesiones; vencidas; habilitación. Toda la empresa (D-14), sin costos | 5, 9, 10 |
@@ -1013,8 +1046,14 @@ Un rol incluye un permiso a lo sumo una vez mientras está vigente.
 | `seguridad.ver_cuentas` | seguridad | ver | Leer y exportar las cuentas: todas con alcance sistema; con una empresa, las de sus colaboradores (D-122) | 3b |
 | `seguridad.ver_roles` | seguridad | ver | Leer los roles, el catálogo de permisos y la matriz: los del sistema, los generales y los de una empresa donde actúa (D-122) | 3b |
 | `seguridad.dar_acceso` | seguridad | crear | Crear la cuenta de un colaborador o vincularlo a la que ya tiene; solo con alcance sistema (D-58, D-122) | 3b |
-| `seguridad.gestionar_colaboradores` | seguridad | gestionar | Registrar y modificar colaboradores, en la empresa o la sede de la asignación (D-122) | 3b |
-| `seguridad.gestionar_roles` | seguridad | gestionar | Crear, copiar, editar, activar y desactivar roles propios y marcar sus permisos; solo con alcance sistema (D-123, D-124) | 3b |
+| `seguridad.gestionar_colaboradores` | seguridad | gestionar | Quedó en el catálogo; ninguna pantalla lo pide. Sigue en los pares de D-119 (D-130) | 3b |
+| `seguridad.registrar_colaboradores` | seguridad | crear | Registrar colaboradores, en la empresa o la sede de la asignación (D-130) | 3b |
+| `seguridad.modificar_colaboradores` | seguridad | editar | Modificar colaboradores, en el origen y en el destino (D-130) | 3b |
+| `seguridad.gestionar_roles` | seguridad | gestionar | Quedó en el catálogo; ninguna pantalla lo pide (D-130) | 3b |
+| `seguridad.crear_roles` | seguridad | crear | Crear y copiar roles propios; solo con alcance sistema (D-130) | 3b |
+| `seguridad.editar_roles` | seguridad | editar | Renombrar roles propios; solo con alcance sistema (D-130) | 3b |
+| `seguridad.desactivar_roles` | seguridad | desactivar_anular | Activar y desactivar roles propios; solo con alcance sistema (D-130) | 3b |
+| `seguridad.marcar_permisos_de_roles` | seguridad | acciones_especiales | Marcar los permisos de un rol propio; solo con alcance sistema (D-130) | 3b |
 | `seguridad.bloquear_cuentas` | seguridad | desactivar_anular | Bloquear cuentas, levantar o cancelar sus bloqueos y leerlos; solo con alcance sistema (§5.4) | 3b |
 | `seguridad.registrar_salidas_y_regresos` | seguridad | acciones_especiales | Registrar la salida y el regreso de un colaborador, en la empresa o la sede de la asignación (§5.3, D-122) | 3b |
 | `seguridad.asignar_roles` | seguridad | acciones_especiales | Otorgar y retirar roles y leer las asignaciones de una cuenta; solo con alcance sistema (§5.7) | 3b |
@@ -1025,7 +1064,7 @@ Un rol incluye un permiso a lo sumo una vez mientras está vigente.
 
 Las descripciones y las categorías de esta tabla son las que siembran V56 (la categoría de los veinticinco de los pasos 1 a 5) y V57 (los doce de seguridad, con su descripción y su categoría).
 
-En total: catorce de ver, seis de crear, dos de editar, quince de gestionar, cuatro de desactivar o anular y veintiuno de acciones especiales.
+En total: catorce de ver, diecinueve de crear, quince de editar, quince de gestionar, dieciséis de desactivar o anular y veintidós de acciones especiales.
 
 Desde D-117, las cuentas, los accesos, los colaboradores y los roles tienen sus permisos en el catálogo: antes los fijaba un rol (D-95). Esperan otra decisión las correcciones delicadas de un monto de factura y de una fecha ya reportada (convenciones de la API, §14.21), que llevarán un permiso cada una cuando tengan su ruta; el bloque 12 traerá los suyos, entre ellos `clientes.ver_cartera_completa`.
 
@@ -1034,14 +1073,47 @@ Desde D-117, las cuentas, los accesos, los colaboradores y los roles tienen sus 
 | Permiso | SA | AA | AE | OP | CO | AV | TA |
 |---|---|---|---|---|---|---|---|
 | `catalogos.ver` | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| `catalogos.gestionar_generales` | ✔ | | | | | | |
-| `catalogos.gestionar_flota` | ✔ | | | | | | |
-| `catalogos.gestionar_estados` | ✔ | | | | | | |
+| `catalogos.gestionar_generales` | | | | | | | |
+| `catalogos.crear_monedas` | ✔ | | | | | | |
+| `catalogos.editar_monedas` | ✔ | | | | | | |
+| `catalogos.desactivar_monedas` | ✔ | | | | | | |
+| `catalogos.crear_paises` | ✔ | | | | | | |
+| `catalogos.editar_paises` | ✔ | | | | | | |
+| `catalogos.desactivar_paises` | ✔ | | | | | | |
+| `catalogos.gestionar_flota` | | | | | | | |
+| `catalogos.crear_tipos_vehiculo` | ✔ | | | | | | |
+| `catalogos.editar_tipos_vehiculo` | ✔ | | | | | | |
+| `catalogos.desactivar_tipos_vehiculo` | ✔ | | | | | | |
+| `catalogos.crear_marcas_y_modelos` | ✔ | | | | | | |
+| `catalogos.editar_marcas_y_modelos` | ✔ | | | | | | |
+| `catalogos.desactivar_marcas_y_modelos` | ✔ | | | | | | |
+| `catalogos.crear_colores` | ✔ | | | | | | |
+| `catalogos.editar_colores` | ✔ | | | | | | |
+| `catalogos.desactivar_colores` | ✔ | | | | | | |
+| `catalogos.crear_equipamiento` | ✔ | | | | | | |
+| `catalogos.editar_equipamiento` | ✔ | | | | | | |
+| `catalogos.desactivar_equipamiento` | ✔ | | | | | | |
+| `catalogos.gestionar_estados` | | | | | | | |
+| `catalogos.crear_estados` | ✔ | | | | | | |
+| `catalogos.editar_estados` | ✔ | | | | | | |
+| `catalogos.desactivar_estados` | ✔ | | | | | | |
 | `catalogos.corregir_tipo_cambio` | ✔ | | | | | | |
 | `configuracion.ver_estructura` | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| `configuracion.gestionar_empresas` | ✔ | | | | | | |
-| `configuracion.gestionar_sedes_y_marcas` | ✔ | | | | | | |
-| `configuracion.gestionar_ubicaciones` | ✔ | | | | | | |
+| `configuracion.gestionar_empresas` | | | | | | | |
+| `configuracion.crear_empresas` | ✔ | | | | | | |
+| `configuracion.editar_empresas` | ✔ | | | | | | |
+| `configuracion.desactivar_empresas` | ✔ | | | | | | |
+| `configuracion.gestionar_sedes_y_marcas` | | | | | | | |
+| `configuracion.crear_sedes` | ✔ | | | | | | |
+| `configuracion.editar_sedes` | ✔ | | | | | | |
+| `configuracion.desactivar_sedes` | ✔ | | | | | | |
+| `configuracion.crear_marcas_comerciales` | ✔ | | | | | | |
+| `configuracion.editar_marcas_comerciales` | ✔ | | | | | | |
+| `configuracion.desactivar_marcas_comerciales` | ✔ | | | | | | |
+| `configuracion.gestionar_ubicaciones` | | | | | | | |
+| `configuracion.crear_ubicaciones` | ✔ | | | | | | |
+| `configuracion.editar_ubicaciones` | ✔ | | | | | | |
+| `configuracion.desactivar_ubicaciones` | ✔ | | | | | | |
 | `configuracion.ver_colaboradores` | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | `configuracion.ver_datos_personales_colaboradores` | ✔ | ✔ | ✔ | | | | |
 | `stock.ver` | ✔ | | ✔ | ✔ | ✔ | ✔ | ✔ |
@@ -1086,8 +1158,14 @@ Desde D-117, las cuentas, los accesos, los colaboradores y los roles tienen sus 
 | `seguridad.ver_cuentas` | ✔ | ✔ | ✔ | | | | |
 | `seguridad.ver_roles` | ✔ | ✔ | ✔ | | | | |
 | `seguridad.dar_acceso` | ✔ | ✔ | | | | | |
-| `seguridad.gestionar_colaboradores` | ✔ | | ✔ | | | | |
-| `seguridad.gestionar_roles` | ✔ | | | | | | |
+| `seguridad.gestionar_colaboradores` | | | | | | | |
+| `seguridad.registrar_colaboradores` | ✔ | | ✔ | | | | |
+| `seguridad.modificar_colaboradores` | ✔ | | ✔ | | | | |
+| `seguridad.gestionar_roles` | | | | | | | |
+| `seguridad.crear_roles` | ✔ | | | | | | |
+| `seguridad.editar_roles` | ✔ | | | | | | |
+| `seguridad.desactivar_roles` | ✔ | | | | | | |
+| `seguridad.marcar_permisos_de_roles` | ✔ | | | | | | |
 | `seguridad.bloquear_cuentas` | ✔ | ✔ | | | | | |
 | `seguridad.registrar_salidas_y_regresos` | ✔ | | ✔ | | | | |
 | `seguridad.asignar_roles` | ✔ | ✔ | | | | | |
@@ -1099,6 +1177,8 @@ Desde D-117, las cuentas, los accesos, los colaboradores y los roles tienen sus 
 Las doce filas de seguridad suman 22 marcas: once del superadministrador, siete del administrador de accesos y cuatro del administrador de empresa (D-117). Con ellas, las marcas vigentes de los roles del sistema pasan de 76 a 98.
 
 La fila de `bitacora.ver` suma dos marcas, del superadministrador y del administrador de empresa, que se siembran con el paso 6 (V59): las marcas vigentes de los roles del sistema pasan de 98 a 100.
+
+V62 desmarca las ocho acciones gruesas en los roles del sistema (nueve marcas: las ocho del superadministrador y `gestionar_colaboradores` del administrador de empresa) y marca las treinta y nueve partidas, todas en el superadministrador y `registrar_colaboradores` y `modificar_colaboradores` también en el administrador de empresa: 100 − 9 + 41 = 132 marcas vigentes.
 
 Cómo se lee cada rol: el superadministrador tiene todos los permisos salvo `seguridad.asignar_roles_sin_tenerlos`, porque "el acceso total es una excepción explícita evaluada con las mismas reglas" (§2.5) y porque es lo que le permite crear cualquier rol bajo la regla 1 de §5.5; otorga cualquier rol, también uno que incluya el permiso que no tiene, porque los reservados los otorga solo él y la regla 2 se aplica a los demás (D-121). El administrador de accesos lee la estructura de las empresas, sus colaboradores y los catálogos, porque lo necesita para dar acceso y fijar el alcance de un rol, y nada del negocio: "su trabajo es dar acceso, no registrar facturas" (D-56); de seguridad tiene los siete permisos de las cuentas, los accesos y los roles, y la excepción a la regla 2 (D-120). El administrador de empresa hace todo lo operativo de su empresa, incluidas las excepciones controladas, y no escribe empresas, sedes, marcas, ubicaciones ni catálogos, que son del superadministrador (§5.2, D-43, §7); de seguridad, lee las cuentas y los roles y registra a sus colaboradores, sus salidas y sus regresos. Operaciones compra y recibe unidades y las habilita; ve los importes de los documentos que registra, pero no el costo por unidad, y no registra facturas atrasadas. Contabilidad lleva el dinero: facturas, también las atrasadas, notas de crédito, pagos, fondos y los costos; no da de alta unidades ni las mueve. El asesor de ventas ve el stock de toda la empresa (D-14) y, en su sede, vende y registra las lecturas de entrega y devolución. El taller, en su sede, mueve unidades a taller y de vuelta, registra lecturas y sustituciones de odómetro y gestiona equipos y llaves. Quién registra la entrega al cliente (`stock.entregar`) espera al negocio (procesos y pantallas, pregunta 4): hasta entonces, el administrador de la empresa.
 
@@ -1113,17 +1193,17 @@ Contabilidad puede registrar facturas atrasadas y Operaciones no: es la excepci�
 
 La tabla la crea V58, con un identificador interno (`id`) que esta tabla no lista, como no lo listan las demás; el `UNIQUE` es `permission_incompatibilities_pair_uq` y el `CHECK`, `permission_incompatibilities_order_ck`.
 
-Es un catálogo del sistema, como `permissions`: lo carga la migración de `iam` y la aplicación solo lo lee; no lleva `public_id`, columnas de registro ni Row Level Security. Los catorce pares, ✕ = no se juntan:
+Es un catálogo del sistema, como `permissions`: lo carga la migración de `iam` y la aplicación solo lo lee; no lleva `public_id`, columnas de registro ni Row Level Security. Los veintiocho pares (D-119 y D-130), ✕ = no se juntan. Los dos de `gestionar_colaboradores` siguen en la tabla aunque la matriz ya no ofrece ese código:
 
-| Permiso | `seguridad.gestionar_colaboradores` | `seguridad.registrar_salidas_y_regresos` |
-|---|---|---|
-| `seguridad.dar_acceso` | ✕ | ✕ |
-| `seguridad.asignar_roles` | ✕ | ✕ |
-| `seguridad.bloquear_cuentas` | ✕ | ✕ |
-| `seguridad.restablecer_contrasenas` | ✕ | ✕ |
-| `seguridad.confirmar_vinculo` | ✕ | ✕ |
-| `seguridad.desvincular_cuentas` | ✕ | ✕ |
-| `seguridad.asignar_roles_sin_tenerlos` | ✕ | ✕ |
+| Permiso | `seguridad.gestionar_colaboradores` | `seguridad.registrar_salidas_y_regresos` | `seguridad.registrar_colaboradores` | `seguridad.modificar_colaboradores` |
+|---|---|---|---|---|
+| `seguridad.dar_acceso` | ✕ | ✕ | ✕ | ✕ |
+| `seguridad.asignar_roles` | ✕ | ✕ | ✕ | ✕ |
+| `seguridad.bloquear_cuentas` | ✕ | ✕ | ✕ | ✕ |
+| `seguridad.restablecer_contrasenas` | ✕ | ✕ | ✕ | ✕ |
+| `seguridad.confirmar_vinculo` | ✕ | ✕ | ✕ | ✕ |
+| `seguridad.desvincular_cuentas` | ✕ | ✕ | ✕ | ✕ |
+| `seguridad.asignar_roles_sin_tenerlos` | ✕ | ✕ | ✕ | ✕ |
 
 - **En un rol propio**, guardar o copiar uno que junta un par se rechaza (`ROLE_PERMISSIONS_INCOMPATIBLE`).
 - **En una cuenta**, se suman los permisos de todos sus roles vigentes, en todas sus empresas, salvo los de sus asignaciones de `SUPERADMIN`: el superadministrador hace las dos cosas (D-57), y su matriz es la única de un rol vigente que junta pares. Otorgar un rol que dejaría a la cuenta con un par se rechaza (`ROLE_ASSIGNMENT_DUTIES_INCOMPATIBLE`), y también editar un rol de modo que alguno de sus titulares quede con uno (`ROLE_HOLDERS_DUTIES_INCOMPATIBLE`). Así `ADMIN_ACCESOS` y `ADMIN_EMPRESA` siguen sin juntarse, como pedía D-71, y tampoco dos roles propios que los imiten.
@@ -2983,6 +3063,7 @@ Quedan tres decisiones abiertas, cada una con su momento fijado. Las longitudes 
 | D-127 | La sesión se cierra por 2 horas de inactividad, antes 30 minutos (enmienda D-33); el tope de 8 horas desde que se abrió se mantiene. Una jornada con pausas largas en el patio o el taller no pierde el trabajo, y el tope de 8 horas sigue protegiendo la computadora compartida (§5.12; decisión del responsable, 20/10/2026) |
 | D-128 | La versión de los datos de cada tabla que exporta un documento es la suma de sus 64 contadores en `data_versions`, una tabla técnica de `shared`. Los suben dos disparadores por sentencia en cada tabla versionada, uno después de insertar y otro después de actualizar, con su tabla de transición y solo si la sentencia cambió alguna fila; la casilla se sortea una vez por transacción y por tabla, y las sentencias siguientes de esa transacción la reutilizan. El aumento va en la transacción del cambio, así que una transacción que confirma tarde cambia la versión igual. La versión es global por tabla, no del alcance de quien pregunta: un cambio en una empresa cambia la que leen todas; es más conservadora, el documento se reutiliza un poco menos, y es correcta. Reemplaza la lectura de las propias tablas (cuántas filas, `xmin` y `updated_at`, bajo Row Level Security), que costaba de 150 a 200 ms para el Inventario con 100 000 movimientos y 100 000 lecturas, sobre el umbral de 50 ms por exportación; ahora cuesta alrededor de 1,6 ms, con cualquier volumen. Queda un riesgo: dos transacciones que escriben dos tablas en orden opuesto se interbloquean en los contadores cuando cada una sorteó la casilla que tiene la otra, alrededor de una vez en 4 096. Lo mitiga `DeadlockRetry`, que reintenta una sola vez, en una transacción nueva, el servicio de comandos o el proceso programado que perdió un interbloqueo (`40P01`); por eso un servicio de comandos debe poder repetirse entero (§2.7; convenciones de la API, §8.3; decisión del responsable, 20/10/2026) |
 | D-129 | La bitácora de cambios (`change_logs`, §13.1) vive en `shared`, que la escribe y también la sirve: `GET /api/v1/change-logs`, con `bitacora.ver` y su alcance, y la pantalla Seguridad › Bitácora de cambios (`/change-log`). Resuelve sus referencias a otros contextos por dos puertos de `shared` que implementa cada dueño, como `ProtectedAccounts` (D-121): `AuditActorLookupPort`, que implementa `iam`, devuelve de cada cuenta de `changed_by` su identificador público y su nombre —el de su colaborador, que `iam` lee por la fachada de `organization` (`organization::acl`), nunca por SQL sobre `employees`; `SYSTEM` para la cuenta de los procesos automáticos; ninguno para una cuenta sin colaborador—; y `AuditCompanyLookupPort`, que implementa `organization`, traduce la empresa de cada fila entre su identificador público y el interno. Los dos leen con el alcance de quien consulta. `shared` no lee tablas de otro contexto (regla 1.2) ni depende de su código. Enmienda la decisión pendiente 6 del mapa de contextos solo para la bitácora: deja la opción A (la capa de lectura) para `import_batches`, y la B sigue para `fleet` y `procurement`. La decisión pendiente 3 queda para `/imports` y `/reports` (§13.1; mapa de contextos §11) |
+| D-130 | Las ocho acciones `gestionar_*` de las pantallas ya construidas se parten en crear, editar y desactivar (y, en roles, marcar permisos). Enmienda D-118 solo para esos ocho: `catalogos.gestionar_generales`, `catalogos.gestionar_flota`, `catalogos.gestionar_estados`, `configuracion.gestionar_empresas`, `configuracion.gestionar_sedes_y_marcas`, `configuracion.gestionar_ubicaciones`, `seguridad.gestionar_colaboradores` y `seguridad.gestionar_roles`. Los treinta y nueve códigos nuevos los siembra V62. Los ocho gruesos siguen en `permissions`, para no reescribir la historia de `role_permissions`, y ninguna ruta los pide; `GET /permissions` y `GET /permission-matrix` no los ofrecen. La semilla desmarca esos ocho en los roles del sistema y marca los treinta y nueve en el superadministrador; el administrador de empresa recibe `registrar_colaboradores` y `modificar_colaboradores` en lugar de `gestionar_colaboradores`. Un rol propio que todavía tenga un código grueso no se reescribe: se vuelve a marcar a mano. Crear, copiar, renombrar, activar o desactivar y marcar permisos de un rol son cuatro permisos de alcance sistema (`crear_roles`, `editar_roles`, `desactivar_roles`, `marcar_permisos_de_roles`), que reemplazan a `gestionar_roles` en D-122 y D-123. `registrar_colaboradores` y `modificar_colaboradores` entran en los mismos pares que `gestionar_colaboradores` (D-119): veintiocho pares. Una pantalla que todavía no existe no tiene casilla hasta el paso que la construye, y entonces nace ya partida. Exportar sigue pidiendo el permiso de lectura. Los escalones de un país no se desactivan (D-45): declararlos y corregirlos es `editar_paises`; activar o desactivar una división o un documento tributario es `desactivar_paises` (§5.6) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |

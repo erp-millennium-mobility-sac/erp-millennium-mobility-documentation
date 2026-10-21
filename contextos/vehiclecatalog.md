@@ -8,7 +8,7 @@
 
 ## 1. Qué es y qué no es
 
-`vehiclecatalog` responde con qué se describe una unidad: de qué tipo es, de qué marca y de qué modelo, de qué color, y qué equipamiento se le instala. Sus catálogos son del sistema, no de cada empresa (D-15): un Chevrolet Sail es el mismo en Perú y en Colombia, así que sus tablas no llevan `company_id` ni Row Level Security. Los escribe solo el superadministrador, con `catalogos.gestionar_flota`, y los leen los siete roles del sistema, con `catalogos.ver` (§5.6). Es el paso 4 del orden de implementación. No llama a ningún contexto; `fleet` lo usa por su fachada.
+`vehiclecatalog` responde con qué se describe una unidad: de qué tipo es, de qué marca y de qué modelo, de qué color, y qué equipamiento se le instala. Sus catálogos son del sistema, no de cada empresa (D-15): un Chevrolet Sail es el mismo en Perú y en Colombia, así que sus tablas no llevan `company_id` ni Row Level Security. Los escribe solo el superadministrador, con crear, editar o desactivar de esa familia (D-130), y los leen los siete roles del sistema, con `catalogos.ver` (§5.6). Es el paso 4 del orden de implementación. No llama a ningún contexto; `fleet` lo usa por su fachada.
 
 **Las seis tablas que posee** (diccionario §7, migración V35, más `has_units` en V49)
 
@@ -107,7 +107,7 @@ Nada de `vehiclecatalog` se borra: ni los tipos, ni las marcas, ni los modelos, 
 
 ## 3. Flujos funcionales
 
-En cada flujo, "el sistema revisa" es lo que el backend comprueba. Toda ruta exige un permiso: las lecturas, `catalogos.ver`; las escrituras, `catalogos.gestionar_flota` (§5.6). Sin sesión responde `401`, y con un rol que no trae el permiso, `403 ACCESS_DENIED`.
+En cada flujo, "el sistema revisa" es lo que el backend comprueba. Toda ruta exige un permiso: las lecturas, `catalogos.ver`; las escrituras, crear, editar o desactivar de esa familia (D-130). Sin sesión responde `401`, y con un rol que no trae el permiso, `403 ACCESS_DENIED`.
 
 Las pantallas son cinco, en el grupo Catálogos del menú: Tipos de vehículo (`/vehicle-catalog/vehicle-types`), Marcas y modelos (`/vehicle-catalog/brands-and-models`) con la ficha de cada marca (`/vehicle-catalog/brands-and-models/{id}`), Colores (`/vehicle-catalog/colors`) y Equipamiento (`/vehicle-catalog/equipment-types`). Las abre solo el superadministrador. Los demás roles no las ven: leen los catálogos desde los selectores de las pantallas que los usan, como el alta de una unidad en Inventario.
 
@@ -214,7 +214,7 @@ Capas y marcas según el [README de esta carpeta](README.md). En la columna **D�
 | ID | Regla | Fuente | Dónde se aplica | Prueba | Estado |
 |---|---|---|---|---|---|
 | VCT-R01 | Los catálogos de flota son del sistema: no llevan empresa ni Row Level Security | §7, D-15 | Base: V35, sin `company_id` | `VehicleCatalogMigrationTests.theCatalogsAreGeneralAndCarryNoCompany` | ✅ |
-| VCT-R02 | Los lee quien tiene `catalogos.ver` (los siete roles) y los escribe quien tiene `catalogos.gestionar_flota` (en la semilla, solo el superadministrador); el permiso de los catálogos generales no escribe estos | §5.6, D-95 | Servicio: `@PermissionRequired` en los cinco controladores (`a39e111`). Frontend: las rutas las abre solo `SUPERADMIN` | `VehicleCatalogPermissionIntegrationTests` (sus cuatro casos); `*ControllerTests.onlySuperAdministratorsWrite` y `withoutSession…NotReadable` | ✅ |
+| VCT-R02 | Los lee quien tiene `catalogos.ver` (los siete roles) y los escribe quien tiene crear, editar o desactivar de esa familia (en la semilla, solo el superadministrador, D-130); el permiso de los catálogos generales no escribe estos | §5.6, D-95 | Servicio: `@PermissionRequired` en los cinco controladores (`a39e111`). Frontend: las rutas las abre solo `SUPERADMIN` | `VehicleCatalogPermissionIntegrationTests` (sus cuatro casos); `*ControllerTests.onlySuperAdministratorsWrite` y `withoutSession…NotReadable` | ✅ |
 | VCT-R03 | Nada se borra: un registro se desactiva y se reactiva, y una aplicabilidad también | §2.5, D-73 | Base: la cuenta de la aplicación no tiene `DELETE` (V35). Servicio: sin rutas `DELETE` | `*AuditTests.deactivatingKeepsTheRowAndTheCreationMoment`; `EquipmentTypeApplicabilityConstraintTests.theApplicationCannotDeleteIt`; `VehicleTypesControllerTests.typesCannotBeDeleted`; `*ControllerTests.a…IsDeactivatedAndActivatedAgainButNeverDeleted` | ✅ |
 | VCT-R04 | Registran cuándo se crearon y cambiaron, sin autor | D-42, D-73 | Base: `created_at` y `updated_at`. Persistencia: la edición guarda sobre la misma fila | `ColorAuditTests`, `VehicleBrandAuditTests`, `VehicleModelAuditTests`, `VehicleTypeAuditTests`, `EquipmentTypeAuditTests` (también `changingOnlyTheVehicleTypesItAppliesToMovesTheModificationMoment`) | ✅ |
 | VCT-R05 | Los códigos y los nombres de tipos, marcas, modelos y colores se guardan recortados y en mayúsculas, y la unicidad se mide sobre lo guardado | §2.2 | Dominio: `normalizeCode` y `normalizeName` de cada agregado. Base: los `*_uq` de V35. Frontend: los diálogos muestran el valor en mayúsculas | `ColorCommandServiceImplTests.aNameThatExistsOnceNormalizedIsAConflict`; `VehicleBrandCommandServiceImplTests.aNameThatExistsOnceNormalizedIsAConflict`; `VehicleTypeCommandServiceImplTests.aCodeThatExistsOnceNormalizedIsAConflict`; `color-form-dialog.spec` ("normalizes color name to uppercase…") | ✅ |
