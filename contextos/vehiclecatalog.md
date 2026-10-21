@@ -309,7 +309,7 @@ Los hallazgos son del plan de la auditoría del 20/10/2026 (B1 a B17). Están co
 | Las pantallas se abren por el rol `SUPERADMIN` (`RouteAccess` por roles), no por `catalogos.gestionar_flota`: un rol propio con ese permiso (D-98) no ve las opciones, aunque la API le responda | Seguimiento del frontend, para toda pantalla que exige un permiso (procesos, apartado 3.1) |
 | El código de un equipamiento que una instalación usa queda fijo (D-74), y si una unidad requiere pantalla lo responde la fachada | Paso 9, con `vehicle_equipments` |
 | `q` todavía distingue tildes (convenciones §6.2) | Antes del paso 7 |
-| La sonda contra el backend real (`e2e-live`) | El responsable crea `erp_mm_db_live`; criterio de cierre del paso |
+| La sonda contra el backend real (`e2e-live`) | Corre sobre `erp_mm_db_verify` desde el 18/10/2026 mientras no exista `erp_mm_db_live`; la de exportar Colores ya pasa en `security.live.spec.ts` |
 
 ### d) Diferencias con las convenciones de la API
 
