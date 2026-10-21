@@ -16,7 +16,7 @@ El orden lo fijan las dependencias entre tablas: nada se construye antes de lo q
 | 3b   | 2 · La matriz de permisos                             | `iam`, `shared`       | 3                                | Integrado en `develop` el 19/10/2026; la segunda ronda de la auditoría, construida e integrada en `develop` el 20/10/2026 |
 | 4    | 4 · Catálogos de flota                                | `vehiclecatalog`      | 3                                | En curso                 |
 | 5    | 6 · Vehículo y estados                                | `fleet`               | 4                                | Cerrado e integrado en `develop` el 20/10/2026, salvo la sonda |
-| 6    | 11 · Bitácora de cambios                              | `shared`              | 6                                | Pendiente                |
+| 6    | 11 · Bitácora de cambios                              | `shared`              | 6                                | Construido e integrado en `develop` el 21/10/2026 |
 | 7    | 7 · Compras, que incluye el 5                         | `procurement`         | 6                                | Pendiente                |
 | 8    | 8 · Pagos                                             | `procurement`         | 7                                | Pendiente                |
 | 9    | 9 · Habilitación                                      | `fleet`, `shared`     | 6                                | Pendiente                |
@@ -189,10 +189,13 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 
 
-### Paso 6 · Bitácora de cambios
+### Paso 6 · Bitácora de cambios — construido e integrado
 
-- **Tabla:** `change_log`.
-- **Pantalla:** Seguridad › Bitácora de cambios; cada empresa ve la suya.
+- **Tabla:** `change_logs` (diccionario §13.1, v1.26), con las migraciones V59 a V61: la tabla, el permiso `bitacora.ver` del superadministrador y del administrador de empresa (98 → 100 marcas), `entity_public_id` obligatorio y la marca del registro (D-102).
+- **Pantalla:** Seguridad › Bitácora de cambios (`/change-log`); cada empresa ve la suya, y una asignación acotada a una marca, las filas de esa marca y las que no son de ninguna. La ficha de la unidad enlaza a su bitácora («Ver bitácora de la unidad», `allowedActions.viewChangeLog`).
+- **Dónde vive:** `shared` la escribe y la sirve, con quién hizo cada cambio por `iam` y su empresa por `organization`, cada uno por su puerto (D-129).
+- **Lo primero que registra:** la corrección de la placa —solo de una ya registrada— y la del VIN, cada una con su motivo obligatorio y su permiso (`stock.corregir_placa`, `stock.corregir_vin`).
+- **Cómo llegó:** lo construyó el compañero en `feat/vehiclecatalog`, y se integró el 21/10/2026 sobre el modelo de permisos de la segunda ronda (merges `d7e134df` del backend y `e71bcae` del frontend), con dos revisiones adversariales; `feat/vehiclecatalog` quedó adelantada a `develop`.
 - **Por qué va aquí y no al final:** depende solo del vehículo, y desde el paso 5 ya hay cambios delicados —corregir una placa, un VIN o el monto de una factura— que tienen que quedar registrados.
 
 

@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.25 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 51 tablas más `role_permissions`, la tabla de unión de roles y permisos, y las tablas técnicas de §2.7
+**Versión:** 1.26 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 51 tablas más `role_permissions`, la tabla de unión de roles y permisos, y las tablas técnicas de §2.7
 
 > **Cómo leer los cuadros.** En cada tabla, las columnas *Descripción* y *Por qué importa* están escritas para que las entienda cualquier persona, sin conocimientos técnicos: sirven para que quien conoce el negocio pueda revisar si el dato es el correcto. Las columnas *Tipo* y *Nulo*, las restricciones y el código SQL son para el equipo de desarrollo.
 
@@ -243,7 +243,7 @@ El código se construye en este orden. Respeta las dependencias del cuadro anter
 | 3b | 2 · La matriz de permisos | `iam`, `shared` | `permissions`, `role_permissions`, `roles.company_id` e `is_active`; la pantalla Seguridad › Roles y permisos; las operaciones y las lecturas de los pasos 1 a 4 exigen un permiso. Con la segunda ronda de la auditoría, Seguridad por permisos, `permissions.category`, `permission_incompatibilities`, la copia de un rol y la pestaña Matriz de permisos (D-117 a D-124, D-126) | La matriz de permisos por rol (§5.6, fijada el 19/10/2026 y extendida a Seguridad el 20/10/2026) | Construido el 19/10/2026 e integrado; la segunda ronda, construida e integrada en `develop` el 20/10/2026 |
 | 4 | 4 · Catálogos de flota | `vehiclecatalog` | Tipos de vehículo, marcas y modelos, colores, equipamiento y a qué tipos aplica | Modelos reales, conciliados entre los dos catálogos que advierte §7.3 | Construido, salvo los datos: faltan los modelos reales conciliados (§7.3) |
 | 5 | 6 · Vehículo y estados | `fleet` | Estados, caminos y motivos, vehículos, historial de estados, kilometraje | — | Pendiente |
-| 6 | 11 · Bitácora de cambios | `shared` | `change_log` | — | Pendiente |
+| 6 | 11 · Bitácora de cambios | `shared` | `change_logs` | — | Construido e integrado en `develop` el 21/10/2026 (V59 a V61, D-129) |
 | 7 | 7 · Compras, que incluye el 5 | `procurement` | Proveedores, tipos y plantillas de orden, órdenes, facturas y notas de crédito | Proveedores | Pendiente |
 | 8 | 8 · Pagos | `procurement` | Pagos, a qué se aplican y qué unidades cubren, saldo a favor | — | Pendiente |
 | 9 | 9 · Habilitación | `fleet`, `shared` | Documentos y sus tipos, equipamiento instalado, llaves, impuesto vehicular, cargas de archivos | — | Pendiente |
@@ -1097,6 +1097,8 @@ Desde D-117, las cuentas, los accesos, los colaboradores y los roles tienen sus 
 | `seguridad.asignar_roles_sin_tenerlos` | | ✔ | | | | | |
 
 Las doce filas de seguridad suman 22 marcas: once del superadministrador, siete del administrador de accesos y cuatro del administrador de empresa (D-117). Con ellas, las marcas vigentes de los roles del sistema pasan de 76 a 98.
+
+La fila de `bitacora.ver` suma dos marcas, del superadministrador y del administrador de empresa, que se siembran con el paso 6 (V59): las marcas vigentes de los roles del sistema pasan de 98 a 100.
 
 Cómo se lee cada rol: el superadministrador tiene todos los permisos salvo `seguridad.asignar_roles_sin_tenerlos`, porque "el acceso total es una excepción explícita evaluada con las mismas reglas" (§2.5) y porque es lo que le permite crear cualquier rol bajo la regla 1 de §5.5; otorga cualquier rol, también uno que incluya el permiso que no tiene, porque los reservados los otorga solo él y la regla 2 se aplica a los demás (D-121). El administrador de accesos lee la estructura de las empresas, sus colaboradores y los catálogos, porque lo necesita para dar acceso y fijar el alcance de un rol, y nada del negocio: "su trabajo es dar acceso, no registrar facturas" (D-56); de seguridad tiene los siete permisos de las cuentas, los accesos y los roles, y la excepción a la regla 2 (D-120). El administrador de empresa hace todo lo operativo de su empresa, incluidas las excepciones controladas, y no escribe empresas, sedes, marcas, ubicaciones ni catálogos, que son del superadministrador (§5.2, D-43, §7); de seguridad, lee las cuentas y los roles y registra a sus colaboradores, sus salidas y sus regresos. Operaciones compra y recibe unidades y las habilita; ve los importes de los documentos que registra, pero no el costo por unidad, y no registra facturas atrasadas. Contabilidad lleva el dinero: facturas, también las atrasadas, notas de crédito, pagos, fondos y los costos; no da de alta unidades ni las mueve. El asesor de ventas ve el stock de toda la empresa (D-14) y, en su sede, vende y registra las lecturas de entrega y devolución. El taller, en su sede, mueve unidades a taller y de vuelta, registra lecturas y sustituciones de odómetro y gestiona equipos y llaves. Quién registra la entrega al cliente (`stock.entregar`) espera al negocio (procesos y pantallas, pregunta 4): hasta entonces, el administrador de la empresa.
 
@@ -2800,13 +2802,18 @@ Las tablas de historial que ya existen —estados del vehículo, cesiones a fond
 
 Esta tabla cubre eso. Son dos auditorías distintas y ninguna reemplaza a la otra.
 
-### 13.1 `change_log` — Registro de modificaciones
+### 13.1 `change_logs` — Registro de modificaciones
+
+La tabla se llama `change_logs`, en plural, como la nombra la estrategia de nombres del backend para toda tabla de un agregado (`vehicles`, `permissions`, `role_permissions`). Hasta la v1.25 el diccionario la escribía `change_log`.
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
+| `public_id` | UUID | No | Identificador público de la fila | Es el que sale por la API (regla 5.6); el `id` interno no sale del servidor |
 | `entity` | VARCHAR(50) | No | Qué tabla se modificó | — |
-| `entity_id` | BIGINT | No | Qué registro | No es una llave foránea: la tabla apunta a cualquier entidad, y una llave a todas sería imposible de declarar |
+| `entity_id` | BIGINT | No | Qué registro | No es una llave foránea: la tabla apunta a cualquier entidad, y una llave a todas sería imposible de declarar. No sale por la API |
+| `entity_public_id` | UUID | No | El identificador público del registro modificado | Es por el que la API filtra la bitácora: la ficha de una unidad enlaza a su historia con `entity=vehicles&entityPublicId=…`. Como `entity_id` es interno y no sale del servidor, sin esta columna la bitácora de un registro no se podría pedir. Todo el que escribe en la bitácora la llena |
 | `company_id` | BIGINT FK → `companies` | Sí | A qué empresa pertenece el registro modificado | Permite que cada empresa vea solo su propia bitácora. Vacío para cambios sobre catálogos generales |
+| `commercial_brand_id` | BIGINT FK → `commercial_brands` | Sí | La marca del registro modificado, cuando pertenece a una | D-102: la marca de una asignación acota también la bitácora; vacía para lo que no es de una marca. Es de la misma empresa de la fila (llave compuesta sobre `commercial_brands (id, company_id)`), y una marca sin empresa no se admite |
 | `field_name` | VARCHAR(60) | No | Qué campo cambió | Un cambio que toca tres campos deja tres filas: así se puede buscar quién tocó una placa sin leer el resto |
 | `old_value` | TEXT | Sí | Valor anterior | Vacío cuando el campo estaba sin llenar |
 | `new_value` | TEXT | Sí | Valor nuevo | Vacío cuando se borró el contenido |
@@ -2835,6 +2842,10 @@ La primera fila es el caso que más importa: la placa es la llave con que se cru
 - Los cambios marcados como delicados exigen motivo: corregir un VIN, una placa, el monto de una factura o una fecha ya reportada.
 - No guarda contraseñas ni el segundo factor, aunque cambien.
 - Cada empresa ve solo la bitácora de sus propios registros.
+- Qué cambio es delicado lo dice el contexto que lo hace, que es dueño de esa regla —la flota marca la corrección de una placa o de un VIN; compras, la del monto de una factura—, no la bitácora: la bitácora solo exige el motivo de un cambio marcado.
+- Una fila sin empresa, un cambio sobre un catálogo general, la ve solo quien tiene `bitacora.ver` con alcance sobre todas las empresas. Quien lo tiene en algunas empresas ve solo las filas de esas empresas (D-99).
+- Quien tiene `bitacora.ver` en una empresa acotado a una marca ve las filas de esa marca y las que no son de ninguna (D-102). La marca es la del registro cuando se hizo el cambio.
+- La bitácora se filtra por un período `[desde, hasta)`, con el fin excluido, como todo período (§2.6).
 
 **Qué no cubre.** Las altas y las bajas no dejan filas aquí: una fila nueva ya registra quién la creó, y nada se borra en este sistema. La bitácora es para las modificaciones.
 
@@ -2852,7 +2863,7 @@ La primera fila es el caso que más importa: la placa es la llave con que se cru
 
 | Campo | Tabla | Qué lo admitiría |
 |---|---|---|
-| `ip_address` y dispositivo | `change_log` | Que se exija trazabilidad de seguridad y no solo de negocio |
+| `ip_address` y dispositivo | `change_logs` | Que se exija trazabilidad de seguridad y no solo de negocio |
 | Registro de consultas | — | Que haya que auditar quién vio datos sensibles, no solo quién los cambió |
 
 
@@ -2971,6 +2982,7 @@ Quedan tres decisiones abiertas, cada una con su momento fijado. Las longitudes 
 | D-126 | `GET /api/v1/permission-matrix` es la cuarta lista corta sin página: los permisos con su módulo y su categoría, los pares incompatibles y los roles que la sesión lee, cada uno con lo que incluye, para la pestaña Matriz de permisos de Seguridad › Roles y permisos. Es además la única tabla del frontend fuera de `mm-data-manager`: módulos por roles, con su propio contenedor fijo, como lo registra DESIGN.md en su revisión 24 (convenciones de la API, §6.2; procesos y pantallas, apartado 3.2) |
 | D-127 | La sesión se cierra por 2 horas de inactividad, antes 30 minutos (enmienda D-33); el tope de 8 horas desde que se abrió se mantiene. Una jornada con pausas largas en el patio o el taller no pierde el trabajo, y el tope de 8 horas sigue protegiendo la computadora compartida (§5.12; decisión del responsable, 20/10/2026) |
 | D-128 | La versión de los datos de cada tabla que exporta un documento es la suma de sus 64 contadores en `data_versions`, una tabla técnica de `shared`. Los suben dos disparadores por sentencia en cada tabla versionada, uno después de insertar y otro después de actualizar, con su tabla de transición y solo si la sentencia cambió alguna fila; la casilla se sortea una vez por transacción y por tabla, y las sentencias siguientes de esa transacción la reutilizan. El aumento va en la transacción del cambio, así que una transacción que confirma tarde cambia la versión igual. La versión es global por tabla, no del alcance de quien pregunta: un cambio en una empresa cambia la que leen todas; es más conservadora, el documento se reutiliza un poco menos, y es correcta. Reemplaza la lectura de las propias tablas (cuántas filas, `xmin` y `updated_at`, bajo Row Level Security), que costaba de 150 a 200 ms para el Inventario con 100 000 movimientos y 100 000 lecturas, sobre el umbral de 50 ms por exportación; ahora cuesta alrededor de 1,6 ms, con cualquier volumen. Queda un riesgo: dos transacciones que escriben dos tablas en orden opuesto se interbloquean en los contadores cuando cada una sorteó la casilla que tiene la otra, alrededor de una vez en 4 096. Lo mitiga `DeadlockRetry`, que reintenta una sola vez, en una transacción nueva, el servicio de comandos o el proceso programado que perdió un interbloqueo (`40P01`); por eso un servicio de comandos debe poder repetirse entero (§2.7; convenciones de la API, §8.3; decisión del responsable, 20/10/2026) |
+| D-129 | La bitácora de cambios (`change_logs`, §13.1) vive en `shared`, que la escribe y también la sirve: `GET /api/v1/change-logs`, con `bitacora.ver` y su alcance, y la pantalla Seguridad › Bitácora de cambios (`/change-log`). Resuelve sus referencias a otros contextos por dos puertos de `shared` que implementa cada dueño, como `ProtectedAccounts` (D-121): `AuditActorLookupPort`, que implementa `iam`, devuelve de cada cuenta de `changed_by` su identificador público y su nombre —el de su colaborador, que `iam` lee por la fachada de `organization` (`organization::acl`), nunca por SQL sobre `employees`; `SYSTEM` para la cuenta de los procesos automáticos; ninguno para una cuenta sin colaborador—; y `AuditCompanyLookupPort`, que implementa `organization`, traduce la empresa de cada fila entre su identificador público y el interno. Los dos leen con el alcance de quien consulta. `shared` no lee tablas de otro contexto (regla 1.2) ni depende de su código. Enmienda la decisión pendiente 6 del mapa de contextos solo para la bitácora: deja la opción A (la capa de lectura) para `import_batches`, y la B sigue para `fleet` y `procurement`. La decisión pendiente 3 queda para `/imports` y `/reports` (§13.1; mapa de contextos §11) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
 | D-26 | Un contrato no puede quedarse sin asesora: al retirar a alguien se exige el reemplazo en la misma operación |
