@@ -1021,7 +1021,10 @@ Un rol incluye un permiso a lo sumo una vez mientras está vigente.
 | `stock.anular_vehiculo` | stock | desactivar_anular | Anular una unidad por acción explícita, con el candado de §9.6 (D-104) | 7 |
 | `stock.cargar_migracion_inicial` | stock | acciones_especiales | La carga del Excel que da de alta unidades (D-18) | 5 |
 | `compras.ver` | compras | ver | Proveedores, órdenes, facturas y notas de crédito, con sus importes | 7 |
-| `compras.gestionar_proveedores` | compras | gestionar | Crear y editar proveedores, con su dirección y su estado (§9.1) | 7 |
+| `compras.gestionar_proveedores` | compras | gestionar | Quedó en el catálogo. La pantalla usa los tres de abajo (V64) | 7 |
+| `compras.crear_proveedores` | compras | crear | Registrar el proveedor, su domicilio y sus contactos (§9.1, §9.1.1) | 7 |
+| `compras.editar_proveedores` | compras | editar | Corregir o mudar el domicilio y mantener los contactos, en la misma ficha (§9.1, §9.1.1) | 7 |
+| `compras.desactivar_proveedores` | compras | desactivar_anular | Activar o desactivar al proveedor (§9.1) | 7 |
 | `compras.gestionar_plantillas` | compras | gestionar | Plantillas de orden de compra y sus tipos (D-35) | 7 |
 | `compras.gestionar_ordenes` | compras | gestionar | Crear, editar el borrador, enviar, cerrar a mano y anular órdenes (§9.2) | 7 |
 | `compras.registrar_factura` | compras | crear | Registrar una factura de compra con sus líneas | 7 |
@@ -1064,7 +1067,7 @@ Un rol incluye un permiso a lo sumo una vez mientras está vigente.
 
 Las descripciones y las categorías de esta tabla son las que siembran V56 (la categoría de los veinticinco de los pasos 1 a 5) y V57 (los doce de seguridad, con su descripción y su categoría).
 
-En total: catorce de ver, diecinueve de crear, quince de editar, quince de gestionar, dieciséis de desactivar o anular y veintidós de acciones especiales.
+En total: catorce de ver, veinte de crear, dieciséis de editar, quince de gestionar, diecisiete de desactivar o anular y veintidós de acciones especiales.
 
 Desde D-117, las cuentas, los accesos, los colaboradores y los roles tienen sus permisos en el catálogo: antes los fijaba un rol (D-95). Esperan otra decisión las correcciones delicadas de un monto de factura y de una fecha ya reportada (convenciones de la API, §14.21), que llevarán un permiso cada una cuando tengan su ruta; el bloque 12 traerá los suyos, entre ellos `clientes.ver_cartera_completa`.
 
@@ -1133,7 +1136,10 @@ Desde D-117, las cuentas, los accesos, los colaboradores y los roles tienen sus 
 | `stock.anular_vehiculo` | ✔ | | ✔ | | | | |
 | `stock.cargar_migracion_inicial` | ✔ | | ✔ | | | | |
 | `compras.ver` | ✔ | | ✔ | ✔ | ✔ | | |
-| `compras.gestionar_proveedores` | ✔ | | ✔ | ✔ | | | |
+| `compras.gestionar_proveedores` | | | | | | | |
+| `compras.crear_proveedores` | ✔ | | ✔ | ✔ | | | |
+| `compras.editar_proveedores` | ✔ | | ✔ | ✔ | | | |
+| `compras.desactivar_proveedores` | ✔ | | ✔ | ✔ | | | |
 | `compras.gestionar_plantillas` | ✔ | | ✔ | | | | |
 | `compras.gestionar_ordenes` | ✔ | | ✔ | ✔ | | | |
 | `compras.registrar_factura` | ✔ | | ✔ | ✔ | ✔ | | |
@@ -2097,7 +2103,7 @@ Tres reglas del negocio que el modelo tiene que poder expresar y hoy no:
 | `is_active` | BOOLEAN | No | Si se le sigue comprando | Permite retirarlo sin tocar las facturas antiguas |
 | `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y modificación | — |
 
-**Relaciones.** Apunta a `companies`, `tax_id_types` y `addresses`. Le apuntan las órdenes de compra, las facturas y las notas de crédito.
+**Relaciones.** Apunta a `companies`, `tax_id_types` y `addresses`. Le apuntan `supplier_contacts`, las órdenes de compra, las facturas y las notas de crédito.
 
 **Ejemplo**
 
@@ -2111,6 +2117,39 @@ Tres reglas del negocio que el modelo tiene que poder expresar y hoy no:
 - El documento tributario no se repite dentro de la misma empresa.
 - Un proveedor nuevo se crea antes de poder registrarle una compra. No se crea al vuelo durante una carga.
 - No confundir con la marca del vehículo: Crossland vende motos Bajaj. El proveedor es a quién se le compra; la marca, qué se compró.
+- El domicilio se corrige en su fila o se muda a una fila nueva; la anterior se conserva. El documento tributario no se corrige en esta entrega.
+
+### 9.1.1 `supplier_contacts` — Contactos del proveedor
+
+La persona a la que la empresa llama o escribe. Un proveedor tiene varias, o ninguna. No son los textos de atención y soporte de la plantilla de orden de compra: esos son de la empresa que compra, y hay uno de cada uno por plantilla.
+
+| Variable | Tipo | Nulo | Descripción | Por qué importa |
+|---|---|---|---|---|
+| `supplier_id` | BIGINT FK → `suppliers` | No | A qué proveedor pertenece | No cambia de proveedor |
+| `company_id` | BIGINT FK → `companies` | No | La empresa del proveedor, copiada | Junto con `supplier_id` apunta a `suppliers (id, company_id)`, para que no pueda decir otra empresa |
+| `name` | VARCHAR(150) | No | La persona | Sin esto no hay a quién llamar |
+| `position` | VARCHAR(80) | Sí | El puesto | Puede faltar |
+| `phone` | VARCHAR(30) | Sí | Teléfono | Hace falta este o el correo |
+| `email` | VARCHAR(255) | Sí | Correo, en minúsculas y sin espacios | Hace falta este o el teléfono |
+| `is_active` | BOOLEAN | No | Si sigue siendo contacto | Retirarlo no borra la fila |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y modificación | — |
+
+**Relaciones.** Apunta a `suppliers` por la pareja `(supplier_id, company_id)`.
+
+**Ejemplo**
+
+| supplier | name | position | phone | email | is_active |
+|---|---|---|---|---|---|
+| Crosland | Ana Ruiz | Ventas | 999111222 | — | sí |
+| Crosland | Mesa de facturación | Facturación | — | facturas@crosland.example | sí |
+| Crosland | Pedro Solís | — | 999000111 | — | no |
+
+**Reglas de negocio**
+
+- Varios por proveedor, incluidos cero.
+- Hace falta teléfono o correo.
+- No se borran: quien ya no es contacto queda inactivo.
+- No son los textos de atención y soporte de la plantilla (§9.2).
 
 ### 9.2 `purchase_orders` — Órdenes de compra
 
