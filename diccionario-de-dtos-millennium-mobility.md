@@ -2117,7 +2117,7 @@ Tres reglas del negocio que el modelo tiene que poder expresar y hoy no:
 - El documento tributario no se repite dentro de la misma empresa.
 - Un proveedor nuevo se crea antes de poder registrarle una compra. No se crea al vuelo durante una carga.
 - No confundir con la marca del vehículo: Crossland vende motos Bajaj. El proveedor es a quién se le compra; la marca, qué se compró.
-- El domicilio se corrige en su fila o se muda a una fila nueva; la anterior se conserva. El documento tributario no se corrige en esta entrega.
+- El domicilio puede faltar al registrarlo y se agrega después. Si ya está, se corrige en su fila o se muda a una fila nueva; la anterior se conserva. El documento tributario no se corrige en esta entrega.
 
 ### 9.1.1 `supplier_contacts` — Contactos del proveedor
 
