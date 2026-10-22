@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.26 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. 51 tablas más `role_permissions`, la tabla de unión de roles y permisos, y las tablas técnicas de §2.7
+**Versión:** 1.27 · **Motor:** PostgreSQL 18 · **Estado:** módulo de stock completo. Bloques 1 a 11 cerrados; ventas y contratos fuera del alcance actual. Plantillas y órdenes de compra con D-132. 51 tablas más `role_permissions`, la tabla de unión de roles y permisos, y las tablas técnicas de §2.7
 
 > **Cómo leer los cuadros.** En cada tabla, las columnas *Descripción* y *Por qué importa* están escritas para que las entienda cualquier persona, sin conocimientos técnicos: sirven para que quien conoce el negocio pueda revisar si el dato es el correcto. Las columnas *Tipo* y *Nulo*, las restricciones y el código SQL son para el equipo de desarrollo.
 
@@ -2161,7 +2161,9 @@ Cada orden se emite con una **plantilla**, que decide lo que se imprime —quié
 |---|---|---|---|---|
 | `company_id` | BIGINT FK → `companies` | No | Empresa que compra | Es la empresa dueña de la plantilla con que se emite |
 | `supplier_id` | BIGINT FK → `suppliers` | No | A quién se le pide | — |
+| `supplier_contact_id` | BIGINT FK → `supplier_contacts` | Sí | Persona del recuadro Proveedor | Opcional. Tiene que ser un contacto activo de ese proveedor (D-132) |
 | `purchase_order_template_id` | BIGINT FK → `purchase_order_templates` | No | Con qué plantilla se emite | De ella salen los datos que se imprimen y la serie de numeración |
+| `has_discount_column` | BOOLEAN | No | Si esta orden incluye la columna de porcentaje de descuento | Se decide al crear o editar el borrador; no vive en la plantilla (D-132) |
 | `series` | VARCHAR(20) | No | Serie de la plantilla al crear la orden: `OC-LBT` | Se copia y no se vuelve a leer de la plantilla: si la serie se corrigiera, las órdenes ya numeradas no cambiarían de número |
 | `sequence_year` | SMALLINT | No | Año del número: el de la fecha de creación, en la hora local del país de la empresa | Se fija al asignar el número y no se recalcula. Un borrador creado el 30 de diciembre y enviado en enero conserva el número del año en que se creó |
 | `sequence_number` | INTEGER | No | Correlativo dentro de la serie y el año: 1, 2, 3… | Vuelve a 1 cada año en cada serie |
@@ -2170,7 +2172,7 @@ Cada orden se emite con una **plantilla**, que decide lo que se imprime —quié
 | `currency_id` | BIGINT FK → `currencies` | No | Moneda del pedido | — |
 | `payment_terms` | VARCHAR(50) | Sí | Condición de pago acordada: contado, crédito 30 | Se imprime en la orden y es lo que después se reclama |
 | `purpose` | VARCHAR(150) | Sí | Concepto del pedido: requerimiento de stock | — |
-| `status` | VARCHAR(20) | No | En qué va: borrador, enviada, cumplida, anulada | Es el seguimiento que pidió el cliente |
+| `status` | VARCHAR(20) | No | En qué va: `BORRADOR`, `ENVIADA`, `CUMPLIDA`, `ANULADA` | Códigos guardados; la pantalla los traduce (D-132) |
 | `sent_at` | TIMESTAMPTZ | Sí | Cuándo se envió al proveedor | Distingue una orden preparada de una ya comprometida |
 | `pdf_path` | TEXT | Sí | Archivo generado | Es el documento que se le envía; conviene conservar el que efectivamente se mandó y no volver a generarlo |
 | `created_at` / `created_by` | TIMESTAMPTZ / FK `users` | No / Sí | Quién la emitió y cuándo | — |
@@ -2180,12 +2182,15 @@ Cada orden se emite con una **plantilla**, que decide lo que se imprime —quié
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
 | `purchase_order_id` | BIGINT FK → `purchase_orders` | No | A qué orden pertenece | — |
+| `company_id` | BIGINT FK → `companies` | No | Empresa de la orden, copiada | La línea acumula volumen y la frontera entre empresas la lee directo, igual que D-111 (D-132) |
 | `model_id` | BIGINT FK → `vehicle_models` | Sí | Qué modelo se pide, cuando la línea es de vehículos | Al ordenar todavía no se sabe qué VIN van a llegar: se pide por modelo y cantidad. Vacío en las líneas que no son vehículos |
 | `concept` | VARCHAR(150) | Sí | Qué se pide, cuando la línea no es un vehículo: un mantenimiento, repuestos, un servicio | Las órdenes de taller no compran modelos. Es la misma solución que las líneas de factura (D-22) |
 | `quantity` | INTEGER | No | Cuántas unidades | Es contra esto que se calcula lo pendiente de llegar |
 | `unit_price` | NUMERIC(14,2) | No | Precio acordado por unidad | Es el precio comprometido, que puede diferir del que después facture el proveedor |
+| `discount_rate` | NUMERIC(5,4) | Sí | Porcentaje de descuento de la línea, de 0 a 1 | Obligatoria en una línea activa si la orden incluye la columna; nula si no la incluye (D-132) |
+| `is_active` | BOOLEAN | No | Si la línea sigue en la orden | Una línea retirada del borrador queda inactiva y no entra al PDF ni a los totales; no se borra (D-132) |
 
-Cada línea lleva un modelo o un concepto, nunca los dos ni ninguno. El total de la línea se calcula, no se escribe.
+Cada línea lleva un modelo o un concepto, nunca los dos ni ninguno. El total de la línea se calcula, no se escribe: cantidad × precio × (1 − tasa), con tasa 0 si la columna de descuento está apagada. En el PDF, una línea de vehículo imprime la marca y el nombre del modelo; una de concepto imprime `concept`.
 
 **Relaciones.** Apunta a `companies`, `suppliers`, `currencies` y `purchase_order_templates`; sus líneas apuntan a `vehicle_models` cuando son de vehículos. Le apuntan opcionalmente las facturas.
 
@@ -2208,6 +2213,10 @@ Cada serie lleva su propio correlativo: la orden de taller es la primera de su s
 - El vínculo de la factura con la orden es **opcional**. Con él, el pendiente se calcula solo; sin él, la orden se cierra a mano.
 - Toda orden se emite con una plantilla de su misma empresa; el sistema impide usar la plantilla de otra. Lo que se imprime sale de la plantilla al generar el PDF: mientras la orden es borrador, refleja los cambios que se le hagan a la plantilla.
 - **Una vez enviada, su PDF es el documento de la orden.** Se conserva en `pdf_path`, y editar la plantilla después no altera las órdenes ya enviadas.
+- La columna de descuento se decide en cada orden (`has_discount_column`), no en la plantilla. Si está apagada, ninguna línea activa lleva tasa; si está encendida, cada línea activa exige `discount_rate` (D-132).
+- El contacto del recuadro Proveedor es opcional y de ese proveedor. Cero contactos es válido (D-132).
+- Una línea que se quita del borrador queda inactiva y no entra al PDF ni a los totales; no se borra (D-132).
+- El estado guardado es `BORRADOR`, `ENVIADA`, `CUMPLIDA` o `ANULADA`. Cumplir solo sale de enviada; anular no sale de cumplida (D-132).
 
 #### Cómo se numera una orden
 
@@ -2268,6 +2277,7 @@ El formato con que se emite una orden. Los campos son siempre los mismos; lo que
 | `support_name` | VARCHAR(150) | Sí | Contacto de soporte: aparece al pie como "Si usted tiene alguna pregunta, póngase en contacto con…" | — |
 | `support_phone` | VARCHAR(30) | Sí | Teléfono del contacto de soporte | — |
 | `support_email` | VARCHAR(255) | Sí | Correo del contacto de soporte | — |
+| `observation` | TEXT | Sí | Texto de «Obs:» al pie de la tabla | Cambia con el tipo porque cada plantilla es de un tipo. Vacío no imprime la línea. No es `special_instructions` (D-132) |
 | `special_instructions` | TEXT | Sí | Comentarios o instrucciones que van al pie de cada orden: a dónde enviar las facturas | Es lo que el proveedor necesita para facturar bien. Sin un campo propio, se escribe a mano en cada orden |
 | `signature_path` | TEXT | Sí | Imagen de la firma, en la esquina inferior derecha. Vacío = sin firma | El archivo se guarda fuera de la base, igual que los documentos del vehículo (§11.3) |
 | `is_active` | BOOLEAN | No | Si se siguen emitiendo órdenes con ella | Permite retirarla sin tocar las órdenes ya emitidas |
@@ -2297,6 +2307,7 @@ Las tres toman el emisor de la misma empresa y difieren en lo demás. Cambiar el
 - Una plantilla no se borra: se desactiva. Las órdenes emitidas con ella la siguen referenciando.
 - Cada cambio queda en la bitácora (§13), con el valor anterior y el nuevo. El documento de cada orden enviada ya lo conserva su PDF; la bitácora explica qué tenía la plantilla en una fecha pasada.
 - Crear o editar plantillas exige el permiso `compras.gestionar_plantillas`.
+- La observación es de la plantilla: cada tipo o línea de negocio lleva la suya. No se vuelve a escribir al emitir (D-132).
 
 ### 9.3 `purchase_invoices` — Facturas de compra
 
@@ -3007,7 +3018,7 @@ Quedan tres decisiones abiertas, cada una con su momento fijado. Las longitudes 
 | — | Los identificadores internos y sus llaves foráneas son `BIGINT`, el `Long` del código (§2.2) |
 | D-33 | Las sesiones se guardan en el servidor y el navegador solo recibe una cookie `HttpOnly`. Se cierran por 2 horas de inactividad (30 minutos hasta D-127), a las 8 horas en cualquier caso, al cerrar sesión, al cambiar la contraseña (las demás) y al bloquear la cuenta (§5.12) |
 | D-34 | El primer superadministrador lo crea la aplicación al arrancar, desde variables de entorno y con contraseña provisional; no la migración (§5.2) |
-| D-35 | Las órdenes de compra se emiten con plantillas. Todas tienen los mismos campos; sus valores cambian según la línea de negocio y el tipo de orden (vehículos, taller, otros), que es un catálogo administrable. Los datos del emisor se proponen desde la empresa y se pueden editar; los contactos de atención y soporte son texto (§9.2) |
+| D-35 | Las órdenes de compra se emiten con plantillas. Todas tienen los mismos campos; sus valores cambian según la línea de negocio y el tipo de orden (vehículos, taller, otros), que es un catálogo administrable. Los datos del emisor se proponen desde la empresa y se pueden editar; los contactos de atención y soporte son texto. La observación, el descuento por orden, el contacto del proveedor, las líneas que se retiran y los códigos de estado los fija D-132 (§9.2) |
 | D-36 | Cada plantilla tiene su serie y cada serie su correlativo, que se reinicia cada año: `OC-LBT-2026-0001`. El número se asigna al crear la orden, con el año en la hora local del país de la empresa, y no se reutiliza (§9.2) |
 | D-37 | Las líneas de una orden de compra admiten conceptos que no son vehículos, igual que las de factura: las órdenes de taller no compran modelos (§9.2) |
 | D-38 | Toda cuenta pertenece a un colaborador y nace vinculada a él: un administrador da acceso a un colaborador ya registrado —vinculándolo a su cuenta si la persona ya tiene una por otra empresa—, o el registro público crea el colaborador y la cuenta juntos (D-32). Para tener un rol en una empresa, la cuenta debe estar vinculada a un colaborador activo de esa empresa; al registrar su salida se retiran esos roles, y si no le queda ningún colaborador activo la cuenta se bloquea. Excepciones: `SYSTEM`, que no es una persona, y el primer superadministrador, que hasta vincularse a su perfil configura el sistema pero no puede dar acceso. Una cuenta también queda sin colaborador cuando se la desvincula del único que tenía, hasta que un superadministrador la vincula de nuevo (D-82) (§5.2, §5.3) |
@@ -3103,6 +3114,7 @@ Quedan tres decisiones abiertas, cada una con su momento fijado. Las longitudes 
 | D-128 | La versión de los datos de cada tabla que exporta un documento es la suma de sus 64 contadores en `data_versions`, una tabla técnica de `shared`. Los suben dos disparadores por sentencia en cada tabla versionada, uno después de insertar y otro después de actualizar, con su tabla de transición y solo si la sentencia cambió alguna fila; la casilla se sortea una vez por transacción y por tabla, y las sentencias siguientes de esa transacción la reutilizan. El aumento va en la transacción del cambio, así que una transacción que confirma tarde cambia la versión igual. La versión es global por tabla, no del alcance de quien pregunta: un cambio en una empresa cambia la que leen todas; es más conservadora, el documento se reutiliza un poco menos, y es correcta. Reemplaza la lectura de las propias tablas (cuántas filas, `xmin` y `updated_at`, bajo Row Level Security), que costaba de 150 a 200 ms para el Inventario con 100 000 movimientos y 100 000 lecturas, sobre el umbral de 50 ms por exportación; ahora cuesta alrededor de 1,6 ms, con cualquier volumen. Queda un riesgo: dos transacciones que escriben dos tablas en orden opuesto se interbloquean en los contadores cuando cada una sorteó la casilla que tiene la otra, alrededor de una vez en 4 096. Lo mitiga `DeadlockRetry`, que reintenta una sola vez, en una transacción nueva, el servicio de comandos o el proceso programado que perdió un interbloqueo (`40P01`); por eso un servicio de comandos debe poder repetirse entero (§2.7; convenciones de la API, §8.3; decisión del responsable, 20/10/2026) |
 | D-129 | La bitácora de cambios (`change_logs`, §13.1) vive en `shared`, que la escribe y también la sirve: `GET /api/v1/change-logs`, con `bitacora.ver` y su alcance, y la pantalla Seguridad › Bitácora de cambios (`/change-log`). Resuelve sus referencias a otros contextos por dos puertos de `shared` que implementa cada dueño, como `ProtectedAccounts` (D-121): `AuditActorLookupPort`, que implementa `iam`, devuelve de cada cuenta de `changed_by` su identificador público y su nombre —el de su colaborador, que `iam` lee por la fachada de `organization` (`organization::acl`), nunca por SQL sobre `employees`; `SYSTEM` para la cuenta de los procesos automáticos; ninguno para una cuenta sin colaborador—; y `AuditCompanyLookupPort`, que implementa `organization`, traduce la empresa de cada fila entre su identificador público y el interno. Los dos leen con el alcance de quien consulta. `shared` no lee tablas de otro contexto (regla 1.2) ni depende de su código. Enmienda la decisión pendiente 6 del mapa de contextos solo para la bitácora: deja la opción A (la capa de lectura) para `import_batches`, y la B sigue para `fleet` y `procurement`. La decisión pendiente 3 queda para `/imports` y `/reports` (§13.1; mapa de contextos §11) |
 | D-131 | El superadministrador cambia los permisos de un rol del sistema que él no tiene vigente, en la misma matriz y con las mismas reglas que un rol propio: solo marca lo que tiene, no junta un par incompatible y no se agranda por un rol que ya tiene (D-70). El nombre y el estado de ese rol siguen fijos (D-97). Quien no es superadministrador los ve en solo lectura (§5.5, §5.6) |
+| D-132 | Plantillas y órdenes de compra: la observación (`observation`) es texto de la plantilla, distinta de `special_instructions`; `has_discount_column` se decide en cada orden al crear o editar el borrador; una línea activa lleva `discount_rate` (0 a 1) solo cuando la columna está encendida y el total de la línea no se guarda; `supplier_contact_id` es opcional y de ese proveedor; una línea retirada del borrador queda `is_active = false` y no se borra; `purchase_order_items.company_id` se copia de la orden (como D-111); en el PDF, un vehículo imprime marca y nombre del modelo y un concepto imprime `concept`; Envío y Otro se imprimen en blanco y no se guardan; el estado guardado es `BORRADOR`, `ENVIADA`, `CUMPLIDA` o `ANULADA` (§9.2; enmienda D-35) |
 | D-130 | Las ocho acciones `gestionar_*` de las pantallas ya construidas se parten en crear, editar y desactivar (y, en roles, marcar permisos). Enmienda D-118 solo para esos ocho: `catalogos.gestionar_generales`, `catalogos.gestionar_flota`, `catalogos.gestionar_estados`, `configuracion.gestionar_empresas`, `configuracion.gestionar_sedes_y_marcas`, `configuracion.gestionar_ubicaciones`, `seguridad.gestionar_colaboradores` y `seguridad.gestionar_roles`. Los treinta y nueve códigos nuevos los siembra V62. Los ocho gruesos siguen en `permissions`, para no reescribir la historia de `role_permissions`, y ninguna ruta los pide; `GET /permissions` y `GET /permission-matrix` no los ofrecen. La semilla desmarca esos ocho en los roles del sistema y marca los treinta y nueve en el superadministrador; el administrador de empresa recibe `registrar_colaboradores` y `modificar_colaboradores` en lugar de `gestionar_colaboradores`. Un rol propio que todavía tenga un código grueso no se reescribe: se vuelve a marcar a mano. Crear, copiar, renombrar, activar o desactivar y marcar permisos de un rol son cuatro permisos de alcance sistema (`crear_roles`, `editar_roles`, `desactivar_roles`, `marcar_permisos_de_roles`), que reemplazan a `gestionar_roles` en D-122 y D-123. `registrar_colaboradores` y `modificar_colaboradores` entran en los mismos pares que `gestionar_colaboradores` (D-119): veintiocho pares. Una pantalla que todavía no existe no tiene casilla hasta el paso que la construye, y entonces nace ya partida. Exportar sigue pidiendo el permiso de lectura. Los escalones de un país no se desactivan (D-45): declararlos y corregirlos es `editar_paises`; activar o desactivar una división o un documento tributario es `desactivar_paises` (§5.6) |
 | D-10 | Los datos personales van en `employees`, el registro de colaboradores. `users` guarda solo lo necesario para entrar |
 | D-25 | Colaboradores y cuentas son tablas distintas: hay personal sin acceso al sistema, y el usuario del sistema no es una persona |
