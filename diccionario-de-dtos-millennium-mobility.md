@@ -2270,7 +2270,8 @@ El formato con que se emite una orden. Los campos son siempre los mismos; lo que
 | `issuer_tax_id` | VARCHAR(20) | No | Número de documento del emisor, sin guiones, espacios ni puntos | Se propone el de la empresa |
 | `issuer_phone` | VARCHAR(30) | Sí | Teléfono del emisor | Se propone el de la empresa (`companies.phone`) |
 | `issuer_address_id` | BIGINT FK → `addresses` | Sí | Dirección que se imprime; el distrito o ciudad sale de su división territorial | Fila propia, copiada del domicilio fiscal de la empresa al crear la plantilla. Las direcciones no se comparten entre entidades (§4.6) |
-| `attention_name` | VARCHAR(150) | Sí | Sección "Atención": quién recibe la orden dentro de la empresa | Es texto y no una referencia a un colaborador: puede ser un área o un buzón compartido |
+| `attention_name` | VARCHAR(150) | Sí | Sección "Atención": quién recibe la orden dentro de la empresa | Se copia del colaborador elegido (`attention_employee_id`). No se escribe a mano |
+| `attention_employee_id` | BIGINT FK → `employees` | Sí | Colaborador de la misma empresa que figura en Atención | Tiene que trabajar en la empresa de la plantilla. Uno nuevo tiene que estar activo |
 | `attention_position` | VARCHAR(80) | Sí | Puesto de quien recibe | — |
 | `attention_email` | VARCHAR(255) | Sí | Correo de quien recibe | — |
 | `attention_phone` | VARCHAR(30) | Sí | Teléfono de quien recibe | — |
@@ -2279,7 +2280,8 @@ El formato con que se emite una orden. Los campos son siempre los mismos; lo que
 | `support_email` | VARCHAR(255) | Sí | Correo del contacto de soporte | — |
 | `observation` | TEXT | Sí | Texto de «Obs:» al pie de la tabla | Cambia con el tipo porque cada plantilla es de un tipo. Vacío no imprime la línea. No es `special_instructions` (D-132) |
 | `special_instructions` | TEXT | Sí | Comentarios o instrucciones que van al pie de cada orden: a dónde enviar las facturas | Es lo que el proveedor necesita para facturar bien. Sin un campo propio, se escribe a mano en cada orden |
-| `signature_path` | TEXT | Sí | Imagen de la firma, en la esquina inferior derecha. Vacío = sin firma | El archivo se guarda fuera de la base, igual que los documentos del vehículo (§11.3) |
+| `signature_path` | TEXT | Sí | Imagen de la firma, en la esquina inferior derecha. Vacío = sin firma | El archivo se guarda fuera de la base, igual que los documentos del vehículo (§11.3). No es obligatorio para crear la plantilla |
+| `logo_path` | TEXT | Sí | Imagen del logo, en la esquina superior izquierda. Vacío = sin logo | Se sube igual que la firma y tampoco es obligatorio para crear la plantilla. Pasa a serlo cuando el almacenamiento lo exija |
 | `is_active` | BOOLEAN | No | Si se siguen emitiendo órdenes con ella | Permite retirarla sin tocar las órdenes ya emitidas |
 | `created_at` / `created_by` | TIMESTAMPTZ / FK `users` | No / Sí | Quién la creó y cuándo | — |
 | `updated_at` / `updated_by` | TIMESTAMPTZ / FK `users` | No / Sí | Última modificación | — |
