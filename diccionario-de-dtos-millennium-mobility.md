@@ -2280,13 +2280,11 @@ El formato con que se emite una orden. Los campos son siempre los mismos; lo que
 | `support_email` | VARCHAR(255) | Sí | Correo del contacto de soporte | — |
 | `observation` | TEXT | Sí | Texto de «Obs:» al pie de la tabla | Cambia con el tipo porque cada plantilla es de un tipo. Vacío no imprime la línea. No es `special_instructions` (D-132) |
 | `special_instructions` | TEXT | Sí | Comentarios o instrucciones que van al pie de cada orden: a dónde enviar las facturas | Es lo que el proveedor necesita para facturar bien. Sin un campo propio, se escribe a mano en cada orden |
-| `signature_path` | TEXT | Sí | Imagen de la firma, en la esquina inferior derecha. Vacío = sin firma | El archivo se guarda fuera de la base, igual que los documentos del vehículo (§11.3). No es obligatorio para crear la plantilla |
-| `logo_path` | TEXT | Sí | Imagen del logo, en la esquina superior izquierda. Vacío = sin logo | Se sube igual que la firma y tampoco es obligatorio para crear la plantilla. Pasa a serlo cuando el almacenamiento lo exija |
 | `is_active` | BOOLEAN | No | Si se siguen emitiendo órdenes con ella | Permite retirarla sin tocar las órdenes ya emitidas |
 | `created_at` / `created_by` | TIMESTAMPTZ / FK `users` | No / Sí | Quién la creó y cuándo | — |
 | `updated_at` / `updated_by` | TIMESTAMPTZ / FK `users` | No / Sí | Última modificación | — |
 
-**Relaciones.** Apunta a `companies`, `commercial_brands`, `purchase_order_types`, `tax_id_types` y `addresses`. Le apunta `purchase_orders`.
+**Relaciones.** Apunta a `companies`, `commercial_brands`, `purchase_order_types`, `tax_id_types` y `addresses`. Le apuntan `purchase_orders` y `purchase_order_template_documents`. El logo y la firma no son columnas: son filas de esa tabla, una por tipo.
 
 **Ejemplo**
 
@@ -2311,6 +2309,35 @@ Las tres toman el emisor de la misma empresa y difieren en lo demás. Cambiar el
 - Cada cambio queda en la bitácora (§13), con el valor anterior y el nuevo. El documento de cada orden enviada ya lo conserva su PDF; la bitácora explica qué tenía la plantilla en una fecha pasada.
 - Crear o editar plantillas exige el permiso `compras.gestionar_plantillas`.
 - La observación es de la plantilla: cada tipo o línea de negocio lleva la suya. No se vuelve a escribir al emitir (D-132).
+- El logo, la firma y cualquier imagen posterior son filas de `purchase_order_template_documents`, no columnas. Un tipo nuevo es una fila de `purchase_order_template_document_types`. Los bytes quedan en `kept_files`; la fila guarda la llave. Quitar el archivo vacía la llave y conserva la fila. Hay como máximo uno de cada tipo por plantilla. `LOGO` y `SIGNATURE` los dibuja el PDF; un tipo que el PDF no conoce se guarda y se devuelve, y no se imprime hasta que el generador lo reconozca.
+
+#### `purchase_order_template_document_types` — Tipos de archivo de la plantilla
+
+Catálogo global. No es el de los documentos del vehículo.
+
+| Variable | Tipo | Nulo | Descripción | Por qué importa |
+|---|---|---|---|---|
+| `code` | VARCHAR(30) | No | `LOGO`, `SIGNATURE`, y el que se agregue | Fijo desde que una fila lo usa. Lo lee el PDF |
+| `name` | VARCHAR(80) | No | Nombre visible | — |
+| `is_active` | BOOLEAN | No | Si se sigue ofreciendo | — |
+
+**Relaciones.** Le apunta `purchase_order_template_documents`. No tiene empresa: los códigos son del sistema.
+
+#### `purchase_order_template_documents` — Archivos de la plantilla
+
+| Variable | Tipo | Nulo | Descripción | Por qué importa |
+|---|---|---|---|---|
+| `company_id` | BIGINT FK → `companies` | No | Empresa de la plantilla | La frontera entre empresas se lee directo |
+| `purchase_order_template_id` | BIGINT FK → `purchase_order_templates` | No | La plantilla | Junto con el tipo no se repite |
+| `document_type_id` | BIGINT FK → `purchase_order_template_document_types` | No | Logo, firma u otro | — |
+| `file_path` | TEXT | Sí | Llave en `kept_files`. Vacío = el archivo se quitó | No es clave foránea. La fila de `kept_files` no se borra |
+| `file_name` | VARCHAR(255) | No | Nombre original | El que ve quien descarga |
+| `mime_type` | VARCHAR(100) | No | PNG, JPEG o WebP | — |
+| `file_size` | BIGINT | Sí | Peso en bytes | Copia para la lista, sin abrir el archivo |
+| `created_at` / `created_by` | TIMESTAMPTZ / FK `users` | No / Sí | Quién lo cargó | — |
+| `updated_at` / `updated_by` | TIMESTAMPTZ / FK `users` | No / Sí | Último reemplazo | — |
+
+**Relaciones.** Apunta a `companies`, `purchase_order_templates` y `purchase_order_template_document_types`. La llave apunta por texto a `kept_files.storage_key`.
 
 ### 9.3 `purchase_invoices` — Facturas de compra
 
