@@ -2301,7 +2301,8 @@ Las tres toman el emisor de la misma empresa y difieren en lo demás. Cambiar el
 **Reglas de negocio**
 
 - Los campos son los mismos en todas las plantillas; lo que cambia son sus valores. Una línea de negocio o un tipo de orden nuevos no requieren tocar el programa: se crea otra plantilla.
-- Al crear una plantilla, los datos del emisor —razón social, documento, teléfono y domicilio fiscal— se copian de la empresa dueña y **se pueden editar**. Es el mismo criterio que la tasa de impuesto: `countries` la propone y la que manda es la guardada en el comprobante. Editar la empresa después no cambia las plantillas existentes.
+- Al crear una plantilla, los datos del emisor se copian de la empresa y la hoja los muestra sin editarlos. Editar la empresa después no cambia las plantillas ya guardadas.
+- El proveedor y su contacto se eligen al emitir la orden, no en la plantilla. La columna Atención sigue siendo el colaborador de la empresa.
 - La serie no se repite dentro de la empresa. Se guarda normalizada —mayúsculas, sin espacios— y se puede corregir mientras la plantilla no tenga órdenes; después queda fija, como el código de un catálogo (§2.4).
 - La línea de negocio, si se indica, tiene que ser una marca de la misma empresa: el sistema lo impide, igual que en las asignaciones de rol (§5.7).
 - Puede haber más de una plantilla activa para la misma línea y tipo —dos talleres con contactos distintos, por ejemplo—: quien emite la orden elige cuál usar.
