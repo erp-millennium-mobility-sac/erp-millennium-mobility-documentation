@@ -28,3 +28,4 @@ Una revisión no es una evaluación de personas. Sirve para que el equipo compar
 | 18/10/2026 | `organization`, `iam` | [Cierre de los pasos 2 y 3: identidad de las cuentas, padres inactivos y sonda en vivo](2026-10-18-organization.md) |
 | 18/10/2026 | `organization` | [Seguimiento del cierre después de integrarlo: quién lee los colaboradores, reactivar bajo una empresa inactiva y fallas de carga](2026-10-18-organization-seguimiento.md) |
 | 19/10/2026 | `iam`, `shared`, `location`, `vehiclecatalog`, `organization` | [La matriz de permisos del paso 3b: los hallazgos del panel de diseño que la fijaron y lo que queda abierto](2026-10-19-permisos.md) |
+| 26/10/2026 | `fleet` | [Fondos: el catálogo y las cesiones de `feat/fleet-funds`, cerrados con la auditoría del 25/10/2026, y cómo limpiar la base local](2026-10-26-fondos.md) |

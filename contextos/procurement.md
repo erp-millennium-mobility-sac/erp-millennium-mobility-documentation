@@ -1,6 +1,6 @@
 # Contexto `procurement` — ERP Millennium Mobility
 
-**Actualizado:** 23/10/2026 (proveedores, tipos de orden, plantillas con sus archivos y órdenes de compra, en `develop`; facturas, notas de crédito y pagos siguen sin código) · **Estado:** borrador para validar; el paso 7 sigue abierto · **Fuente:** diccionario de datos v1.28 (§9.1, §9.1.1, §9.2, §2.7 `kept_files`, D-35, D-36, D-37, D-102, D-105, D-125 y D-132), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md) §2.2 y §3.4, [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md) (P4) y [orden de implementación](../orden-de-implementacion-millennium-mobility.md) (paso 7). Si este documento y el diccionario no coinciden, manda el diccionario.
+**Actualizado:** 26/10/2026 (cierre de la auditoría del 25/10/2026, diccionario v1.31, D-130, D-133 y D-134: los ocho permisos de plantillas, tipos y órdenes, V79 y V80; el estado de la plantilla en `PATCH /{id}/status`; sin ninguna ruta `DELETE`; el emisor fuera de los pedidos; las columnas de V73 borradas en V81; el emisor copiado de la empresa y no editable; la Atención copiada del colaborador; el PDF enviado como una sola copia fiel con el teléfono de Atención; los archivos de la plantilla bajo una llave de su contenido y `removedDocuments` en el `PATCH`; las lecturas solo con `compras.ver`, escribir exige leer; un rol de sede no escribe compras, y lo que es de todas las marcas lo escribe la empresa entera; los códigos de compras de convenciones §7.2; la exportación de proveedores) · 23/10/2026 (proveedores, tipos de orden, plantillas con sus archivos y órdenes de compra, en `develop`; facturas, notas de crédito y pagos siguen sin código) · **Estado:** borrador para validar; el paso 7 sigue abierto · **Fuente:** diccionario de datos v1.28 (§9.1, §9.1.1, §9.2, §2.7 `kept_files`, D-35, D-36, D-37, D-102, D-105, D-125 y D-132), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md) §2.2 y §3.4, [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md) (P4) y [orden de implementación](../orden-de-implementacion-millennium-mobility.md) (paso 7). Si este documento y el diccionario no coinciden, manda el diccionario.
 
 **Cómo leerlo.** Las secciones 1 a 3 están escritas para quien conoce el negocio. La 4 y la 6 nombran el código. Lo que todavía no tiene pantalla —facturas, notas de crédito y pagos— se nombra solo para decir que este paso no lo cierra.
 
@@ -33,9 +33,9 @@ Las columnas están en el diccionario y no se repiten aquí.
 |---|---|---|
 | Los bytes del logo, de la firma y del PDF enviado | `documents`, en `kept_files` (§2.7, D-125) | Aquí se guarda la llave (`file_path`, `pdf_path`). El contexto abre el archivo por `KeptFileStore` |
 | El PDF del borrador, que cambia si cambia la plantilla | `documents`, en `generated_documents` | Se pide por `DocumentService` y vence. Al enviar, el PDF que se mandó pasa a `kept_files` y ya no cambia |
-| El domicilio del emisor y el del proveedor | `location`, `addresses` (§4.6) | La plantilla y el proveedor lo crean, lo corrigen o lo mudan por la fachada. No hay ruta de dirección |
-| La empresa, la marca comercial y el colaborador de Atención | `organization` | La plantilla apunta a ellos. El teléfono de Atención sale de la vista del colaborador: sin `configuracion.ver_datos_personales_colaboradores` no se guarda (D-105) |
-| El tipo de documento del proveedor y del emisor | `location` | `procurement` lo verifica por la fachada |
+| El domicilio del emisor y el del proveedor | `location`, `addresses` (§4.6) | El proveedor lo crea, lo corrige o lo muda por la fachada; la plantilla copia el de la empresa al crearse y no lo cambia (D-134). No hay ruta de dirección. La base acota las direcciones por su país (§2.5, V78) |
+| La empresa, la marca comercial y el colaborador de Atención | `organization` | La plantilla apunta a ellos. El emisor sale de la empresa y la Atención —nombre, puesto y teléfono— del colaborador, copiados en el servidor (D-134) |
+| El tipo de documento del proveedor | `location` | `procurement` lo verifica por la fachada: del país de la empresa, activo, que aplica a empresas y con su longitud (D-133). El del emisor es una copia del de la empresa y no se verifica de nuevo |
 | El modelo de una línea de vehículos | `vehiclecatalog` | La línea guarda el identificador; el PDF imprime la marca y el nombre que devuelve la fachada |
 | La unidad y su VIN | `fleet` | Ninguna orden de hoy crea una unidad. La factura, cuando se construya, preguntará a `fleet` (mapa §6.1). Este contexto todavía no declara esa dependencia |
 | Los tipos de documento del vehículo | `fleet` (§11.2) | El catálogo `purchase_order_template_document_types` es solo de la plantilla. Un SOAT no cabe ahí |
@@ -56,7 +56,7 @@ Las columnas están en el diccionario y no se repiten aquí.
 
 ## 2. Ciclo de vida de cada agregado
 
-Nada de lo construido se borra. El `DELETE` de un documento de plantilla vacía la llave y deja la fila (convenciones §3.1 y §3.4).
+Nada de lo construido se borra, y no hay rutas `DELETE`: quitar un archivo de la plantilla es `removedDocuments` en su `PATCH`, que vacía la llave y deja la fila (convenciones §3.1 y §3.4).
 
 ### Proveedor
 
@@ -72,34 +72,35 @@ Nada de lo construido se borra. El `DELETE` de un documento de plantilla vacía 
 
 | Momento | Qué pasa |
 |---|---|
-| Alta | Dentro de Plantillas de OC, con `compras.gestionar_plantillas` |
-| Qué cambia | El nombre, con `PUT /purchase-order-types/{id}` |
-| Qué queda fijo | El código, en cuanto una plantilla lo usa |
-| Retiro | `PATCH /purchase-order-types/{id}/status` |
+| Alta | Dentro de Plantillas de OC, con `compras.crear_plantillas` |
+| Qué cambia | El nombre, con `PUT /purchase-order-types/{id}` y `compras.editar_plantillas`; en el mismo pedido, el código (`code`, opcional), mientras ninguna plantilla usa el tipo |
+| Qué queda fijo | El código, en cuanto una plantilla lo usa: otro código responde `422 PURCHASEORDERTYPE_CODE_LOCKED`, y `codeLocked` lo anuncia |
+| Retiro | `PATCH /purchase-order-types/{id}/status`, con `compras.desactivar_plantillas` |
 | Nunca | Se borra. Agregar un tipo no cambia cómo funciona la orden |
 
 ### Plantilla
 
 | Momento | Qué pasa |
 |---|---|
-| Alta | Un solo `POST /purchase-order-templates`, multipart. La parte `template` es la ficha. `logo` y `signature` pueden ir, las dos, una o ninguna |
-| Qué cambia | `PATCH /purchase-order-templates/{id}`. Un campo que el JSON no trae se queda; uno que trae en `null` se vacía si admite vacío. `updatedAt` tiene que ser el de la fila (`422 PURCHASEORDERTEMPLATE_OUTDATED`). El estado es `isActive` en ese mismo `PATCH`, también desde la lista, con solo `{ updatedAt, isActive }` |
+| Alta | Un solo `POST /purchase-order-templates`, multipart, con `compras.crear_plantillas`. La parte `template` es la ficha, sin emisor. `logo` y `signature` pueden ir, las dos, una o ninguna |
+| Qué cambia | `PATCH /purchase-order-templates/{id}`, con `compras.editar_plantillas`. Un campo que el JSON no trae se queda; uno que trae en `null` se vacía si admite vacío. `updatedAt` tiene que ser el de la fila (`422 PURCHASEORDERTEMPLATE_OUTDATED`). El emisor no es del pedido: si llega, se ignora. `isActive` tampoco: si llega, `400 VALIDATION_ERROR` y no cambia nada |
+| Estado | Solo por `PATCH /{id}/status` con `{ isActive, updatedAt }`, con `compras.desactivar_plantillas`. Un `updatedAt` viejo responde `422 PURCHASEORDERTEMPLATE_OUTDATED`; un cuerpo sin uno de los dos, `400` |
 | Qué queda fijo | La serie, la marca comercial y el tipo, cuando la plantilla ya tiene órdenes |
-| Archivos | `PUT /{id}/documents/{type}` reemplaza uno. `DELETE /{id}/documents/{documentId}` vacía la llave. `GET /{id}/documents/{documentId}/file` devuelve los bytes. La respuesta de la plantilla lista solo los documentos que tienen archivo |
-| Retiro | `isActive: false` en el `PATCH`. Las órdenes ya emitidas la siguen usando |
-| Nunca | `PUT` de la ficha entera, `PATCH /{id}/status`, `POST /{id}/signature` ni `POST /{id}/signature-removal`. Esas rutas ya no existen |
+| Archivos | Van en el mismo `PATCH`: una parte `logo` o `signature` reemplaza el archivo, y `removedDocuments: ["LOGO"]` lo quita, todo en una transacción. `PUT /{id}/documents/{type}` reemplaza uno solo; `removedDocuments` en el `PATCH` es la única forma de vaciar la llave. `GET /{id}/documents/{documentId}/file` devuelve los bytes. Cada archivo se guarda bajo una llave de su contenido, y reemplazarlo escribe una llave nueva (§2.7, D-134). La respuesta de la plantilla lista solo los documentos que tienen archivo |
+| Retiro | `isActive: false` en `PATCH /{id}/status`. Las órdenes ya emitidas la siguen usando |
+| Nunca | `PUT` de la ficha entera, `DELETE /{id}/documents/{documentId}`, `POST /{id}/signature` ni `POST /{id}/signature-removal`. Esas rutas ya no existen |
 
-El proveedor no se elige en la plantilla. Se elige al emitir la orden. La columna Atención es un colaborador de la empresa.
+El proveedor no se elige en la plantilla. Se elige al emitir la orden. La columna Atención es un colaborador de la empresa. El emisor no se edita: es la copia de la empresa que hizo el alta (D-134).
 
 ### Orden
 
 | Momento | Qué pasa |
 |---|---|
-| Alta | Logística › Órdenes de compra. El número se asigna al crear el borrador y no se reutiliza (D-36). Ahí se elige la plantilla, el proveedor y si esa orden lleva columna de descuento |
-| Qué cambia | El borrador, con `PUT /purchase-orders/{id}`. Una línea que se quita queda inactiva y no entra al PDF ni a los totales |
-| Envío | `POST /{id}/sending`. El PDF de ese momento queda en `kept_files` (`purchase-orders/{publicId}/sent.pdf`) y ya no sigue a la plantilla |
-| Cumplida | `POST /{id}/fulfillment`, solo desde enviada |
-| Anulada | `POST /{id}/annulment`. No sale de cumplida |
+| Alta | Logística › Órdenes de compra, con `compras.crear_ordenes`. El número se asigna al crear el borrador y no se reutiliza (D-36). Ahí se elige la plantilla, el proveedor y si esa orden lleva columna de descuento |
+| Qué cambia | El borrador, con `PUT /purchase-orders/{id}` y `compras.editar_ordenes`. Una línea que se quita queda inactiva y no entra al PDF ni a los totales |
+| Envío | `POST /{id}/sending`, con `compras.enviar_ordenes`. El PDF de ese momento queda en `kept_files` (`purchase-orders/{publicId}/sent.pdf`) y ya no sigue a la plantilla. Es una sola copia fiel con el teléfono de Atención, la que recibió el proveedor, para todo el que lee la orden, pulse quien pulse «Enviar» (D-105, D-134) |
+| Cumplida | `POST /{id}/fulfillment`, con `compras.cumplir_ordenes`, solo desde enviada |
+| Anulada | `POST /{id}/annulment`, con `compras.anular_ordenes`. No sale de cumplida |
 | PDF | `GET /{id}/pdf`. En borrador es el documento generado, que refleja la plantilla de ahora. Enviada, cumplida o anulada entrega el PDF congelado |
 | Nunca | Se edita después de enviada: se anula y se emite otra. Se borra |
 
@@ -107,7 +108,7 @@ El proveedor no se elige en la plantilla. Se elige al emitir la orden. La column
 
 ## 3. Flujos funcionales
 
-Quien lee proveedores, plantillas y órdenes entra con `compras.ver`. Crear, editar o desactivar un proveedor pide el permiso de esa operación. Plantillas y tipos piden `compras.gestionar_plantillas`. Crear, editar el borrador, enviar, cumplir y anular una orden piden `compras.gestionar_ordenes`. El menú de Plantillas de OC también se muestra con `compras.gestionar_ordenes`, porque quien emite elige una plantilla; el `GET` de la ruta pide `compras.ver` antes que el servicio.
+Quien lee proveedores, tipos, plantillas y órdenes entra con `compras.ver`, y solo con él: desde el 26/10/2026 el servicio tampoco acepta un permiso de escritura en su lugar, y las tres entradas del menú de compras piden `compras.ver` (diccionario §5.6, D-134). Escribir exige leer: una escritura sobre lo que quien llama no lee con `compras.ver` responde `404`, y la respuesta de una escritura es lo que el comando guardó. Crear, editar o desactivar un proveedor pide el permiso de esa operación. Plantillas y tipos piden `compras.crear_plantillas`, `compras.editar_plantillas` o `compras.desactivar_plantillas`, según la operación. Crear, editar el borrador, enviar, cumplir y anular una orden piden `compras.crear_ordenes`, `compras.editar_ordenes`, `compras.enviar_ordenes`, `compras.cumplir_ordenes` y `compras.anular_ordenes` (V79, D-130). Los dos `gestionar_*` a los que reemplazan ya no abren ninguna ruta, y V80 los desmarcó en todos los roles. Ningún permiso de compras actúa por sede: un proveedor, un tipo y una plantilla general los escribe solo una asignación de toda la empresa y sin marca; una plantilla con marca, y las órdenes que salen de ella, también una de esa marca (PRC-R11, PRC-R12).
 
 ### F1 · Registrar un proveedor
 
@@ -120,15 +121,15 @@ Quien lee proveedores, plantillas y órdenes entra con `compras.ver`. Crear, edi
 
 1. Abre Configuración › Plantillas de OC (`/procurement/purchase-order-templates`) y entra al formulario de página.
 2. Elige empresa, línea de negocio si la plantilla no es general, y tipo. El tipo se crea en esa misma pantalla cuando falta.
-3. La hoja propone el emisor desde la empresa. La observación y las instrucciones son de esta plantilla.
+3. La hoja muestra el emisor de la empresa, sin editarlo: el servidor lo copia al guardar. La Atención se elige entre los colaboradores de la empresa y se copia del elegido. La observación y las instrucciones son de esta plantilla.
 4. Puede elegir un logo, una firma, los dos o ninguno. Al guardar, el formulario manda la ficha y los archivos elegidos en un solo `POST`.
-5. Si un archivo no es PNG, JPEG, WebP o PDF, o pasa de 5 MB, no se crea la plantilla (`422`).
+5. Si un archivo no es PNG, JPEG, WebP o PDF —leído de sus bytes—, pasa de 5 MB o es una imagen de más de 4096 píxeles por lado o 16 megapíxeles, no se crea la plantilla (`422`). Por encima de 10 MB el servidor corta el pedido (`413`).
 
 ### F3 · Corregir la plantilla o su estado
 
 1. Guardar el formulario manda un `PATCH` multipart con la ficha y, si se eligió una imagen nueva, esa parte. Una imagen que no se tocó no viaja y se conserva.
-2. Quitar el logo o la firma es `DELETE` del documento. La fila y los bytes se quedan; la hoja deja de mostrarlo.
-3. Activar o desactivar desde la lista manda `{ updatedAt, isActive }` y no reescribe la ficha.
+2. Quitar el logo o la firma viaja en el mismo `PATCH`, con `removedDocuments`, junto con los campos y las imágenes nuevas. La fila y los bytes se quedan; la hoja deja de mostrarlo.
+3. Activar o desactivar desde la lista manda `{ isActive, updatedAt }` a `PATCH /{id}/status` y no reescribe la ficha.
 4. Reemplazar un solo tipo, sin abrir el resto de la ficha, es `PUT /{id}/documents/LOGO` o `…/SIGNATURE`.
 
 ### F4 · Emitir una orden
@@ -145,16 +146,19 @@ Quien lee proveedores, plantillas y órdenes entra con `compras.ver`. Crear, edi
 
 | Id | Regla | Fuente | Dónde se aplica | Prueba | Estado |
 |---|---|---|---|---|---|
-| PRC-R01 | El proveedor y su contacto se eligen al emitir la orden. La plantilla no los fija. Atención es un colaborador de la empresa | §9.2 | Servicio: `PurchaseOrderTemplateCommandServiceImpl`. Frontend: el formulario de la plantilla no ofrece proveedor | `PurchaseOrderTemplateAttentionPolicyTests` | ✅ |
-| PRC-R02 | Sin `configuracion.ver_datos_personales_colaboradores`, el teléfono de Atención que se guarda es nulo. El de un colaborador que la sesión no puede ver no se copia | D-105 | `PurchaseOrderTemplateViewFactory` y el servicio de comandos | `PurchaseOrderTemplateAttentionPolicyTests` | ✅ |
+| PRC-R01 | El proveedor y su contacto se eligen al emitir la orden. La plantilla no los guarda: el código dejó de leerlos y escribirlos, y V81 quitó `purchase_order_templates.supplier_id` y `supplier_contact_id` con sus llaves (las de V73), después de comprobar que ninguna fila las usaba (D-133). Atención es un colaborador de la empresa. El emisor y su domicilio se copian de la empresa al crear la plantilla y no se editan: el alta y el `PATCH` ya no los tienen, un cliente que los manda no falla porque se ignoran, y la respuesta devuelve la copia (D-134) | §9.2, D-133, D-134 | Servicio: `PurchaseOrderTemplateCommandServiceImpl`, con `CompanyIssuer`; el domicilio se copia tal cual con `copyAddress` de `location`, de modo que una división desactivada después no impide crear la plantilla. Base: V81. Frontend: el formulario no ofrece proveedor ni edita el emisor | `PurchaseOrderTemplateAttentionPolicyTests`; `PurchaseOrderTemplatesIntegrationTests` (`createWithoutIssuerCopiesTheCompany`, `theFiscalAddressIsCopiedAsItIsEvenWithItsDivisionInactive`, `createWithADifferentIssuerIgnoresIt`, `patchWithMalformedIssuerFieldsIsIgnored`); `AddressCommandServiceImplTests.aCopyIsANewRowWithTheSamePartsEvenWithAnInactiveDivisionOrWithoutAPostalCodeNowRequired`; `PurchaseOrderTemplateSupplierDropMigrationTests` | ✅ |
+| PRC-R02 | La Atención se copia solo del colaborador: nombre, puesto y teléfono; el correo queda vacío (D-134). Sin `configuracion.ver_datos_personales_colaboradores`, la ficha y el PDF del borrador no muestran el teléfono de Atención; el PDF de la orden enviada sí, para todos: es la copia fiel que recibió el proveedor (excepción a D-105) | D-105, D-134 | `PurchaseOrderTemplateViewFactory`, `PurchaseOrderQueryServiceImpl.renderDraftPdf` y `PurchaseOrderCommandServiceImpl` (envío) | `PurchaseOrderTemplateAttentionPolicyTests`; `PurchaseOrdersIntegrationTests` (`aReaderWithoutPersonalDataDoesNotGetTheDraftSheetGeneratedForOneWithIt`, `aSentOrderPrintsThePhoneWhoeverSentIt`); `PurchaseOrderTemplatesIntegrationTests.theAttentionIsCopiedFromTheEmployee` | ✅ |
 | PRC-R03 | La serie, la marca y el tipo quedan fijos cuando la plantilla ya tiene órdenes | §9.2, §2.4 | Dominio y servicio (`SERIES_IN_USE`, `BRAND_IN_USE`, `TYPE_IN_USE`) | — | ⚠️ |
 | PRC-R04 | El alta de la plantilla acepta el logo y la firma como partes opcionales. Un archivo inválido no deja la plantilla creada | §9.2, convenciones §3.4 | `PurchaseOrderTemplatesController.create` y `attachImages`, en la misma transacción | — | ⚠️ |
-| PRC-R05 | El `PATCH` cambia solo los campos presentes. Un archivo que no viaja no se quita. `isActive` va en ese `PATCH` | convenciones §3.4 | `toCommand(id, JsonNode)` y `PurchaseOrderTemplateCommandServiceImpl.update` | — | ⚠️ |
-| PRC-R06 | Hay a lo sumo un documento de cada tipo. Quitar el archivo vacía `file_path` y conserva la fila y `kept_files` | §9.2 | Base: único `(template_id, document_type_id)`. Servicio: `clearDocument` | — | ⚠️ |
+| PRC-R05 | El `PATCH` cambia solo los campos presentes. Un archivo que no viaja no se quita; `removedDocuments` quita los que nombra, en la misma transacción que los campos y las subidas, después de comparar `updatedAt` bajo el candado. Un tipo desconocido responde `404 PURCHASEORDERTEMPLATEDOCUMENTTYPE_NOT_FOUND`, y quitar y subir el mismo tipo, `400`. `name`, `series` y el tipo en `null` responden `400`. `isActive` no va en ese `PATCH` (`400`): el estado cambia solo por `PATCH /{id}/status`. No hay `DELETE` de un documento | convenciones §3.4, D-134 | `PurchaseOrderTemplateCommandFromResourceAssembler` y `PurchaseOrderTemplateCommandServiceImpl.update`, con `PurchaseOrderTemplateDocuments.checkRemovals` | `PurchaseOrderTemplatesIntegrationTests` (`removesTheLogoInTheSamePatch`, `savesFieldsUploadsSignatureAndRemovesLogoAtomically`, `removingAFileTheTemplateDoesNotHaveChangesNothing`, `aTemplateChangesItsNameWithAPatchAndNotItsStatus`, `theStatusRouteRefusesAnIncompleteBodyAndATemplateNotRead`, `theDeleteOfADocumentIsNoLongerARoute`); `NoDeleteEndpointsTests`; `PurchaseOrderTemplateLockTests.aChangeOfStatusOverAnEditThatCommittedMeanwhileIsOutdated` | ✅ |
+| PRC-R06 | Hay a lo sumo un documento de cada tipo. Quitar el archivo vacía `file_path` y conserva la fila y `kept_files`. Cada archivo se guarda bajo una llave de su contenido (`purchase-order-templates/{publicId}/{tipo}/{sha256}`), escrita antes de confirmar y apuntada al confirmar: reemplazarlo escribe una llave nueva, y la anterior y sus bytes se quedan (§2.7, D-134) | §9.2, §2.7 | Base: único `(template_id, document_type_id)`. Servicio: `PurchaseOrderTemplateDocuments` y `KeptFileStore` | `PurchaseOrderTemplatesIntegrationTests.replacingALogoPointsToANewKeyAndKeepsTheOldBytes`, `PurchaseOrderTemplateDocumentAuditTests` | ✅ |
 | PRC-R07 | `LOGO` y `SIGNATURE` se dibujan en el PDF. Otro código se guarda y se devuelve, y no se imprime | §9.2 | `PurchaseOrderPdfGenerator` | — | ⚠️ |
 | PRC-R08 | La columna de descuento es de la orden. Una línea activa lleva tasa de 0 a 1 solo si la columna está encendida. Una línea retirada queda inactiva | D-132 | Dominio de la orden y base (V70, el disparador del descuento es diferible) | `PurchaseOrdersIntegrationTests` | ✅ |
-| PRC-R09 | El PDF del borrador refleja la plantilla. El de la orden enviada queda en `kept_files` y no vuelve a generarse | §9.2, §2.7 | `PurchaseOrdersController.pdf` | `PurchaseOrdersIntegrationTests` | ✅ |
+| PRC-R09 | El PDF del borrador refleja la plantilla y sus archivos: se dibuja solo cuando `DocumentService` genera el documento, y su versión cuenta `purchase_order_template_documents`. El de la orden enviada es una sola copia fiel con el teléfono de Atención, queda en `kept_files` (`purchase-orders/{publicId}/sent.pdf`) y no vuelve a generarse | §9.2, §2.7, D-134 | `PurchaseOrderQueryServiceImpl.pdfOf` y `renderDraftPdf`, `PurchaseOrderCommandServiceImpl` (envío) | `PurchaseOrdersIntegrationTests` (`sentPdfIsFrozen`, `theDraftIsDrawnOnlyWhenItsDocumentIsGenerated`, `aSentOrderPrintsThePhoneWhoeverSentIt`), `PurchaseOrderTemplatesIntegrationTests.theDraftSheetFollowsANewLogo` | ✅ |
 | PRC-R10 | Cumplir solo sale de enviada. Anular no sale de cumplida. Una orden enviada no se edita | D-132 | Dominio de la orden | `PurchaseOrderTests`, `PurchaseOrdersIntegrationTests` | ✅ |
+| PRC-R11 | Ningún permiso de compras actúa por sede: un rol de sede lee, pero no escribe proveedores, tipos, plantillas ni órdenes. Una orden de una plantilla general la escribe una asignación de toda la empresa; una de una plantilla con marca, también una de esa marca. Emitir decide el acceso con la plantilla que encuentra el candado (hallazgo NUEVO-A del plan de cierre) | §2.5, D-134 | `PurchaseOrderAccessPolicy`, `PurchaseOrderTemplateAccessPolicy` y `SupplierCommandServiceImpl` | `PurchaseOrderAccessPolicyTests` (`aBranchGrantManagesNoOrder`, `aBrandGrantManagesOrdersOfItsBrandAndOfGeneralTemplates`), `PurchaseOrderTemplateAccessPolicyTests` (`aBranchGrantWritesNoGeneralTemplate`, `aBrandGrantWritesNoGeneralTemplateNorType`), `PurchaseOrdersIntegrationTests` (`aRoleOfABranchDoesNotIssueNorSendOrders`, `issuingAnOrderDecidesAccessOnTheBrandTheLockFinds`), `SuppliersAccessIntegrationTests` (`aRoleOfABranchReadsSuppliersButDoesNotWriteThem`, `aGrantLimitedToABrandReadsSuppliersButDoesNotWriteThem`) | ✅ |
+| PRC-R12 | Las lecturas piden solo `compras.ver` donde actúa. Escribir exige leer: una escritura, o la emisión de una orden con una plantilla o un proveedor, que quien llama no lee responde `404`. La respuesta de una escritura es lo que el comando guardó, sin volver a filtrar. La exportación de proveedores tiene el alcance de `compras.ver` | §5.6, D-134 | `ProcurementReadPermissions`, los servicios de consultas y de comandos | `SuppliersAccessIntegrationTests` (`aWriterWithoutVerGetsWhatItSaved`, `aWriterWithoutVerCannotEditNorChangeTheStatusOfASupplierItDoesNotRead`), `PurchaseOrdersIntegrationTests` (`aWriterWithoutVerInACompanyDoesNotReadItsOrders`, `aWriterWithoutVerCannotIssueAnOrderFromATemplateItDoesNotRead`), `PurchaseOrderTemplatesIntegrationTests.aWriterWithoutVerInACompanyDoesNotReadItsTemplatesNorTheirDocuments`, `SuppliersExportIntegrationTests.aWriterWithoutVerInBDoesNotGetBInTheExport` | ✅ |
+| PRC-R13 | Cada escritura de plantillas, tipos y órdenes pide su propio permiso: crear, editar o desactivar plantillas; crear, editar, enviar, cumplir o anular órdenes. `allowedActions` ofrece cada acción por ese mismo permiso. V79 los siembra y los marca sin quitarle a ningún rol lo que hacía, también a los roles propios que tenían un grueso; V80 desmarca los gruesos en todos los roles, después de remarcar al rol propio que tiene un grueso y ninguno de sus finos, y se detiene si queda una marca gruesa | §5.6, §9.2, D-130 | Rutas (`@PermissionRequired`), `PurchaseOrderCommandServiceImpl`, `PurchaseOrderTemplateCommandServiceImpl`, `PurchaseOrderTypeCommandServiceImpl`, `PurchaseOrderAllowedActions`, `PurchaseOrderTemplateViewFactory` y `PurchaseOrderTypeViewFactory`. Base: V79 y V80 | `PurchaseOrderTemplatesIntegrationTests.theStatusRouteAsksForDeactivatingAndThePatchForEditing`, `PurchaseOrdersIntegrationTests.aRoleOfItsOwnWithTheCoarseCodeWritesOrdersThroughTheMarksOfV79`, `ProcurementPermissionsSplitMigrationTests`, `ProcurementCoarsePermissionsRevocationMigrationTests` | ✅ |
 
 ---
 
@@ -182,15 +186,23 @@ En el frontend, las pantallas viven en `src/app/procurement`. El menú las muest
 
 - Proveedores, con domicilio y contactos en la misma ficha.
 - Tipos de orden, dentro de Plantillas de OC.
-- Plantillas: alta única con imágenes opcionales, `PATCH` parcial, estado en ese `PATCH`, documentos por tipo.
+- Plantillas: alta única con imágenes opcionales, `PATCH` parcial, documentos por tipo. El estado, que viajaba en ese `PATCH`, va desde el 26/10/2026 por `PATCH /{id}/status` (PRC-R05).
 - Órdenes: borrador, envío, cumplimiento, anulación y PDF vivo o congelado.
 - Diccionario §9.2 y §2.7, convenciones §3.4, y las pantallas de procesos y pantallas.
+
+**Cerrado con la auditoría del 25/10/2026** (diccionario v1.31, D-130, D-133 y D-134; [plan de cierre](../plan-de-cierre-de-la-auditoria-2026-10-25.md))
+
+- Lo que expone datos: los proveedores de otra empresa y el PDF del borrador con el teléfono de Atención para quien no lo ve (PRC-R02, PRC-R12).
+- Quién escribe y quién lee (PRC-R11, PRC-R12), el emisor copiado (PRC-R01), los archivos en el mismo `PATCH` y bajo su llave de contenido (PRC-R05, PRC-R06), y el PDF enviado como copia fiel (PRC-R09).
+- Los códigos de compras —las referencias inactivas, un solo prefijo, el dígito de control del proveedor, las carreras traducidas— están en convenciones §7.2, y no se copian aquí.
+- La exportación de proveedores (convenciones §8.1). La lista de órdenes y la de plantillas se exportan con el paso de reportes (D-116).
+- Los ocho permisos de plantillas, tipos y órdenes, que reemplazan a `compras.gestionar_plantillas` y `compras.gestionar_ordenes` (V79 y V80, PRC-R13); el estado de la plantilla en su propia ruta y el retiro del `DELETE` de un documento (PRC-R05); el emisor fuera de los pedidos y el `DROP` de las columnas de V73 (V81, PRC-R01).
 
 **Sigue abierto en el paso 7**
 
 - Facturas y notas de crédito, con sus pantallas. De ellas depende la pregunta de dónde nace la unidad (mapa, decisión 5).
 - La fachada de `fleet`, que este contexto todavía no declara.
-- Una prueba de integración del `PATCH` y de los documentos de la plantilla (PRC-R03 a PRC-R07).
+- Una prueba de integración de lo que queda fijo, del alta con imágenes y del dibujo de los tipos (PRC-R03, PRC-R04 y PRC-R07). El `PATCH` y los documentos ya la tienen (PRC-R05, PRC-R06).
 - El saldo del proveedor (`/suppliers/{id}/balance`), con el paso 8.
 
 ---
