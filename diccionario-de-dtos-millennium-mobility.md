@@ -2218,7 +2218,7 @@ Cada orden se emite con una **plantilla**, que decide lo que se imprime —quié
 |---|---|---|---|---|
 | `company_id` | BIGINT FK → `companies` | No | Empresa que compra | Es la empresa dueña de la plantilla con que se emite |
 | `supplier_id` | BIGINT FK → `suppliers` | No | A quién se le pide | — |
-| `supplier_contact_id` | BIGINT FK → `supplier_contacts` | Sí | Persona del recuadro Proveedor | Opcional. Tiene que ser un contacto activo de ese proveedor (D-132) |
+| `supplier_contact_id` | BIGINT FK → `supplier_contacts` | Sí | Persona del recuadro Proveedor | Opcional. Tiene que ser un contacto de ese proveedor; uno nuevo tiene que estar activo (D-132, D-84) |
 | `purchase_order_template_id` | BIGINT FK → `purchase_order_templates` | No | Con qué plantilla se emite | De ella salen los datos que se imprimen y la serie de numeración |
 | `has_discount_column` | BOOLEAN | No | Si esta orden incluye la columna de porcentaje de descuento | Se decide al crear o editar el borrador; no vive en la plantilla (D-132) |
 | `series` | VARCHAR(20) | No | Serie de la plantilla al crear la orden: `OC-LBT` | Se copia y no se vuelve a leer de la plantilla: si la serie se corrigiera, las órdenes ya numeradas no cambiarían de número |
@@ -2270,6 +2270,8 @@ Cada serie lleva su propio correlativo: la orden de taller es la primera de su s
 - El vínculo de la factura con la orden es **opcional**. Con él, el pendiente se calcula solo; sin él, la orden se cierra a mano.
 - Toda orden se emite con una plantilla de su misma empresa; el sistema impide usar la plantilla de otra. Lo que se imprime sale de la plantilla al generar el PDF: mientras la orden es borrador, refleja los cambios que se le hagan a la plantilla.
 - **Una vez enviada, su PDF es el documento de la orden.** Se conserva en `pdf_path`, y editar la plantilla después no altera las órdenes ya enviadas. Es una sola copia fiel, con el teléfono de Atención, para todo el que lee la orden: es la que recibió el proveedor, sea quien sea quien pulsó «Enviar». El borrador lleva ese teléfono solo para quien ve los datos personales de los colaboradores (D-105, D-134).
+- Una orden se emite solo con una plantilla activa cuya empresa, marca —si la tiene— y tipo de orden están activos (D-84).
+- Un borrador conserva el proveedor, el contacto, la moneda y el modelo de cada línea que ya tenía aunque se hayan desactivado después; uno nuevo debe estar activo (D-84, D-108).
 - Emitir una orden exige leer su plantilla y su proveedor con `compras.ver` (§5.6). La lista de órdenes y la de plantillas todavía no se exportan: llegan con el paso de reportes (D-116, D-134).
 - La columna de descuento se decide en cada orden (`has_discount_column`), no en la plantilla. Si está apagada, ninguna línea activa lleva tasa; si está encendida, cada línea activa exige `discount_rate` (D-132).
 - El contacto del recuadro Proveedor es opcional y de ese proveedor. Cero contactos es válido (D-132).
@@ -2364,6 +2366,7 @@ Las tres copiaron el emisor de la misma empresa al crearse y difieren en lo dem�
 - Puede haber más de una plantilla activa para la misma línea y tipo —dos talleres con contactos distintos, por ejemplo—: quien emite la orden elige cuál usar.
 - Los correos se guardan sin espacios y en minúsculas, y el documento del emisor sin guiones, espacios ni puntos (§2.2).
 - Una plantilla no se borra: se desactiva. Las órdenes emitidas con ella la siguen referenciando.
+- Reactivar una plantilla exige su empresa y, si la tiene, su marca activas (D-94).
 - Cada cambio queda en la bitácora (§13), con el valor anterior y el nuevo. El documento de cada orden enviada ya lo conserva su PDF; la bitácora explica qué tenía la plantilla en una fecha pasada.
 - Crear plantillas y tipos de orden exige `compras.crear_plantillas`; corregirlos, y cargar o quitar un archivo de la plantilla, `compras.editar_plantillas`; activarlos o desactivarlos, `compras.desactivar_plantillas`. Crear una orden, corregir su borrador, enviarla, darla por cumplida y anularla exigen `compras.crear_ordenes`, `compras.editar_ordenes`, `compras.enviar_ordenes`, `compras.cumplir_ordenes` y `compras.anular_ordenes`. Enviar y cumplir son acciones especiales: comprometen a la empresa ante un tercero y fijan el documento (D-130). Leerlos exige `compras.ver` (§5.6). Una plantilla general, sin marca, es de todas las marcas: la escriben solo las asignaciones de toda la empresa y sin marca (§2.5).
 - La observación es de la plantilla: cada tipo o línea de negocio lleva la suya. No se vuelve a escribir al emitir (D-132).
