@@ -4,7 +4,7 @@
 
 **Fuentes:** la auditoría verificada (46 hallazgos y 10 divergencias), siete planes por frente y dos críticas independientes (secuencia y despliegue, y adversarial).
 
-**Estado:** versión 2 (26/10/2026). Esta versión incorpora la auditoría crítica del plan (sección 11). **La sección 11 manda sobre todo lo anterior y sobre los diseños de detalle (JSON) de los planificadores.** El responsable valida las decisiones de la sección 2 antes de empezar cada fase que depende de ellas. El diccionario ya está en v1.30 sin commit: D-133 tiene D1, D3, D4, D5 y D6, y D-134 los demás textos de DOC-DICT (sección 11.6), salvo los de D7, que esperan al segundo pase (sección 12).
+**Estado:** versión 2 (26/10/2026). Esta versión incorpora la auditoría crítica del plan (sección 11). **La sección 11 manda sobre todo lo anterior y sobre los diseños de detalle (JSON) de los planificadores.** El responsable valida las decisiones de la sección 2 antes de empezar cada fase que depende de ellas. El diccionario ya está en v1.30 sin commit: D-133 tiene D1, D3, D4, D5 y D6, y D-134 los demás textos de DOC-DICT (sección 11.6), salvo los de D7, que esperan al segundo pase (sección 12). **Al 29/10/2026** todo el plan está publicado, también la documentación, desde el 27/10/2026 (secciones 12 y 13); lo que vino después, el 28 y el 29/10/2026, está en la sección 13.6.
 
 ---
 
@@ -380,7 +380,7 @@ Las que ya están en una rama no se renumeran: el orden de arriba es el de integ
 | Convertir la lista de tipos del diálogo a `mm-data-manager` | Es una lista corta dentro de un diálogo, no una tabla; se cierra el formulario en línea, que era el problema |
 | Mover `address.ts` de organization a `shared` | Tocaría unos 21 archivos de organization; procurement tiene su propio modelo, coherente con §4.6 |
 | Responder 403 en lugar de 404 en las escrituras de plantillas | Cambiar el contrato no protege nada nuevo. Queda como candidato para unificar con organization |
-| `PURCHASEORDER_OUTDATED` en el borrador de la orden | Necesita diccionario y frontend. El bloqueo de SEC-04 ya evita corromper el ciclo de estados. Es candidato |
+| ~~`PURCHASEORDER_OUTDATED` en el borrador de la orden~~ | ~~Necesita diccionario y frontend. El bloqueo de SEC-04 ya evita corromper el ciclo de estados. Es candidato~~ Hecho el 29/10/2026, por decisión del responsable del 29/10/2026: V85 da a `purchase_orders` `updated_at` y `updated_by`, `PUT /purchase-orders/{id}` exige el `updatedAt` que leyó y uno anterior responde `422 PURCHASEORDER_OUTDATED` (backend `a0201a41`, frontend `5656f985`). El cuadro del diccionario (§9.2) todavía no tiene las dos columnas (sección 13.6) |
 | `PURCHASEORDERTYPE_CODE_CONFLICT`, que ya está publicado y mapeado | Con una sola regla única debería ser el genérico, pero renombrarlo no protege nada. Se anota como excepción |
 | Redactar los PDF ya enviados en producción | No se pueden regenerar fielmente. Siguen sirviendo su único archivo |
 | Versionar `vehicle_fund_assignments` en `data_versions` | Ninguna exportación la lee todavía. Llega con la lista de cesiones por fondo (paso 9 o 10) |
@@ -579,7 +579,7 @@ Hoy un rol propio que conserva un código grueso de V62 o V64 no se puede guarda
 | P5c | La excepción a D-105 para el PDF enviado (DP-4); el emisor copiado y no editable en §9.2 (l.2293-2296), l.1563 y D-35 (DP-5); §2.7, la llave por contenido (DP-16); `attention_email` como candidato (DP-6) |
 | P5e | §2.5 l.114 y D-80: la RLS derivada del país con rama SYSTEM, como excepción a la regla 5.1 (DP-8); `addresses.company_id` como candidato |
 | P6a | §5.6, §9.2 y D-130 (D7, DP-2, DP-3); que escribir exige `compras.ver` (DP-18) |
-| Cuando convenga | D-116, las exportaciones pendientes (DP-17); los candidatos `PURCHASEORDER_OUTDATED` y `attention_email` |
+| Cuando convenga | D-116, las exportaciones pendientes (DP-17); los candidatos `PURCHASEORDER_OUTDATED` y `attention_email`. `PURCHASEORDER_OUTDATED` se construyó el 29/10/2026 (sección 8), y su texto en el diccionario espera la validación del responsable |
 
 **Skills** (las dos copias, idénticas y fuera de git):
 - regla 5.1: la excepción de `addresses`;
@@ -706,6 +706,8 @@ Estado y guía de publicación: ver la sección 13.
 
 Al 26/10/2026, los textos de la documentación están aplicados, sin commit, para la validación del responsable: el diccionario v1.31 (D-130 enmendada con los ocho permisos de compras, D-133 y D-134), las convenciones de la API, los patrones de persistencia, los contextos `fleet`, `procurement` y `location`, el mapa de contextos, procesos y pantallas, el orden de implementación y la [retroalimentación de fondos](retroalimentacion/2026-10-26-fondos.md). El segundo pase sumó lo que dependía de D7 y el retiro del `DELETE` de convenciones §3.1.
 
+Esos textos se publicaron el 27/10/2026 en `master` de la documentación: `8c4c165` (el cierre de la auditoría, D-133 y D-134) y `427589a` (los hallazgos de órdenes y plantillas cerrados ese día); después, `4da4453` (la segunda revisión de órdenes y plantillas), y `b02e6b3` y `f80a9e1` (D-135). Lo que siguió el 28 y el 29/10/2026 está en la sección 13.6.
+
 ---
 
 ## 13. Estado final y guía de publicación
@@ -721,7 +723,7 @@ Las fases F1a a F6 están implementadas, más una ronda F7 con lo que dejaron la
 
 **`develop` no se publica entero con un `git push`**: eso saltaría el orden de las etapas y las consultas previas. Se publica etapa por etapa, por su hash (13.2).
 
-La documentación queda sin commit hasta que el responsable la valide (sección 12).
+~~La documentación queda sin commit hasta que el responsable la valide (sección 12).~~ Publicada el 27/10/2026 (sección 12).
 
 ### 13.2 Etapas
 
@@ -766,8 +768,8 @@ Los pushes se hacen desde los repos principales: `git -C erp-millennium-mobility
 
 - **Repos principales:** el `develop` local de los dos repos ya está en la punta final. Si arrancas el backend desde el repo principal, Flyway lleva `erp_mm_db` hasta V81 con las migraciones finales; esa base nunca tuvo la V75 vieja, así que no hace falta resetearla. Después de cada push, `git fetch` deja `origin/develop` en la etapa publicada; no hay nada que fusionar.
 - **Compañero:** `origin/feat/fleet-funds` es ancestro de B2 y de S2. Después de B2 y S2, se adelanta por fast-forward al `develop` publicado en los dos repos (`git push origin <etapa publicada>:refs/heads/feat/fleet-funds`), y él resetea su base antes de arrancar.
-- **Ramas y worktrees:** los worktrees de trabajo ya se quitaron. Las etapas no necesitan ramas, porque todas son ancestros de `develop`.
-- **Documentación:** se hace commit cuando el responsable valide la v1.31 del diccionario y los demás textos.
+- **Ramas y worktrees:** los worktrees de trabajo ya se quitaron. Las etapas no necesitan ramas, porque todas son ancestros de `develop`. Al 29/10/2026, `feat/fleet-funds` ya no existe en `origin`, y los dos repos quedan con `develop` y `master`.
+- ~~**Documentación:** se hace commit cuando el responsable valide la v1.31 del diccionario y los demás textos.~~ Hecho el 27/10/2026 (sección 12).
 
 ### 13.5 Verificación final
 
@@ -775,3 +777,23 @@ Los pushes se hacen desde los repos principales: `git -C erp-millennium-mobility
 - **Pruebas en vivo**, con el backend real en `erp_mm_db_verify`, sin mock: ubicación, organización, seguridad, compras y fondos. La primera corrida encontró un defecto de producción, la descarga del PDF de una orden (406), corregido en S5. Las corridas siguientes, antes y después de la limpieza, sin defectos de producto. La de la punta final (backend `471021cd`, frontend `5c1c3c2e`): 47 pasan, 0 fallan y 2 omitidas, por falta de datos (D-82) y por configuración (la cuenta de un administrador de empresa). El log del backend, sin errores.
 - **Revisiones adversarias de F7**, una del backend y otra del frontend (tres ángulos cada una, con dos escépticos por hallazgo): la carrera del código del tipo (DP-44), el corte de V80 por la hora (DP-43), el envío sin la firma (DP-45) y el frontend que habría dicho «actualizado» contra un backend anterior (DP-46), todos corregidos.
 - **Código sin uso**: buscado por módulo en los dos repos y confirmado por un escéptico antes de borrar. Se quitaron 60 piezas del backend y unas 95 del frontend. Lo que DESIGN.md o las skills documentan como sistema de diseño se conserva aunque hoy no tenga uso: `mm-metric-card`, `mm-filter-layout`, las clases `.mm-type-*`, `.mm-span-mobile-*`, `.mm-page-actions`, `.mm-form-screen`, las opciones de `ToastOptions` y los métodos genéricos de `BaseApiEndpoint` y `BaseAssembler`. Quitarlos es una decisión del responsable.
+
+### 13.6 Después del cierre: 28 y 29/10/2026
+
+Lo que siguió al cierre, ya publicado en `origin/develop`: el backend hasta `5ec83065` y el frontend hasta `bda96499`. Cambia filas de este plan, que quedan como estaban, con su historia, y se leen con esto:
+
+| Qué | Commits | Lo que cambia de este plan |
+|---|---|---|
+| La sesión guardada ya no lleva el hash de la contraseña | `513bbc88` | Nada del plan; cierra el pendiente O58 de `iam` ([iam.md](contextos/iam.md), §6 b) |
+| Fuera de `dev`, la aplicación no arranca si su cuenta de base es superusuario o tiene `BYPASSRLS` | `852214f3` | Refuerza la regla de las dos cuentas (sección 3) |
+| V83: las siete tablas de compras con empresa, con las políticas de V29 en lugar de la política única de V63 a V74 | `6ebbe6b2` | Sigue al registro de la sección 5. V83 no abre con el alcance `SYSTEM` que pide la sección 3: solo reemplaza políticas y no lee ninguna fila |
+| V84: `kept_files` con la empresa de cada archivo y Row Level Security; el `DO` se detiene si una llave no nombra ni una plantilla ni una orden enviada | `e97383b5` | La llave por contenido de DP-16 no cambia. El diccionario (§2.7) todavía dice que la tabla no lleva empresa |
+| El frontend vuelve a cargar Inicio de sesión desde el servidor cuando la sesión termina; la contraseña del inicio de sesión recupera «Ingrese su contraseña», por decisión del responsable del 28/10/2026 | `1950d50d`; `7381bfb5`, `52c47b30` | Nada |
+| La orden nombra su moneda por su código ISO (`"currency": "PEN"`), por decisión del responsable del 29/10/2026 | `ef147166`; frontend `9be57b15` | Nada; el contrato de la orden cambia en convenciones |
+| El borrador que no pisa un cambio más nuevo: V85 y `422 PURCHASEORDER_OUTDATED`, por decisión del responsable del 29/10/2026 | `a0201a41`; frontend `5656f985` | Cierra la fila de `PURCHASEORDER_OUTDATED` de la sección 8 y el candidato de 11.6 |
+| Lo que una orden revisa activo se lee con `FOR SHARE`, y el contacto responde su propio código: `404 SUPPLIER_CONTACT_NOT_FOUND` o `422 SUPPLIER_CONTACT_INACTIVE`, en lugar de `PURCHASEORDER_CONTACT` | `914cac1a`, `77e1e28c`, `7af493e6` | Los `*_INACTIVE` de compras de 11.4 suman el contacto |
+| Los decimales de una moneda quedan fijos desde su primera orden: `422 CURRENCY_DECIMAL_PLACES_IN_USE`, por el puerto `CurrencyUsage` de `location`, por decisión del responsable del 29/10/2026 | `7b8db0ee`; frontend `f9a23d0b`, `da457b00` | Nada |
+| La ficha del proveedor, con sus contactos por sus propias rutas; `PUT /suppliers/{id}` ya no los lleva, y `422 SUPPLIER_CONTACT_OUTDATED` | `2f50c904` a `5ec83065`; frontend `83812b7a` a `bda96499` | Nada del plan; el contrato del proveedor cambia en convenciones |
+| V82: el año del modelo en cada línea de vehículo de una orden (D-135), del 27/10/2026 | `5242833b` | Sigue al registro de la sección 5 |
+
+Las migraciones nuevas, V82 a V85, abren con `lock_timeout` de 5 s, y V82, V84 y V85, también con el alcance `SYSTEM`.
