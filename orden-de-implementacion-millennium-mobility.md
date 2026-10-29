@@ -278,6 +278,13 @@ El paso sigue abierto por lo mismo: las facturas y las notas de crédito, con lo
 - **Tablas:** los campos de habilitación de `vehicles`, `document_types`, `vehicle_documents`, `vehicle_equipments`, `vehicle_keys`, `vehicle_tax_declarations` e `import_batches` (del núcleo común).
 - **Pantallas:** Logística › Habilitación y Cargas de archivos; Catálogos › Tipos de documento.
 - **Nota:** el estado de habilitación se calcula (§11.9). Las cargas de archivos registran toda carga masiva: la declaración del impuesto, la garantía mobiliaria y la migración inicial.
+- **Antes de construir los tipos de documento del vehículo** (revisión del 29/10/2026 de §11.2 contra el resto de la documentación). El catálogo está justificado: guarda como datos qué documento bloquea la disponibilidad, cuál vence, cuál ve el cliente y cuál exige una unidad a gas, igual que `equipment_types.blocks_availability`. Quedan seis puntos para que el responsable los resuelva en el diccionario:
+  1. Qué permiso lo mantiene: D-100 lo ponía bajo `catalogos.gestionar_estados`, que D-130 partió, y una pantalla sin construir no tiene permiso hasta su paso (procesos y pantallas, pregunta 6).
+  2. El código `TIVE`: lo leen las reglas de §11.1, §11.7 y §11.9, pero D-74 solo deja fijos `GPS` y `PANTALLA`. Además §11.9 evalúa solo ese documento: otro tipo marcado como bloqueante no aparecería en el estado de habilitación.
+  3. El país: el catálogo es del sistema (D-15), pero `TIVE`, `SOAT` y `REV_TECNICA` son de Perú, mientras los documentos tributarios son por país (D-44). Se resuelve antes de la primera empresa de otro país (D-52).
+  4. `FACTURA` repetiría el archivo que ya guarda `purchase_invoices` (§9.3), justo el argumento con que §11.6 descarta la tabla de pólizas.
+  5. `requires_gas_conversion` habla de unidades convertidas a gas, pero el único dato es el combustible del modelo (§7, D-109).
+  6. Le faltan `created_at` y `updated_at`, como a los demás catálogos (D-42, D-73); el aviso de renovación no dice a quién llega; y el nombre `document_types` se confunde con `tax_id_types` y con `purchase_order_template_document_types`.
 
 
 
