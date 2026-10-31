@@ -52,3 +52,5 @@ La columna **Estado** dice si la regla se cumple hoy: ✅ aplicada y probada, �
 ## Cuándo se actualiza
 
 Un documento de contexto se actualiza en el mismo cambio que modifica una regla, un flujo o el estado de su paso, igual que el orden de implementación. Al cerrar un paso, la sección 6 de su contexto queda sin pendientes de código o con cada pendiente asignado a un paso posterior.
+
+**Los documentos citan commits y fechas, nunca si algo está publicado** (desde el 31/10/2026, para todos los documentos del repositorio). Que un commit esté o no en el remoto cambia sin que nadie toque el documento, así que esa frase queda vieja sola; lo dice git (`git branch -r --contains <commit>`). Las entradas anteriores que dicen "publicado" o "sin push" se conservan: registran lo que era cierto ese día.
