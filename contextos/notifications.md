@@ -1,6 +1,6 @@
 # Contexto `notifications` — ERP Millennium Mobility
 
-**Actualizado:** 30/10/2026 (creado: decisión del responsable del 30/10/2026 de llevar el correo, el SMS y el push a un solo módulo de la plataforma, `notifications`, con un adaptador por proveedor; existe solo su arquitectura, en `develop` del backend, `2cf3f91d`, sin publicar todavía; la decisión espera su texto en el diccionario como D-143) · **Fuente:** diccionario de datos v1.33 (§2.5, §2.7, §11.3, §14, D-63, D-125) y el análisis del 30/10/2026.
+**Actualizado:** 30/10/2026 (creado: decisión del responsable del 30/10/2026 de llevar el correo, el SMS y el push a un solo módulo de la plataforma, `notifications`, con un adaptador por proveedor; existe solo su arquitectura, en `develop` del backend, `2cf3f91d`, sin publicar todavía; la decisión está en el diccionario como D-143) · **Fuente:** diccionario de datos v1.33 (§2.5, §2.7, §11.3, §14, D-63, D-125) y el análisis del 30/10/2026.
 
 **Cómo leerlo.** Este módulo está diseñado y no construido. Las secciones 1 a 3 dicen qué hará y qué no; la 4 lista sus reglas, todas ❌ hasta su primer caso de uso; la 6 dice qué existe hoy, que es solo la organización de sus paquetes. Sus tablas no están en el diccionario: entran con su primer caso, con sus columnas y su migración.
 
@@ -60,7 +60,7 @@ Es un módulo de la plataforma, como `documents` (D-125): lo usan varios context
 
 | ID | Regla | Fuente | Dónde se aplicará | Estado |
 |---|---|---|---|---|
-| NTF-R01 | Un contexto pide una notificación solo por `notifications::acl`; ninguno llama a un proveedor | D-143 (propuesta) | Spring Modulith | ❌ |
+| NTF-R01 | Un contexto pide una notificación solo por `notifications::acl`; ninguno llama a un proveedor | D-143 | Spring Modulith | ❌ |
 | NTF-R02 | Quien pide resuelve el destino: una dirección de correo, un teléfono o una cuenta para push. `notifications` no llama a ningún contexto de negocio | D-143; si leyera el correo de `iam` mientras `iam` le pide el enlace, habría un ciclo | Contrato | ❌ |
 | NTF-R03 | El pedido se guarda en la transacción del hecho que lo origina y lo envía después un proceso: un proveedor caído no revierte el hecho ni pierde el aviso | D-143 | Servicio | ❌ |
 | NTF-R04 | Un pedido no se envía dos veces: cada uno lleva una llave de idempotencia única | D-143 | Base | ❌ |
