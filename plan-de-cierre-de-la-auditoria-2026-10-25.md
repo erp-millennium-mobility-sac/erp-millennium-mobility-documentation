@@ -780,7 +780,7 @@ Los pushes se hacen desde los repos principales: `git -C erp-millennium-mobility
 
 ### 13.6 Después del cierre: del 28 al 31/10/2026
 
-Lo que siguió al cierre. Lo del 28 y el 29/10/2026 está publicado en `origin/develop`: el backend hasta `5ec83065` y el frontend hasta `bda96499`. Lo del 30/10/2026 está en `develop` y se publicó el 30/10/2026: el backend hasta `a54ee29b`, con V86, y el frontend hasta `88484481`; el responsable aprobó ese día D-136 a D-142 en el diccionario v1.33. Lo del 31/10/2026 está en `develop` local, sin publicar todavía y sin migraciones: el backend hasta `1e207eb7` y el frontend hasta `f0ee86aa`. Cambia filas de este plan, que quedan como estaban, con su historia, y se leen con esto:
+Lo que siguió al cierre. Lo del 28 y el 29/10/2026 está publicado en `origin/develop`: el backend hasta `5ec83065` y el frontend hasta `bda96499`. Lo del 30/10/2026 está en `develop` y se publicó el 30/10/2026: el backend hasta `a54ee29b`, con V86, y el frontend hasta `88484481`; el responsable aprobó ese día D-136 a D-142 en el diccionario v1.33. Lo del 31/10/2026 está en `develop`, sin migraciones: el backend hasta `1e207eb7` y el frontend hasta `f0ee86aa`. Cambia filas de este plan, que quedan como estaban, con su historia, y se leen con esto:
 
 | Qué | Commits | Lo que cambia de este plan |
 |---|---|---|
