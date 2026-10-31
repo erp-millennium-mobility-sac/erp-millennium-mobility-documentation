@@ -492,7 +492,7 @@ En el frontend: `4b2c5c3` (FE1) `RouteAccess` y `NavigationAccess` con `anyOf` y
 - `852214f3`, en `shared`: fuera de `dev`, la aplicación no arranca si PostgreSQL dice que su cuenta es superusuario o tiene `BYPASSRLS`, además de exigir que la cuenta de Flyway sea otra (pendiente 9 de la sección b; [patrones de persistencia](../patrones-de-persistencia-millennium-mobility.md)).
 - En el frontend, `1950d50d`: al cerrar la sesión o al encontrarla vencida, Inicio de sesión se vuelve a cargar desde el servidor (F2). Y `7381bfb5`: la contraseña del inicio de sesión recupera «Ingrese su contraseña», por decisión del responsable del 28/10/2026 (F2).
 
-**El 30/10/2026**, en `develop` (backend `a54ee29b`, sin publicar todavía):
+**El 30/10/2026**, en `develop` (backend `a54ee29b`, publicado ese día):
 
 - `726aeec0`: el inicio de sesión, el registro y dar acceso rechazan un correo de más de 255 caracteres con `400 VALIDATION_ERROR` en `email` (IAM-R04; pendiente 5 de la sección b, O58).
 - `145fc104` y `a54ee29b`, en `shared`: la búsqueda `q` de las cuentas y de los roles, como la de toda lista, no distingue tildes: las dos partes pasan por `fold_search_text` de V86 (D-142; [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), §6.2). Lo prueba `RolesListTests.theSearchFindsARoleWhateverItsAccents`.

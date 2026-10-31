@@ -1,6 +1,6 @@
 # Contexto `notifications` — ERP Millennium Mobility
 
-**Actualizado:** 30/10/2026 (creado: decisión del responsable del 30/10/2026 de llevar el correo, el SMS y el push a un solo módulo de la plataforma, `notifications`, con un adaptador por proveedor; existe solo su arquitectura, en `develop` del backend, `2cf3f91d`, sin publicar todavía; la decisión está en el diccionario como D-143) · **Fuente:** diccionario de datos v1.33 (§2.5, §2.7, §11.3, §14, D-63, D-125) y el análisis del 30/10/2026.
+**Actualizado:** 30/10/2026 (creado: decisión del responsable del 30/10/2026 de llevar el correo, el SMS y el push a un solo módulo de la plataforma, `notifications`, con un adaptador por proveedor; existe solo su arquitectura, en `develop` del backend, `2cf3f91d`, publicada el 30/10/2026; la decisión está en el diccionario como D-143) · **Fuente:** diccionario de datos v1.33 (§2.5, §2.7, §11.3, §14, D-63, D-125) y el análisis del 30/10/2026.
 
 **Cómo leerlo.** Este módulo está diseñado y no construido. Las secciones 1 a 3 dicen qué hará y qué no; la 4 lista sus reglas, todas ❌ hasta su primer caso de uso; la 6 dice qué existe hoy, que es solo la organización de sus paquetes. Sus tablas no están en el diccionario: entran con su primer caso, con sus columnas y su migración.
 
@@ -84,7 +84,7 @@ Es un módulo de la plataforma, como `documents` (D-125): lo usan varios context
 
 ## 6. Estado y pendientes para cerrar
 
-**Construido el 30/10/2026: solo la arquitectura** (backend `2cf3f91d`, en `develop`, sin publicar). El módulo `ky.millennium.mobility.erp.notifications` tiene un `package-info.java` en cada paquete, con lo que va en él, siguiendo la estructura de la skill `backend-module`: el raíz declara el módulo; `interfaces/acl` es su contrato, con `@NamedInterface("acl")`; los puertos por canal en `application/internal/outboundservices/channels`, el despachador en `application/internal/scheduledtasks` y un paquete por proveedor en `infrastructure/providers` —`sendgrid`, `twilio`, `fcm` y `capturing`, el de desarrollo y pruebas—. No tiene clases, tablas, rutas ni beans. Con él pasan `ModularityTests`, `LayerDependencyTests`, `NoDeleteEndpointsTests` y el arranque de la aplicación.
+**Construido el 30/10/2026: solo la arquitectura** (backend `2cf3f91d`, en `develop`, publicado el 30/10/2026). El módulo `ky.millennium.mobility.erp.notifications` tiene un `package-info.java` en cada paquete, con lo que va en él, siguiendo la estructura de la skill `backend-module`: el raíz declara el módulo; `interfaces/acl` es su contrato, con `@NamedInterface("acl")`; los puertos por canal en `application/internal/outboundservices/channels`, el despachador en `application/internal/scheduledtasks` y un paquete por proveedor en `infrastructure/providers` —`sendgrid`, `twilio`, `fcm` y `capturing`, el de desarrollo y pruebas—. No tiene clases, tablas, rutas ni beans. Con él pasan `ModularityTests`, `LayerDependencyTests`, `NoDeleteEndpointsTests` y el arranque de la aplicación.
 
 **El frontend no tiene carpeta todavía.** Angular no tiene un equivalente de `package-info.java`, y una carpeta vacía no queda en git. Llegará como `src/app/notifications`, con sus cuatro capas (skill `frontend-feature`), cuando haya una pantalla que la necesite: el registro de un dispositivo para push o la lista de notificaciones enviadas.
 

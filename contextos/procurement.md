@@ -267,7 +267,7 @@ En el frontend, las pantallas viven en `src/app/procurement`. El menú las muest
 - La hoja de la orden, otra vez como se imprime, con la plantilla primero, y los tipos de orden en Gestionar tipos (F4, F5; revisiones 28 y 29 de `DESIGN.md`). El bloque plegable y el encabezado compacto de la tercera revisión del 27/10/2026 ya no existen.
 - Un duplicado que ningún adaptador traduce, como el número de una orden, deja en el registro del servidor el nombre de su restricción (50136e2d; convenciones §7.2).
 
-**Cerrado el 30/10/2026** (diccionario v1.33, D-137, D-140 y D-142, aprobadas por el responsable ese día; migración V86; `develop` en los dos repositorios, backend a54ee29b y frontend 88484481, sin publicar todavía)
+**Cerrado el 30/10/2026** (diccionario v1.33, D-137, D-140 y D-142, aprobadas por el responsable ese día; migración V86; `develop` en los dos repositorios, backend a54ee29b y frontend 88484481, publicados ese día)
 
 - El alta del proveedor ya no lee contactos: entran solo por `POST /suppliers/{id}/contacts` (D-137, PRC-R23; backend fb73ba40). Cambio incompatible del alta; el frontend ya no los mandaba, y su simulador y su e2e esperan un alta sin contactos (51f35fa6). `SupplierContactInputResource` y `SupplierContactDraft` salieron, y con ellos el `400` de un contacto nulo en `contacts[n]` (PRC-R27).
 - La búsqueda de compras no distingue tildes (D-142, V86, PRC-R28; backend 145fc104 y a54ee29b).
