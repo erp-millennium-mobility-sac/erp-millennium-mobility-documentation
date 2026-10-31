@@ -30,3 +30,4 @@ Una revisión no es una evaluación de personas. Sirve para que el equipo compar
 | 19/10/2026 | `iam`, `shared`, `location`, `vehiclecatalog`, `organization` | [La matriz de permisos del paso 3b: los hallazgos del panel de diseño que la fijaron y lo que queda abierto](2026-10-19-permisos.md) |
 | 26/10/2026 | `fleet` | [Fondos: el catálogo y las cesiones de `feat/fleet-funds`, cerrados con la auditoría del 25/10/2026, y cómo limpiar la base local](2026-10-26-fondos.md) |
 | 30/10/2026 | `procurement`, `fleet`, `location`, `organization`, `iam` | [Sondas en vivo contra el código del 30/10/2026: 50 de 50, y un aviso de rendimiento del formulario de la orden](2026-10-30-sondas.md) |
+| 31/10/2026 | `vehiclecatalog`, `fleet`, `shared`, `procurement`, `organization`, `location`, `iam` | [Sondas en vivo contra el código del 31/10/2026: 72 de 72 en dos corridas, con las nuevas de los pasos 4, 5 y 6, y tres hallazgos menores cerrados](2026-10-31-sondas.md) |
