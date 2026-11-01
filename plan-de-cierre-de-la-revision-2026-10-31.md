@@ -764,7 +764,12 @@ Antes de integrar, en la rama del frontend, las unitarias dieron 2 647 en verde 
 1. **La suite del backend con las dos cuentas** sobre `erp_mm_db_verify`, sin fallos (sección 12).
 2. **Las ocho sondas en vivo, en dos corridas seguidas, con los dos casos de S5**, contra el backend con V87 y V88, cuando haya la contraseña de la cuenta de verificación.
 3. **Las acciones del responsable en el entorno** (sección 3): `IAM_SIGN_IN_KEY` como secreto en App Platform antes de desplegar S4, porque fuera de `dev` la aplicación no arranca sin ella; y, durante S3, `ORIGIN_SECRET` en Pages y en App Platform, `IAM_ORIGIN_CHECK_ENABLED` encendido cuando la función ya lo mande, la comprobación con `curl` —la URL de DigitalOcean responde `404` y `dev.erp.millennium.ky` funciona— y la regla de limitación de Cloudflare.
-4. **Los push, en el orden de la sección 7**, que pide el responsable: S1; el frontend de S2, S6 y S7; S4 y el backend de S6; S5; S3 con su secuencia; S7 con V88; S11; S12; S13.
+4. **Los push, que pide el responsable.** El 31/10/2026 las integraciones pasaron a `develop` por avance directo: backend `7f8e122e` y frontend `308d9ae9`, los mismos commits que se verificaron arriba. Los worktrees y las ramas de los slices se borraron. Como todo está ya en `develop`, el orden de la sección 7 se reduce a este:
+   1. **El frontend** (`308d9ae9`). Conoce los códigos nuevos, valida los bytes y los 2 decimales, y su función solo manda cabeceras cuando existe `ORIGIN_SECRET`, así que no depende del backend.
+   2. **Antes del backend:** `IAM_SIGN_IN_KEY` en App Platform; la consulta de monedas en producción (V88); y, si se puede, una corrida del CI con las dos cuentas sobre una rama subida, a pedido desde *Actions*, antes de publicar `develop`, que despliega en cada push.
+   3. **El backend** (`7f8e122e`). El filtro de origen nace apagado y Swagger queda apagado en producción.
+   4. **El refuerzo:** `ORIGIN_SECRET` en App Platform y en Pages, la función desplegada con él, `IAM_ORIGIN_CHECK_ENABLED` encendido, la comprobación con `curl` y la regla de Cloudflare.
+   5. **La documentación.**
 5. **La revisión de este cierre** en `retroalimentacion/`, con cada hallazgo como error o aprendizaje: [2026-10-31-revision.md](retroalimentacion/2026-10-31-revision.md).
 
 Con los puntos 1 a 3 en verde, la revisión cumple la sección 12.
