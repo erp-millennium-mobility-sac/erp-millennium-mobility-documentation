@@ -41,7 +41,7 @@ Desde el vehículo hay dos ramas independientes: compras y pagos (pasos 7 y 8), 
 
 ## Avance al 31/10/2026
 
-Contado contra `develop` (backend `a54ee29b`, con las migraciones V1 a V86; frontend `88484481`; los dos publicados el 30/10/2026, y el backend siguió hasta `2cf3f91d`, la arquitectura de `notifications`, que no cambia estas cuentas; el 31/10/2026, en `develop` local, el backend llegó a `1e207eb7`, con pruebas, y el frontend a `f0ee86aa`, con la corrección de `NG0956` y tres sondas en vivo, que tampoco las cambian) y contra el diccionario v1.33, sin ventas ni contratos (bloque 12). El 31/10/2026 el diccionario v1.34 agrega al bloque 2 `sign_in_throttles`, la tabla de control del freno del inicio de sesión (D-144), y el cierre de la revisión de ese día la construye con V87 (`9f88a6b3`); V88 solo cambia una restricción de `currencies`. Las demás cuentas no cambian.
+Contado contra `develop` (backend `1e207eb7`, con las migraciones V1 a V86; frontend `6645341c`) y contra el diccionario v1.33, sin ventas ni contratos (bloque 12). El 31/10/2026 el diccionario v1.34 agrega al bloque 2 `sign_in_throttles`, la tabla de control del freno del inicio de sesión (D-144), y el cierre de la revisión de ese día la construye con V87 (`9f88a6b3`); V88 solo cambia una restricción de `currencies`. Las demás cuentas no cambian.
 
 | Qué | Hecho | Previsto | Lo que falta |
 | --- | --- | --- | --- |
