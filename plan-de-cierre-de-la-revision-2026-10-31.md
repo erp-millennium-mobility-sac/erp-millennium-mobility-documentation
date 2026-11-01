@@ -14,7 +14,7 @@ Incluye un refuerzo: que al backend solo se llegue por Cloudflare.
 
 **Base:** backend `1e207eb7` (`develop`, V1 a V86), frontend `6645341c` (`develop`) y documentación `853ca24` (`master`).
 
-**Estado:** versión 3.1, **aprobada por el responsable el 31/10/2026** («Apliquemos lo recomendado»). Suma a la versión 3 los cuatro ajustes de la sección 14.
+**Estado:** versión 3.1, **aprobada por el responsable el 31/10/2026** («Apliquemos lo recomendado»). Suma a la versión 3 los cuatro ajustes de la sección 14. **Construido e integrado el 31/10/2026**: la sección 15 dice los commits de cada slice, las pruebas, los desvíos y lo que queda.
 - **Versión 2:** incorporó la auditoría adversarial del plan (sección 13).
 - **Versión 3:** fija las decisiones recomendadas tras revisarlas con criterio crítico (sección 14). El freno cuenta por cuenta y por dispositivo (opción B de DP-1), y el refuerzo del secreto de origen pasa a ser parte del plan, fuera de la ruta crítica (DP-13).
 
@@ -694,3 +694,77 @@ Una auditoría adversarial leyó la versión 1 contra el código, y se verificó
 2. **La clave se llama `IAM_SIGN_IN_KEY`.** Firma la cookie y protege la tabla. Rotarla vuelve todos los navegadores a «sin historia» y pone los contadores en cero, y así se documenta.
 3. **La regla de Cloudflare es holgada** (30 por minuto por IP): es para las ráfagas grandes, no para la fuerza bruta.
 4. **La pantalla habla de caracteres; el diccionario, de bytes.**
+
+---
+
+## 15. Estado de la implementación (31/10/2026)
+
+Construida el 31/10/2026, cada slice en su rama `feature/<contexto>` y en su worktree hermano, e integrada ese día en la rama `integration/review-2026-10-31` de los dos repositorios, que sale de la base de este plan (backend `1e207eb7`, frontend `6645341c`):
+
+- **Backend**, cabeza `7f8e122e`: merges `55ede253` (`feature/iam-sign-in-throttle`), `5355138d` (`feature/procurement-acl-translation`), `403a7903` (`feature/fleet-status-path`) y `7f8e122e` (`feature/location-currency-decimals`). V87 es de S4 y V88 de S7, como en la sección 6.
+- **Frontend**, cabeza `308d9ae9`: merges `a3e89e30` (`feature/iam-sign-in-throttle`) y `308d9ae9` (`feature/location-currency-decimals`).
+
+### 15.1 Commits por slice
+
+| Slice | Backend | Frontend y otros | Estado |
+|---|---|---|---|
+| S1 | `13be744f`: el hash de relleno, la misma respuesta y el mismo tiempo para un correo inexistente y `SYSTEM` | — | Construido |
+| S2 | — | `a1b01aa4`: los mensajes con los minutos y `SIGN_IN_BUSY`; `da347a6c`: el simulador del inicio de sesión y `e2e/sign-in.spec.ts` | Construido |
+| S3 | `ea805b2c`: `OriginCheckFilter`, `ORIGIN_SECRET` y `ORIGIN_SECRET_PREVIOUS`, `/actuator/health` fuera del filtro, `X-MM-Client-IP` solo para el registro y Swagger apagado en `prod` | `c4176ee3`: la función de Pages manda el secreto y la IP | Construido. Encenderlo es la acción 3 de la sección 3, en el orden de la sección 7, paso 5 |
+| S4 | `9f88a6b3`: V87, `sign_in_throttles`, el agregado, su persistencia y `hand-over-database.sql`; `8aff79fb`: `SIGN_IN_THROTTLED` `429` y `SIGN_IN_BUSY` `503`; `7b8583cc`: el freno por cuenta y por navegador, `MM_DEVICE`, la purga, `SignInCommandServiceImpl` y `SignInThrottleCommandServiceImpl` | — | Construido. `UserCommandServiceImpl` queda en 241 líneas de código |
+| S5 | — | `9df6208d`: los dos casos de `e2e-live/security.live.spec.ts` | Escrito, sin correr (15.4) |
+| S6 | `17072d0a`: de 8 caracteres a 72 bytes, la anotación `@PasswordLength` y la contraseña del arranque validada | `11d31aa5`: `atMostUtf8Bytes(72)` y la pista; las tres capturas de Registro, regeneradas | Construido |
+| S7 | `1917101f`: `Currency` hasta 2, `@Max(2)` y los textos; `e6aa2094`: V88, que se detiene si una moneda tiene más de 2 y deja el `CHECK` en 0..2; `8799bc96` y `4e2379bd` (15.3) | `c86fb25d`: el diálogo, hasta 2; `7c8a4fa5`: sin el texto de `PURCHASEORDER_CURRENCY_SCALE` | Construido, con dos desvíos (15.3) |
+| S8 | — | Documentación: `3c75e96`, `9308f09`, `fcf73cb` y `8b5a77f`; esta pasada, de `af73275` en adelante | Hecho |
+| S8b | `d34cba7c`: las líneas viejas del README | `3a31e2ef`: README, `app.routes.ts` y `playwright.live.config.ts` | Hecho |
+| S9 | — | Las dos copias de las skills, fuera de git e idénticas: los once, la excepción de `kept_files` en la regla 6.2, la del fin de la sesión en `frontend-feature`, la guarda de S11, `sign_in_throttles` como excepción de la regla 4.2, el filtro del origen y, el 31/10/2026, los veintiocho pares | Hecho |
+| S10 | — | Diccionario v1.34: `3802749` (D-144 a D-147) y `12ddc57` (los permisos de seguridad como los tiene el código), aprobados por el responsable | Hecho |
+| S11 | `2173a1ad`: la guarda `ForeignAclStaysInTranslationLayerTests`; `d77e82ea` (`PostalAddress`), `405e7278` (`OwningCompany`, `IssuerData`), `71610dcf` (`NamedReference`, `IssuingScope`, `BrandReference`), `933f0026` (`OrderCurrency`), `ab54d29e` (`LineModel`) y `2c8ec038` (`AttentionContact`, `TaxIdTypeReference`) | — | Construido; la guarda, en cero (`KNOWN_DEBT` vacía), antes de las facturas |
+| S12 | `44c41c1f`: `StatusPathPolicy` con su `Verdict`, y `Vehicle.transitionTo(Long, StatusPath)` se niega ante un camino no declarado; `9694c24a`: `VehicleMileageReadingCommandServiceImpl`; `9bf56bf9`: las piezas `VehicleMovements` y `VehicleIdentifierCorrections` | — | Construido, antes del paso 9. `VehicleCommandServiceImpl` baja de 527 a 312 líneas de código |
+| S13 | — | `0aae457b`: navegan las vistas; en el store, solo `endLocalSession` | Construido |
+| S14 | — | — | Sin fecha (DP-8) |
+
+### 15.2 Pruebas
+
+| Qué | Dónde | Resultado |
+|---|---|---|
+| Suite completa del backend | La integración (`7f8e122e`), sobre `erp_mm_db_verify`, conectada como `postgres`, el superusuario, por decisión del responsable | 2 900 pruebas; 63 fallos en 39 métodos, todos de pruebas que solo pasan con la cuenta de la aplicación: Row Level Security y permisos que necesitan `erp_mm_app`. Es el mismo conjunto que la base, `develop` `1e207eb7`, corrida igual: 2 807 pruebas, 63 fallos y 2 errores. **Ningún fallo nuevo** |
+| Unitarias del frontend | La integración (`308d9ae9`) | 202 archivos, 2 648 pruebas, 0 fallan |
+| Build del frontend | La integración | Compila. Su único aviso, el presupuesto de estilos de `purchase-order-form.scss` (6,33 kB sobre 5 kB), es de un archivo que este cierre no cambió |
+| e2e simulado completo | La integración, en el puerto 4310 | 1 418 pasan, 73 se omiten por proyecto, 0 fallan |
+
+Antes de integrar, en la rama del frontend, las unitarias dieron 2 647 en verde y el e2e completo, 1 418 pasan, 73 omitidas y ninguna falla.
+
+**No corrió todavía:**
+
+- la suite del backend con las dos cuentas, `erp_mm_app` para la aplicación y `erp_mm_owner` para Flyway, la que exige la sección 12 y la que esas 63 pruebas necesitan;
+- las ocho sondas en vivo, con los dos casos de S5: necesitan la contraseña de la cuenta de verificación.
+
+### 15.3 Desvíos del plan
+
+**La corrección de H3.** Al construir S7 se vio que `procurement` ya rechazaba con `422 PURCHASEORDER_CURRENCY_SCALE` una orden en una moneda de más de 2 decimales (`PurchaseOrderReferences.java:120`, en `1e207eb7`), desde que existen las órdenes (22/10/2026, `55edee69`). No había, entonces, el redondeo silencioso que dice H3 en la sección 2: PostgreSQL nunca recibía esos montos. El defecto real era que una moneda así se podía crear y no se podía usar en una orden. D-146 sigue valiendo, porque alinea el catálogo con la escala de los montos y corta el problema donde nace. La lección, para la revisión misma, está en [retroalimentacion/2026-10-31-revision.md](retroalimentacion/2026-10-31-revision.md).
+
+**S7, dos cambios a lo que la sección 5 pedía:**
+
+1. **La prueba de la detención de V88 salió** (`8799bc96`). Volver a correr V88 sobre una moneda de 3 decimales exigía quitar antes `currencies_decimal_places_range_ck`, y eso solo lo puede el dueño de la tabla: las pruebas corren como `erp_mm_app` y fallaba con «must be owner of table currencies». La detención la cubre la acción 1 en las tres bases, que, según `e6aa2094`, se hizo antes de integrar. `CurrencyDecimalPlacesMigrationTests` conserva la definición del `CHECK`, el alcance `SYSTEM` primero, y 3 decimales rechazados y 2 aceptados.
+2. **La revisión de `procurement` salió** (`4e2379bd`, y en el frontend `7c8a4fa5`). Con V88, el dominio y la API en 0..2, `PURCHASEORDER_CURRENCY_SCALE` ya no se alcanza. Salieron la revisión, su fábrica de errores, sus textos y su prueba, que por la misma razón de arriba no podía correr como la cuenta de la aplicación. `PURCHASEORDER_PRICE_SCALE` sigue.
+
+**Decisiones tomadas al construir**, sin cambiar lo que el responsable aprobó:
+
+| Slice | Decisión | Por qué |
+|---|---|---|
+| S11 | `notifications::acl` queda fuera de la guarda, junto con `documents::acl` | Es también un contrato de un módulo de la plataforma (D-143), que todos los contextos usan tal cual |
+| S11 | El tipo de documento que una vista o la hoja imprimen pasa a `TaxIdTypeReference`, un record de la capa de traducción, y no a `TaxIdTypeRules`, como decía S11f | Lo que se imprime es el identificador, el código y el nombre. `TaxIdTypeRules` sigue siendo lo que la regla del proveedor revisa de un tipo |
+| S12 | El `422` del camino sigue antes del `403` de su permiso | `VehicleMovements.move` revisa el camino en memoria, y `VehicleCommandServiceImpl` decide después el permiso del camino (D-100): las respuestas conservan el orden que siempre tuvieron |
+| S4 | La cookie `MM_DEVICE` se manda después de que confirma la transacción del acierto | Un rollback no deshace una cabecera ya escrita |
+| S4 | Una entrada con contraseña provisional confía en el navegador | Es un acierto como cualquier otro: la contraseña coincidió. La sonda de S5 entra así con su cuenta de la corrida antes de frenarla |
+
+### 15.4 Lo que queda
+
+1. **La suite del backend con las dos cuentas** sobre `erp_mm_db_verify`, sin fallos (sección 12).
+2. **Las ocho sondas en vivo, en dos corridas seguidas, con los dos casos de S5**, contra el backend con V87 y V88, cuando haya la contraseña de la cuenta de verificación.
+3. **Las acciones del responsable en el entorno** (sección 3): `IAM_SIGN_IN_KEY` como secreto en App Platform antes de desplegar S4, porque fuera de `dev` la aplicación no arranca sin ella; y, durante S3, `ORIGIN_SECRET` en Pages y en App Platform, `IAM_ORIGIN_CHECK_ENABLED` encendido cuando la función ya lo mande, la comprobación con `curl` —la URL de DigitalOcean responde `404` y `dev.erp.millennium.ky` funciona— y la regla de limitación de Cloudflare.
+4. **Los push, en el orden de la sección 7**, que pide el responsable: S1; el frontend de S2, S6 y S7; S4 y el backend de S6; S5; S3 con su secuencia; S7 con V88; S11; S12; S13.
+5. **La revisión de este cierre** en `retroalimentacion/`, con cada hallazgo como error o aprendizaje: [2026-10-31-revision.md](retroalimentacion/2026-10-31-revision.md).
+
+Con los puntos 1 a 3 en verde, la revisión cumple la sección 12.
