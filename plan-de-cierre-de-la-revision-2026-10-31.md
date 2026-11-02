@@ -773,3 +773,15 @@ Antes de integrar, en la rama del frontend, las unitarias dieron 2 647 en verde 
 5. **La revisión de este cierre** en `retroalimentacion/`, con cada hallazgo como error o aprendizaje: [2026-10-31-revision.md](retroalimentacion/2026-10-31-revision.md).
 
 Con los puntos 1 a 3 en verde, la revisión cumple la sección 12.
+
+### 15.5 Cierre (01/11/2026)
+
+La revisión cumple la sección 12:
+
+- **La suite del backend con las dos cuentas:** la corrida del CI del push de `7c5c6066` a `develop`, que se conecta como `erp_mm_app` y migra como `erp_mm_owner`, terminó en verde; lo confirmó el responsable.
+- **Las ocho sondas, en dos corridas seguidas, con los casos de S5:** 74 pasan, 0 fallan y 0 se omiten en cada una, contra el backend `e5f8bcd3` y el frontend `24b0074f`, sobre `erp_mm_db_verify` ([sondas del 01/11/2026](retroalimentacion/2026-11-01-sondas.md)). Antes encontraron dos defectos, los dos corregidos: el patrón del mensaje del freno en la sonda (`24b0074f`) y el orden de las líneas de una orden de compra (`e5f8bcd3`, PRC-R30).
+- **Al backend solo por Cloudflare:** verificado el 01/11/2026 (15.4, punto 3).
+- **H8:** las dos líneas de `contextos/iam.md` que quedaban, corregidas (`0be488e`).
+- Lo demás de la sección 12 ya se cumplía el 31/10/2026 (15.1 a 15.3).
+
+Fuera de la sección 12 y con el responsable queda la regla de limitación de Cloudflare sobre el inicio de sesión (sección 3, acción 3).
