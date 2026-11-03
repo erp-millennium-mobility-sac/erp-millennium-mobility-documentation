@@ -440,6 +440,8 @@ Cada paso termina en uno o varios commits que compilan, con sus pruebas. **La se
 | 8.8 | La página de habilitación de la unidad, según la revisión 35 de DESIGN, ya escrita | L | 8.5 |
 | 8.9 | **Cierre:** <ul><li>el contexto de flota, con las reglas en ✅;</li><li>P6 y este plan;</li><li>las sondas en vivo.</li></ul> | S | todo |
 
+**Paso 8.0 hecho el 03/11/2026:** el contrato de la [especificación de habilitación](especificacion-habilitacion-2026-11-02.md) §4 está en las convenciones (§2.2, §3, §3.2, §4.1, §4.2, §6.2, §7.1, §7.2, §8.1 y §9.2), y F8 a F12, FLT-R55 a FLT-R93 y VCT-R28 a VCT-R31 están en los contextos de flota y de catálogos de flota, en ❌ hasta que se construyan.
+
 **Aceptación** (cada criterio tiene su prueba en la especificación):
 - **Estado:**
   - una prueba pura fija el orden de las seis filas y sus códigos;
