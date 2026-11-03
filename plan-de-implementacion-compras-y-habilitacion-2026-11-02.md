@@ -366,6 +366,8 @@ Cada paso termina en uno o varios commits que compilan, con sus pruebas. **La se
 
 **Fuera de la fase:** cambiar los 12 campos de fecha nativos por un selector propio es de formato, no de zona. Iría como un punto aparte.
 
+**Hecho el 03/11/2026** (frontend `62b86d3b`), con la aceptación cumplida: 2 742 pruebas unitarias y la e2e de Tokio. El escaneo también prohíbe `| date` en las plantillas. La corrección de una tasa se lee en la zona de su país, la que fecha su día (D-156). Las tres diferencias menores que quedan están en los pendientes transversales del [orden de implementación](orden-de-implementacion-millennium-mobility.md).
+
 ### Fase 2 · Punto 5: facturas de compra
 
 **Puerta:** el responsable valida la v1.38 y la [especificación de facturas](especificacion-facturas-de-compra-2026-11-02.md).
