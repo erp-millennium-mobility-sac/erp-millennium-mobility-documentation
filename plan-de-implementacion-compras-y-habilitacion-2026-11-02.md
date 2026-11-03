@@ -416,6 +416,13 @@ Cada paso termina en uno o varios commits que compilan, con sus pruebas. **La se
   - salir pregunta antes de descartar.
 - **Integridad:** `ModularityTests`, RLS y filas que no se borran.
 
+**Hecho el 03/11/2026** (backend `16f69af3`, con V92 a V94; frontend `2dc6505c`), con la aceptación cumplida salvo las sondas en vivo:
+- **Pasos 5.0 a 5.11:** el contrato en las convenciones; los permisos (V92), el tipo de tasa de compra de cada país (V93) y las tablas de facturas (V94); la fachada de `fleet` y sus puertos; la anulación de la unidad; el registro, el cambio de archivo u orden, la anulación, las consultas y la exportación; y el frontend, con la lista, el formulario y la ficha. Las reglas PRC-R31 a PRC-R67, FLT-R48 a FLT-R54, LOC-R53 y LOC-R54 están en ✅, con el nombre real de cada prueba en la [especificación de facturas](especificacion-facturas-de-compra-2026-11-02.md) §5 y en los contextos.
+- **Pruebas:** la suite completa del backend, 3 090 pruebas, con solo los fallos que se esperan con el superusuario sobre `erp_mm_db_verify`; las unitarias del frontend, y las e2e de facturas, órdenes de compra, flota y tipos de cambio.
+- **Rendimiento:** la línea base, medida con la cuenta `postgres` y no con la de la aplicación, da medianas de 582 ms con 1 línea nueva, 916 ms con 10, 1 150 ms con 50 y 1 731 ms con 100 (máximo 2 063 ms), y 1 025 ms con 100 líneas que vinculan unidades existentes: la mediana de 100 líneas cumple el objetivo provisional de 2 s. Un registro prepara 57 sentencias además de sus inserciones, con 1, 10 y 100 líneas.
+- **Lo que el código hizo distinto** queda en la versión 3 de la especificación: entre otras cosas, las filas de la lista son la ficha entera, y un `PUT` que manda la orden que la factura ya tiene no la toca, aunque esté cumplida.
+- **Falta** (paso 5.12): las sondas en vivo, que necesitan la contraseña de verificación del responsable (especificación §7.4), y el texto de §2.7 del diccionario sobre el descarte de un archivo, que cambia solo con la aprobación del responsable.
+
 ### Fase 3 · Punto 8: habilitación
 
 **Puerta:** el responsable valida la v1.38 y la [especificación de habilitación](especificacion-habilitacion-2026-11-02.md).
