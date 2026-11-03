@@ -421,7 +421,7 @@ Cada paso termina en uno o varios commits que compilan, con sus pruebas. **La se
 - **Pruebas:** la suite completa del backend, 3 090 pruebas, con solo los fallos que se esperan con el superusuario sobre `erp_mm_db_verify`; las unitarias del frontend, y las e2e de facturas, órdenes de compra, flota y tipos de cambio.
 - **Rendimiento:** la línea base, medida con la cuenta `postgres` y no con la de la aplicación, da medianas de 582 ms con 1 línea nueva, 916 ms con 10, 1 150 ms con 50 y 1 731 ms con 100 (máximo 2 063 ms), y 1 025 ms con 100 líneas que vinculan unidades existentes: la mediana de 100 líneas cumple el objetivo provisional de 2 s. Un registro prepara 57 sentencias además de sus inserciones, con 1, 10 y 100 líneas.
 - **Lo que el código hizo distinto** queda en la versión 3 de la especificación: entre otras cosas, las filas de la lista son la ficha entera, y un `PUT` que manda la orden que la factura ya tiene no la toca, aunque esté cumplida.
-- **Falta** (paso 5.12): las sondas en vivo, que necesitan la contraseña de verificación del responsable (especificación §7.4), y el texto de §2.7 del diccionario sobre el descarte de un archivo, que cambia solo con la aprobación del responsable.
+- **Falta** (paso 5.12): las sondas en vivo, que necesitan la contraseña de verificación del responsable (especificación §7.4). El texto de §2.7 del diccionario sobre el descarte de un archivo quedó escrito el 03/11/2026 con su aprobación (documentación `caaada3`).
 
 ### Fase 3 · Punto 8: habilitación
 

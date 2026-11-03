@@ -365,7 +365,7 @@ En el frontend, las pantallas viven en `src/app/procurement`. El menú las muest
 - Notas de crédito, con sus pantallas (fase 4 del plan). Con ellas, los permisos de facturas pasan a la matriz y las facturas se usan con datos reales (D-176). Cada documento con montos implementará también `CurrencyUsage` (PRC-R26).
 - Las sondas en vivo de las facturas, que no corrieron porque necesitan la contraseña de verificación del responsable. Lo que cubren está en la [especificación de facturas](../especificacion-facturas-de-compra-2026-11-02.md) §7.4: sus ocho casos; la lista, la exportación, la ficha, el archivo y el XML; la revisión de los VIN; `invoicing` de la orden y su acción `annul`; un `PUT` de la factura que conserva una orden cumplida; la anulación de una orden con facturas vigentes, `422`; y un `PUT /vehicles/{id}` con otro año en una unidad facturada, `422 VEHICLE_MODEL_YEAR_LOCKED`.
 - La línea base medida con la cuenta de la aplicación, que pasa por Row Level Security.
-- El texto de §2.7 del diccionario sobre el descarte de un archivo cuando la transacción se revierte, que cambia solo con la aprobación del responsable.
+- ~~El texto de §2.7 del diccionario sobre el descarte de un archivo cuando la transacción se revierte, que cambia solo con la aprobación del responsable.~~ Aprobado y escrito el 03/11/2026 (documentación `caaada3`).
 - ~~La fachada de `fleet`, que este contexto todavía no declara.~~ Resuelto el 03/11/2026 (arriba).
 - Una prueba de integración de lo que queda fijo, del alta con imágenes y del dibujo de los tipos (PRC-R03, PRC-R04 y PRC-R07). El `PATCH` y los documentos ya la tienen (PRC-R05, PRC-R06).
 - El saldo del proveedor (`/suppliers/{id}/balance`), con el paso 8.

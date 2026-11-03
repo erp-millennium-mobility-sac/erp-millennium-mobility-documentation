@@ -339,7 +339,7 @@ public interface PurchaseInvoiceDependents {
 void discardRolledBack(String storageKey);
 ```
 
-`PurchaseInvoiceFiles` registra un `TransactionSynchronization` que lo llama en `afterCompletion(STATUS_ROLLED_BACK)` por cada llave que escribió. Es seguro sin leer `kept_files`: la llave lleva el `public_id` de una factura que nunca se confirmó, y un `uuidv7` no se repite. §2.7 del diccionario («deja, a lo sumo, un objeto sin referencia») pasa a decirlo cuando el responsable apruebe ese cambio, que es suyo: al cierre del 03/11/2026 todavía no lo dice. Hoy solo `PurchaseInvoiceFiles` registra el descarte; un archivo de la plantilla todavía puede dejar un objeto sin referencia.
+`PurchaseInvoiceFiles` registra un `TransactionSynchronization` que lo llama en `afterCompletion(STATUS_ROLLED_BACK)` por cada llave que escribió. Es seguro sin leer `kept_files`: la llave lleva el `public_id` de una factura que nunca se confirmó, y un `uuidv7` no se repite. §2.7 del diccionario lo dice desde el 03/11/2026, con la aprobación del responsable (documentación `caaada3`). Hoy solo `PurchaseInvoiceFiles` registra el descarte; un archivo de la plantilla todavía puede dejar un objeto sin referencia.
 
 ---
 
@@ -1329,7 +1329,7 @@ Ramas `feature/procurement-invoices` en los dos repositorios, desde `develop`, e
 
 **Migraciones:** B1, B2 y B12 llevan V(n), V(n+1) y V(n+2), numeradas al integrar en `develop` después de V91 y de lo que la fase 3 haya integrado antes (plan §4).
 
-**Como se integró (03/11/2026).** La fase 2 se integró antes que la fase 3, así que sus migraciones son V92 (`seed_iam_permissions_of_purchase_invoices`), V93 (`add_country_purchase_exchange_rate_type`) y V94 (`create_procurement_purchase_invoices_schema`). Merges en `develop`: backend `16f69af3` (rama hasta `c37dda82`) y frontend `2dc6505c` (rama hasta `b70af927`). La documentación 1, 2 y 3 se hizo el mismo día, salvo dos cosas: el texto de §2.7 del diccionario sobre el descarte, que espera al responsable, y las sondas y su commit F17 (§7.4).
+**Como se integró (03/11/2026).** La fase 2 se integró antes que la fase 3, así que sus migraciones son V92 (`seed_iam_permissions_of_purchase_invoices`), V93 (`add_country_purchase_exchange_rate_type`) y V94 (`create_procurement_purchase_invoices_schema`). Merges en `develop`: backend `16f69af3` (rama hasta `c37dda82`) y frontend `2dc6505c` (rama hasta `b70af927`). La documentación 1, 2 y 3 se hizo el mismo día, salvo dos cosas: el texto de §2.7 del diccionario sobre el descarte, que el responsable aprobó el mismo día (documentación `caaada3`), y las sondas y su commit F17 (§7.4).
 
 ---
 
@@ -1348,4 +1348,4 @@ No queda ninguna. Las ocho preguntas de la versión 1 (02/11/2026) quedaron deci
 | P7 | ¿Qué tipo de tasa de compra llevan los países distintos de Perú y los que se creen después? | **D-181.** Perú, `venta`; todo otro país, `oficial` por omisión, valor que ya tienen `ExchangeRateType` y el `CHECK` de V91. De solo lectura en la API del país hasta que haga falta |
 | P8 | ¿Una unidad anulada todavía deja cerrar su cesión abierta a un fondo? | **D-182.** Cambia la recomendación: una unidad con una cesión abierta no se anula; primero se cierra la cesión (`422 VEHICLE_FUND_ASSIGNMENT_OPEN`, FLT-R54). Así la guarda de la unidad anulada vale para toda escritura, sin excepción (FLT-R49) |
 
-**El hallazgo E15 del plan** se mantiene como lo describe §2.5.5: `KeptFileStore.discardRolledBack`, construido el 03/11/2026. El texto de §2.7 del diccionario cambia cuando el responsable lo apruebe.
+**El hallazgo E15 del plan** se mantiene como lo describe §2.5.5: `KeptFileStore.discardRolledBack`, construido el 03/11/2026. El texto de §2.7 del diccionario lo recoge desde el 03/11/2026 (documentación `caaada3`).
