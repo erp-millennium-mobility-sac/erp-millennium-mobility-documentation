@@ -1,6 +1,6 @@
 # Auditoría y plan de implementación: de la factura de compra a la habilitación, las notas, los pagos y las cargas
 
-**Versión 4 · 03/11/2026.** Cierra de punta a punta todo lo que planifica: las fases 1 a 5 y el paquete de cargas de archivos, cada uno con su especificación. **Avance al 03/11/2026:** las fases 1, 2 y 3 están construidas e integradas en `develop` (§5, el «Hecho» de cada una); faltan las sondas en vivo de las fases 2 y 3, las cargas y las fases 4 y 5.
+**Versión 4 · 03/11/2026.** Cierra de punta a punta todo lo que planifica: las fases 1 a 5 y el paquete de cargas de archivos, cada uno con su especificación. **Avance al 03/11/2026:** las fases 1, 2 y 3 están construidas e integradas en `develop` (§5, el «Hecho» de cada una); faltan las sondas en vivo de las fases 2 y 3 y las fases 4 y 5, empezadas el 03/11/2026. Las cargas quedan pospuestas por decisión del responsable del 03/11/2026 (§4).
 
 **Cómo se llegó aquí:**
 - **Versión 1:** auditó tres puntos de partida, el backend `b1264ed5` (hasta V91), el frontend `88312e13` y la documentación `6ebb900`, junto con una investigación de ERP comparables y de la norma de SUNAT.
@@ -304,6 +304,8 @@ Las preguntas abiertas de las cinco especificaciones quedaron decididas el 03/11
 8. cargas, tercera entrega: los pagos de la carga inicial;
 9. la corrida de la carga inicial en producción, una sola vez y con la base respaldada.
 
+**Pospuesto el 03/11/2026 por el responsable:** los pasos 4, 6, 8 y 9, es decir, las tres entregas de cargas y la corrida de la carga inicial («Aún no haremos cargas iniciales, solo implementación»). El orden sigue con la fase 4 y la fase 5. Las cargas esperan una nueva orden del responsable y sus archivos reales, que se perfilan antes de construir (§1.3 de la [especificación de cargas](especificacion-cargas-de-archivos-2026-11-03.md)). Mientras tanto, las unidades que ya existen se registran a mano desde sus facturas, y su habilitación, en su página. El diccionario no cambia: D-208 fija que la carga inicial corre una sola vez y después de la fase 5, no cuándo.
+
 **Por qué la habilitación va antes de las notas de crédito y los pagos:**
 - cierra el flujo operativo de la compra a Disponible;
 - no espera respuestas de afuera;
@@ -468,6 +470,8 @@ Cada paso termina en uno o varios commits que compilan, con sus pruebas. **La se
 
 ### Cargas, primera entrega · Registro, impuesto vehicular y garantía mobiliaria
 
+**Pospuesta el 03/11/2026 por decisión del responsable (§4).**
+
 **Puerta:**
 - la fase 3 integrada;
 - la [especificación de cargas](especificacion-cargas-de-archivos-2026-11-03.md) validada;
@@ -523,6 +527,8 @@ Cada paso termina en uno o varios commits que compilan, con sus pruebas. **La se
 
 ### Cargas, segunda entrega · La carga inicial
 
+**Pospuesta el 03/11/2026 por decisión del responsable (§4).**
+
 **Puerta:**
 - la fase 4 integrada;
 - los Excel reales de autos y de motos, perfilados.
@@ -575,6 +581,8 @@ Cada paso termina en uno o varios commits que compilan, con sus pruebas. **La se
 - **Unidad:** la unidad muestra sus cinco montos, el dinero entregado y la brecha de días desde el primer pago.
 
 ### Cargas, tercera entrega y corrida en producción
+
+**Pospuesta el 03/11/2026 por decisión del responsable (§4).**
 
 | Paso | Qué | Tamaño |
 |---|---|---|
