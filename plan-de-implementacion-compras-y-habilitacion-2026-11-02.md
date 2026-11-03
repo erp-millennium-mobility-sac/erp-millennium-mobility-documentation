@@ -1,6 +1,6 @@
 # Auditoría y plan de implementación: de la factura de compra a la habilitación, las notas, los pagos y las cargas
 
-**Versión 4 · 03/11/2026.** Cierra de punta a punta todo lo que planifica: las fases 1 a 5 y el paquete de cargas de archivos, cada uno con su especificación.
+**Versión 4 · 03/11/2026.** Cierra de punta a punta todo lo que planifica: las fases 1 a 5 y el paquete de cargas de archivos, cada uno con su especificación. **Avance al 03/11/2026:** las fases 1, 2 y 3 están construidas e integradas en `develop` (§5, el «Hecho» de cada una); faltan las sondas en vivo de las fases 2 y 3, las cargas y las fases 4 y 5.
 
 **Cómo se llegó aquí:**
 - **Versión 1:** auditó tres puntos de partida, el backend `b1264ed5` (hasta V91), el frontend `88312e13` y la documentación `6ebb900`, junto con una investigación de ERP comparables y de la norma de SUNAT.
@@ -421,7 +421,7 @@ Cada paso termina en uno o varios commits que compilan, con sus pruebas. **La se
 - **Pruebas:** la suite completa del backend, 3 090 pruebas, con solo los fallos que se esperan con el superusuario sobre `erp_mm_db_verify`; las unitarias del frontend, y las e2e de facturas, órdenes de compra, flota y tipos de cambio.
 - **Rendimiento:** la línea base, medida con la cuenta `postgres` y no con la de la aplicación, da medianas de 582 ms con 1 línea nueva, 916 ms con 10, 1 150 ms con 50 y 1 731 ms con 100 (máximo 2 063 ms), y 1 025 ms con 100 líneas que vinculan unidades existentes: la mediana de 100 líneas cumple el objetivo provisional de 2 s. Un registro prepara 57 sentencias además de sus inserciones, con 1, 10 y 100 líneas.
 - **Lo que el código hizo distinto** queda en la versión 3 de la especificación: entre otras cosas, las filas de la lista son la ficha entera, y un `PUT` que manda la orden que la factura ya tiene no la toca, aunque esté cumplida.
-- **Falta** (paso 5.12): las sondas en vivo, que necesitan la contraseña de verificación del responsable (especificación §7.4). El texto de §2.7 del diccionario sobre el descarte de un archivo quedó escrito el 03/11/2026 con su aprobación (documentación `caaada3`).
+- **Falta** (paso 5.12): las sondas en vivo, que existen desde el frontend `10696eed` y `d126d8a2` (`e2e-live/purchase-invoices.live.spec.ts`, el commit F17) y no corrieron, porque necesitan la contraseña de verificación del responsable (especificación §7.4). El texto de §2.7 del diccionario sobre el descarte de un archivo quedó escrito el 03/11/2026 con su aprobación (documentación `caaada3`).
 
 ### Fase 3 · Punto 8: habilitación
 
@@ -457,6 +457,14 @@ Cada paso termina en uno o varios commits que compilan, con sus pruebas. **La se
   - 80 motos ingresan en una operación, con su ubicación;
   - el filtro de vencimientos muestra exactamente los de los próximos 30 días, en la zona de la empresa;
   - el certificado de gas solo se pide a modelos a GNV o GLP.
+
+**Hecho el 03/11/2026** (backend `8bfdb938`, con V95 a V101; frontend `2659126a`), con la aceptación cumplida salvo las sondas en vivo:
+- **Pasos 8.0 a 8.8:** el contrato en las convenciones (documentación `462388f`); los permisos (V95) y el esquema (V96 a V101), con la marca de Disponible y de Vendido y el camino «Pierde un requisito»; la fachada de `vehiclecatalog`; el ingreso, los hitos, la placa, los documentos, los equipos y las llaves; `EnablementPolicy`, la puerta que se sostiene, `allowedActions` y la lista con su proyección; y el frontend: Catálogos › Tipos de documento, la marca de Estados y motivos, Logística › Habilitación con los vencimientos y el ingreso en lote, la página de la habilitación de una unidad, el cambio de estado con los caminos retenidos y el ingreso desde la ficha de la factura. Las reglas FLT-R55 a FLT-R93 y VCT-R28 a VCT-R31 están en ✅, con el nombre real de cada prueba y sus commits en la [especificación de habilitación](especificacion-habilitacion-2026-11-02.md) §5 y en los contextos; el commit de cada paso, en su §8.
+- **Aceptación:** el orden de las seis filas lo fija `EnablementPolicyTests`; la entrada manual a Disponible se rechaza por los dos caminos si falta la TIVE, la pantalla, el GPS o las placas físicas, y una unidad entregada y reacondicionada vuelve (`EnablementGateIntegrationTests`); el regreso automático no se bloquea; desmarcar Disponible da 422; el GPS de una unidad Disponible no se retira sin reemplazo, y la unidad sale por «Pierde un requisito»; la carrera del GPS no deja una unidad Disponible sin GPS en ninguno de los dos órdenes (`EnablementConcurrencyTests`); nada se instala antes del ingreso; 80 unidades ingresan en una operación, en menos de 2 s y con las mismas sentencias con 1, 10 y 80; el filtro de vencimientos cuenta los 30 días en la zona de la empresa; y el certificado de gas solo se pide a modelos a GNV o GLP.
+- **Pruebas:** la suite completa del backend, 3 254 pruebas sobre `erp_mm_db_verify` con la cuenta `postgres`, con solo seis fallos nuevos frente a la línea base de 67 de `16f69af3`, todos porque el superusuario se salta Row Level Security y los permisos; las unitarias del frontend, 3 007 de 3 007; las e2e en escritorio de habilitación, flota, facturas de compra y tipos de documento, 63 de 63; las de accesibilidad de la habilitación en los tres anchos, 18 de 18; y todas las capturas en los tres anchos.
+- **La revisión del contrato** del frontend contra el backend, antes de integrar: el backend respondía lo especificado, y las diferencias del frontend —una rotura, cuatro textos, diez respuestas del simulador y los campos que pueden llegar en `null`— quedaron corregidas.
+- **Lo que el código hizo distinto** queda en la versión 3 de la especificación, con la marca «Como se construyó»: entre otras cosas, los cuatro textos de `VEHICLE_ENABLEMENT_HELD_BY_STATUS`, que reemplazan al único que proponía; `location::acl` desde el paso de los tipos de documento; y la fachada del ingreso de una factura, que recibe la empresa.
+- **Falta** (paso 8.9): las sondas en vivo, que existen desde el frontend `4ca16d02` y necesitan la contraseña de verificación del responsable (especificación §7.6); y el texto de §2.7 del diccionario sobre la llave, la empresa y el descarte de los archivos de un documento, que es una propuesta para el responsable.
 
 ### Cargas, primera entrega · Registro, impuesto vehicular y garantía mobiliaria
 
