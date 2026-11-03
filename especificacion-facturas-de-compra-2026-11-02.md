@@ -1245,13 +1245,14 @@ Una página con dos paneles. Se registra en `UnsavedWork`: salir con cambios pre
 7. La exportación descarga un Excel.
 8. Ningún pedido de la corrida usó `DELETE`, y el registro del backend no tiene ningún `ERROR`.
 
-**Pendiente al 03/11/2026.** Las sondas no corrieron: necesitan la contraseña de la cuenta de verificación del responsable, y `e2e-live/purchase-invoices.live.spec.ts` (commit F17) todavía no existe. Cuando corran cubren los ocho casos de arriba y, además:
-- la lista, la exportación, la ficha, el archivo y el XML;
-- `GET /purchase-invoice-vin-checks`;
-- `invoicing` de la orden y su acción `annul`;
-- un `PUT` de la factura que conserva una orden `CUMPLIDA`;
-- la anulación de una orden con facturas vigentes, que responde `422 PURCHASEORDER_HAS_CURRENT_INVOICES`;
-- un `PUT /vehicles/{id}` con otro año en una unidad facturada, que responde `422 VEHICLE_MODEL_YEAR_LOCKED`.
+**Pendiente al 03/11/2026.** Las sondas no corrieron: necesitan la contraseña de la cuenta de verificación del responsable. `e2e-live/purchase-invoices.live.spec.ts`, el commit F17, existe desde el frontend `10696eed`, y `d126d8a2` toma el año del modelo de la sonda del calendario de Lima. Cuando corran cubren los ocho casos de arriba, numerados como ellos, después de un caso que entra, encuentra la empresa de Perú y un proveedor suyo y prepara lo que necesitan las líneas, y además:
+- la lista, la exportación, la ficha, el archivo y el XML, dentro de los casos 1, 3 y 7;
+- `GET /purchase-invoice-vin-checks`: "says what each VIN would do before an invoice is registered (GET /purchase-invoice-vin-checks)";
+- `invoicing` de la orden y su acción `annul`, y la anulación de una orden con facturas vigentes, que responde `422 PURCHASEORDER_HAS_CURRENT_INVOICES`: el caso 4, "links a sent order: its deviations confirmed, the order says what is pending, and it cannot be annulled meanwhile";
+- un `PUT` de la factura que conserva una orden `CUMPLIDA`: "accepts a change of the file of an invoice that keeps its order, fulfilled since";
+- un `PUT /vehicles/{id}` con otro año en una unidad facturada, que responde `422 VEHICLE_MODEL_YEAR_LOCKED`: "keeps the year of a unit in a current invoice: another one is refused with VEHICLE_MODEL_YEAR_LOCKED".
+
+El caso 8 de la sonda comprueba que ningún pedido usó `DELETE`; que el registro del backend no tenga ningún `ERROR` lo mira quien la corre. La sonda de la habilitación, `e2e-live/enablement.live.spec.ts` (frontend `4ca16d02`), suma un caso de facturas: "the record of a purchase invoice registers the arrival of its units that have not arrived" ([especificación de habilitación](especificacion-habilitacion-2026-11-02.md) §7.6). Tampoco corrió, por la misma razón.
 
 ### 7.5 Lo que corrió al integrar (03/11/2026)
 
@@ -1329,7 +1330,7 @@ Ramas `feature/procurement-invoices` en los dos repositorios, desde `develop`, e
 
 **Migraciones:** B1, B2 y B12 llevan V(n), V(n+1) y V(n+2), numeradas al integrar en `develop` después de V91 y de lo que la fase 3 haya integrado antes (plan §4).
 
-**Como se integró (03/11/2026).** La fase 2 se integró antes que la fase 3, así que sus migraciones son V92 (`seed_iam_permissions_of_purchase_invoices`), V93 (`add_country_purchase_exchange_rate_type`) y V94 (`create_procurement_purchase_invoices_schema`). Merges en `develop`: backend `16f69af3` (rama hasta `c37dda82`) y frontend `2dc6505c` (rama hasta `b70af927`). La documentación 1, 2 y 3 se hizo el mismo día, salvo dos cosas: el texto de §2.7 del diccionario sobre el descarte, que el responsable aprobó el mismo día (documentación `caaada3`), y las sondas y su commit F17 (§7.4).
+**Como se integró (03/11/2026).** La fase 2 se integró antes que la fase 3, así que sus migraciones son V92 (`seed_iam_permissions_of_purchase_invoices`), V93 (`add_country_purchase_exchange_rate_type`) y V94 (`create_procurement_purchase_invoices_schema`). Merges en `develop`: backend `16f69af3` (rama hasta `c37dda82`) y frontend `2dc6505c` (rama hasta `b70af927`). La documentación 1, 2 y 3 se hizo el mismo día, salvo dos cosas: el texto de §2.7 del diccionario sobre el descarte, que el responsable aprobó el mismo día (documentación `caaada3`), y las sondas: su commit F17 llegó el mismo día, en `10696eed` y `d126d8a2`, y no corrieron (§7.4).
 
 ---
 
