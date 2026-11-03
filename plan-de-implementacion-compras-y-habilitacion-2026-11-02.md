@@ -1,6 +1,6 @@
 # Auditoría y plan de implementación: de la factura de compra a la habilitación, las notas, los pagos y las cargas
 
-**Versión 4 · 03/11/2026.** Cierra de punta a punta todo lo que planifica: las fases 1 a 5 y el paquete de cargas de archivos, cada uno con su especificación. **Avance al 03/11/2026:** las fases 1, 2 y 3 están construidas e integradas en `develop` (§5, el «Hecho» de cada una); faltan las sondas en vivo de las fases 2 y 3 y las fases 4 y 5, empezadas el 03/11/2026. Las cargas quedan pospuestas por decisión del responsable del 03/11/2026 (§4).
+**Versión 4 · 03/11/2026.** Cierra de punta a punta todo lo que planifica: las fases 1 a 5 y el paquete de cargas de archivos, cada uno con su especificación. **Avance al 03/11/2026:** las fases 1 a 4 están construidas e integradas en `develop` (§5, el «Hecho» de cada una); faltan las sondas en vivo de las fases 2, 3 y 4 y la fase 5, que se construye desde el 03/11/2026. Las cargas quedan pospuestas por decisión del responsable del 03/11/2026 (§4).
 
 **Cómo se llegó aquí:**
 - **Versión 1:** auditó tres puntos de partida, el backend `b1264ed5` (hasta V91), el frontend `88312e13` y la documentación `6ebb900`, junto con una investigación de ERP comparables y de la norma de SUNAT.
@@ -311,7 +311,7 @@ Las preguntas abiertas de las cinco especificaciones quedaron decididas el 03/11
 - no espera respuestas de afuera;
 - las unidades que nacen con la factura necesitan pronto su ingreso físico.
 
-**Las facturas no se usan con datos reales hasta tener las notas de crédito.** El mecanismo es D-176: hasta la fase 4, solo el superadministrador tiene los permisos de facturas.
+**Las facturas no se usan con datos reales hasta tener las notas de crédito.** El mecanismo es D-176: hasta la fase 4, solo el superadministrador tenía los permisos de facturas. Desde V104, que se integró con la fase 4 el 03/11/2026, los tienen los roles de la matriz, y las facturas se usan con datos reales.
 
 **Qué puede ir en paralelo:**
 - **Fases 2 y 3**, con dos excepciones:
@@ -525,6 +525,15 @@ Cada paso termina en uno o varios commits que compilan, con sus pruebas. **La se
   - anular una nota devuelve sus líneas a vigente, salvo que su unidad esté anulada.
 - **Costo:** el costo en la ficha de la unidad se ve solo con `stock.ver_costos`.
 
+**Hecho el 03/11/2026** (backend `e213c01c`, con V102 a V104; frontend `d579211a`), con la aceptación cumplida salvo la sonda en vivo. La puerta no esperó al contador: valida D-190, D-192 y D-194 en paralelo (§3.2).
+- **Pasos 6.0 a 6.12:** el contrato en las convenciones (documentación `ec972c8`, con `be4a004` y `0e3dc40`); el permiso (V102) y las tablas, con el disparador que deja volver una línea a vigente (V103); el agregado con sus motivos y el corte configurable; la fachada de `fleet`, que anula la unidad devuelta o la deja «Devuelta al proveedor»; el registro, los dependientes de la factura y `valueIsZero`; la anulación, con la guarda del saldo que implementa la fase 5, y el cambio del archivo; la lista, la ficha, la exportación y el panel de notas de la ficha de la factura; el costo de compra de la unidad; el frontend, con el formulario, la lista, la ficha y los paneles de la factura y de la unidad (DESIGN, revisión 36); y los permisos de facturas en AE, OP y CO (V104), que se integraron con la fase por orden del responsable del 03/11/2026: desde entonces las facturas se usan con datos reales. Las reglas PRC-R68 a PRC-R99 y FLT-R94 a FLT-R99 están en ✅, con el nombre real de cada prueba en la [especificación de notas](especificacion-notas-de-credito-2026-11-03.md) §5 y en los contextos; el commit de cada paso, en su §8.
+- **Aceptación:** una nota reduce el valor de cada unidad que nombra y nunca la baja de cero (`CreditNotesIntegrationTests`, `CreditNoteLockTests.twoNotesOnTheSameLineDoNotTakeItBelowZero`); una nota de dos facturas guarda la tasa de cada una (`eachLineCopiesTheRateOfItsInvoiceAcrossTwoInvoices`); desde el 01/01/2027 una nota de dos facturas da 422 (`SingleInvoiceCutoffTests`, `CreditNoteCutoffIntegrationTests`); «anulación de unidad» anula la unidad o la deja «Devuelta al proveedor», y «anulación de la factura» la deja sin factura vigente para que la vincule la que se re-emite; anular una factura con notas da 422 (`PurchaseInvoiceAnnulmentsIntegrationTests.anInvoiceWithACurrentNoteAnswersHasDependents`); anular una nota devuelve sus líneas, salvo con una unidad anulada (`CreditNotesIntegrationTests.aNoteWhoseUnitWasAnnulledIsNotAnnulled`); y el costo de la unidad se ve solo con `stock.ver_costos` (`VehiclePurchaseCostIntegrationTests`).
+- **Pruebas:** la suite completa del backend, 3 388 pruebas sobre `erp_mm_db_verify` con la cuenta `postgres`, con solo dos fallos nuevos frente a la línea base de 73 de `8bfdb938`, las dos tablas nuevas en `ProcurementRowsAreNeverDeletedTests`, porque el superusuario puede borrar; la base de verificación se volvió a crear ese día, con la autorización del responsable, después de que una prueba de la fase 2 dejara 25 países de prueba. Las unitarias del frontend, 3 131; las e2e de notas de crédito, facturas de compra, roles, matriz de permisos y flota, 203 en los tres anchos, sin fallos; las de accesibilidad, 441 de 441. La suite completa en escritorio tiene un fallo, `screen-dates.spec`, «the year of today is the one of Lima on the night it already changed in Tokyo», que falla igual en `2659126a`: es anterior a la fase y se investiga con la fase 5.
+- **Sentencias:** un registro de una nota prepara 41 sentencias además de sus inserciones y actualizaciones, con 1, 10 y 100 líneas; el de una factura pasa de 57 a 60, con la lectura de sus dependientes y las dos lecturas agrupadas de lo que le restan sus notas.
+- **La revisión del contrato** del frontend contra el backend, antes de integrar: ninguna rotura; doce respuestas del simulador no tenían la forma o el orden del backend, y quedaron corregidas.
+- **Lo que el código hizo distinto** queda en la versión 3 de la especificación, con la marca «Como se construyó»: entre otras cosas, el `403` de la ruta antes que las revisiones del servicio, que las convenciones fijan desde ese día para toda ruta (§7.2); el `400` de un `PUT` sin archivo, que responde el servicio; la lista y la ficha como un solo recurso; y los records del costo anidados en `UnitPurchases`.
+- **Falta** (paso 6.13): la sonda en vivo, que existe desde el frontend `b681e083` (`e2e-live/credit-notes.live.spec.ts`, el commit F13) y no corrió, porque necesita la contraseña de verificación del responsable (especificación §7.4); correr `scripts/database/hand-over-database.sql` donde se entregue la base, por sus cuatro funciones nuevas; y la línea base de una factura de 100 líneas con la cuenta de la aplicación: el máximo, 2 063 ms, se midió con `postgres`. La base de desarrollo, `erp_mm_db`, estaba en V85, sin unidades con placa: el próximo `spring-boot:run` aplica V86 a V104.
+
 ### Cargas, segunda entrega · La carga inicial
 
 **Pospuesta el 03/11/2026 por decisión del responsable (§4).**
@@ -620,7 +629,7 @@ La estimación es gruesa: S = 1 día, M = 2,5 y L = 5, y los tamaños no se han 
 | Carreras del VIN y del número | Media | Medio | Únicos parciales, orden de candados y pruebas de carrera |
 | Las facturas se usan antes de tener las notas de crédito | Baja | Medio | D-176 |
 | Las fases 2 y 3 chocan en `fleet` | Media | Medio | Integrar seguido; las migraciones se numeran al integrar |
-| El contador objeta un tratamiento ya decidido (D-190, D-192, D-194) | Baja | Medio | Son prácticas estándar; validarlos antes de la fase 4 |
+| El contador objeta un tratamiento ya decidido (D-190, D-192, D-194) | Baja | Medio | Son prácticas estándar; se validan en paralelo, sin detener nada (§3.2). La fase 4 se integró el 03/11/2026 sin esperar su respuesta |
 | Un archivo grande pasa el límite de tiempo de Cloudflare | Media | Medio | Un tope de filas medido en la línea base; un archivo más grande se parte (D-208) |
 | SUNAT vuelve a mover la fecha de una nota por comprobante | Media | Bajo | El corte en una política con la fecha configurable |
 | Las imágenes de referencia e2e cambian mucho | Alta | Bajo | Mover primero las pruebas «En construcción» |
@@ -644,7 +653,7 @@ La estimación es gruesa: S = 1 día, M = 2,5 y L = 5, y los tamaños no se han 
   - las migraciones solo agregan;
   - se respalda la base antes de desplegar cada fase;
   - un error se corrige hacia adelante, nunca editando una migración aplicada;
-  - las facturas quedan solo para el superadministrador hasta la fase 4 (D-176).
+  - las facturas quedaron solo para el superadministrador hasta la fase 4 (D-176); desde V104, integrada con ella el 03/11/2026, siguen la matriz.
 - **Documentación:**
   - cada fase cierra actualizando su contexto, sus procesos, su especificación y este plan, citando commits y fechas;
   - las reglas pasan de ❌ a ✅ con su prueba.
