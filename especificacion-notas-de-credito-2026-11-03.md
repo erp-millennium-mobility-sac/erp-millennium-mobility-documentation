@@ -834,13 +834,13 @@ El pedido no lleva tasa: cada línea copia la de su factura (D-192). No lleva ti
 4. Proveedor: `404 SUPPLIER_NOT_FOUND` si no es de la empresa. Uno inactivo se acepta (D-204).
 5. Moneda: `404 CURRENCY_NOT_FOUND`. Una inactiva se acepta (D-204).
 6. Montos: `422 CREDITNOTE_AMOUNT_SCALE`; `422 CREDITNOTE_TOTAL_MISMATCH`.
-7. Número: `422 CREDITNOTE_NUMBER_FORMAT` (solo en Perú, D-204); `409 CREDITNOTE_NUMBER_CONFLICT`.
+7. Número: `422 CREDITNOTE_NUMBER_FORMAT` (solo en Perú, D-204); `409 CREDITNOTE_CONFLICT`.
 8. Fecha: `422 CREDITNOTE_DATE_IN_FUTURE`.
 9. `422 CREDITNOTE_DUPLICATE_LINE`.
 10. Líneas de factura: `404 PURCHASEINVOICE_NOT_FOUND`, con `context.lines`, si una no existe o su factura no se lee con `compras.ver`.
 11. Bajo el candado de las facturas, por línea: `422 CREDITNOTE_INVOICE_MISMATCH` (otra empresa, otro proveedor u otra moneda, con `context.lines[].fields`); `422 CREDITNOTE_LINE_ANNULLED` (la línea o su factura); `403 ACCESS_DENIED` (una marca donde el permiso no actúa, D-193).
 12. `CreditNoteRegistrationPolicy`: `422 CREDITNOTE_DATE_BEFORE_INVOICE`; `422 CREDITNOTE_SINGLE_INVOICE_REQUIRED`; `422 CREDITNOTE_EXCEEDS_VALUE`; `422 CREDITNOTE_UNIT_RETURN_PARTIAL`; `422 CREDITNOTE_INVOICE_ANNULMENT_PARTIAL` (los dos últimos, D-204).
-13. Guardado: `409 CREDITNOTE_NUMBER_CONFLICT` en una carrera que la base detiene, sin dejar nada escrito.
+13. Guardado: `409 CREDITNOTE_CONFLICT` en una carrera que la base detiene, sin dejar nada escrito.
 
 Responde `201` con `Location: /api/v1/credit-notes/{id}` y la ficha (§4.2.3). Una unidad devuelta y retenida no es un error: la ficha la marca con `returnedToSupplier: true` (D-191).
 
@@ -943,7 +943,7 @@ El estado sale del sufijo (convenciones §7.2): `_NOT_FOUND` es `404`, `_CONFLIC
 |---|---|---|---|
 | `CREDITNOTE_NOT_FOUND` | 404 | Ficha, `PUT`, anulación, archivo | Nota de crédito no encontrada |
 | `CREDITNOTE_FILE_NOT_FOUND` | 404 | `/file` | La nota no tiene archivo |
-| `CREDITNOTE_NUMBER_CONFLICT` | 409 | Alta | Ya hay una nota vigente de ese proveedor con ese número |
+| `CREDITNOTE_CONFLICT` | 409 | Alta | Ya hay una nota vigente de ese proveedor con ese número |
 | `CREDITNOTE_NUMBER_FORMAT` | 422 | Alta | En Perú el número es la serie de cuatro caracteres, un guion y el correlativo de hasta ocho dígitos, como FC01-45 |
 | `CREDITNOTE_DATE_IN_FUTURE` | 422 | Alta | La fecha de emisión no puede ser posterior a hoy (`context.today`) |
 | `CREDITNOTE_DATE_BEFORE_INVOICE` | 422 | Alta | La fecha de emisión no puede ser anterior a la de una factura que descuenta (`context.lines[].invoiceDate`) |
@@ -988,7 +988,7 @@ Las tres exigen además leer la nota con `compras.ver`. Lo calcula `CreditNoteAl
 
 - **El candado de `updatedAt`** en el cambio del archivo y en la anulación, comparado al milisegundo bajo el candado de la fila (convenciones §3, D-193, D-204). La pantalla, ante `CREDITNOTE_OUTDATED`, vuelve a leer la ficha, la muestra como está y lo dice.
 - **Dos notas sobre la misma línea** se ordenan en el candado de su factura (§2.4): la segunda ve lo que restó la primera y, si se pasa, responde `422 CREDITNOTE_EXCEEDS_VALUE`.
-- **El doble envío** del mismo alta espera al primero en el candado de las facturas y responde `409 CREDITNOTE_NUMBER_CONFLICT`.
+- **El doble envío** del mismo alta espera al primero en el candado de las facturas y responde `409 CREDITNOTE_CONFLICT`.
 - **La anulación de una nota y el registro de una factura** que vincula la misma unidad se ordenan en el candado de la unidad: gana la primera; la otra responde `422 CREDITNOTE_LINE_RELINKED` o `409 PURCHASEINVOICE_UNIT_CONFLICT`.
 - **La versión de la API** no cambia (convenciones §1): los cambios de la factura y de la unidad agregan campos, y las rutas son nuevas.
 
