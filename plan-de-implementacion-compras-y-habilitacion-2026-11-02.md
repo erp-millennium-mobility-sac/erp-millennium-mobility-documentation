@@ -413,7 +413,7 @@ Cada especificación registra lo suyo con la marca **Como se corrigió (04/11/20
 **Lo que queda.**
 - **Las sondas en vivo** de las fases 2 a 5: 45 casos que nunca corrieron (§2.10). Necesitan la contraseña de verificación del responsable. Ninguna cubre la importación desde Excel.
 - **El CI con las dos cuentas** (§2.10).
-- **El despliegue de lo integrado desde el 03/11/2026**, las migraciones V86 a V107, con V96: antes, el responsable corre el inventario contra la base desplegada, que desde `ea5f342c` lista también el estado inicial y los caminos `mover_sola` que V96 no detiene (§3.2).
+- **El despliegue de lo integrado desde el 03/11/2026**, las migraciones V92 a V107 (la base desplegada llegó a V91 con backend `b1264ed5`, el 02/11/2026), con V96: antes, el responsable corre el inventario contra la base desplegada, que desde `ea5f342c` lista también el estado inicial y los caminos `mover_sola` que V96 no detiene (§3.2).
 - **La validación del contador** de D-190, D-192, D-194 y D-196 (§3.2).
 - **Las propuestas para el diccionario** de esta revisión, redactadas y sin aplicar, que decide el responsable:
   - R23 (§8.2) y R24 (D-164): el regreso desde Vendido salta la puerta solo mientras Vendido la exige; desmarcado, deja en Vendido a una unidad incompleta (D-170, D-184);
@@ -887,4 +887,4 @@ La estimación es gruesa: S = 1 día, M = 2,5 y L = 5, y los tamaños no se han 
 - **Documentación:**
   - cada fase cierra actualizando su contexto, sus procesos, su especificación y este plan, citando commits y fechas;
   - las reglas pasan de ❌ a ✅ con su prueba.
-- **Siguiente paso** (04/11/2026, después de la segunda revisión): lo que queda de §2.10 y §2.11, que es del responsable: el inventario antes de V96 y el despliegue de V86 a V107, las sondas en vivo, el CI con las dos cuentas, la validación del contador y las propuestas R23 a R25 para el diccionario. Las propuestas anteriores para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
+- **Siguiente paso** (04/11/2026, después de la segunda revisión): lo que queda de §2.10 y §2.11, que es del responsable: el inventario antes de V96 y el despliegue de V92 a V107, las sondas en vivo, el CI con las dos cuentas, la validación del contador y las propuestas R23 a R25 para el diccionario. Las propuestas anteriores para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
