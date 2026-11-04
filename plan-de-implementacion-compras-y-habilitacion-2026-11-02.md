@@ -1,6 +1,6 @@
 # Auditoría y plan de implementación: de la factura de compra a la habilitación, las notas, los pagos y las cargas
 
-**Versión 4 · 03/11/2026.** Cierra de punta a punta todo lo que planifica: las fases 1 a 5 y el paquete de cargas de archivos, cada uno con su especificación. **Avance al 03/11/2026:** las fases 1 a 5 están construidas e integradas en `develop` (§5, el «Hecho» de cada una): lo que esta versión implementa está construido de punta a punta, y la fase 5, los pagos a proveedores, cerró el 03/11/2026 (backend `601cc177`, frontend `e0ed0f68`). El 03 y el 04/11/2026, una revisión de punta a punta encontró lo que el código hacía distinto de las reglas, y sus correcciones se integraron en `develop` el 04/11/2026: backend `44136ae1` y frontend `cc782649` (§2.10). El mismo día el responsable aprobó las propuestas para el diccionario de los cierres de las fases 4 y 5 y de la revisión, que la documentación `7cc29f4` aplica en el diccionario v1.39, y entre ellas R22, la fecha base de la brecha de cada unidad, integrada con el backend `1bd767f1` (§2.10). Faltan las sondas en vivo de las fases 2 a 5, que necesitan la contraseña de verificación del responsable. El paquete de cargas sigue pospuesto por decisión del responsable del 03/11/2026 («Aún no haremos cargas iniciales, solo implementación», §4).
+**Versión 4 · 03/11/2026.** Cierra de punta a punta todo lo que planifica: las fases 1 a 5 y el paquete de cargas de archivos, cada uno con su especificación. **Avance al 03/11/2026:** las fases 1 a 5 están construidas e integradas en `develop` (§5, el «Hecho» de cada una): lo que esta versión implementa está construido de punta a punta, y la fase 5, los pagos a proveedores, cerró el 03/11/2026 (backend `601cc177`, frontend `e0ed0f68`). El 03 y el 04/11/2026, una revisión de punta a punta encontró lo que el código hacía distinto de las reglas, y sus correcciones se integraron en `develop` el 04/11/2026: backend `44136ae1` y frontend `cc782649` (§2.10). El mismo día el responsable aprobó las propuestas para el diccionario de los cierres de las fases 4 y 5 y de la revisión, que la documentación `7cc29f4` aplica en el diccionario v1.39, y entre ellas R22, la fecha base de la brecha de cada unidad, integrada con el backend `1bd767f1` (§2.10). También el 04/11/2026, una segunda revisión de punta a punta, con cuatro revisores independientes, y tres pedidos del responsable —la barra de las listas con varios filtros, la importación de las líneas de una factura desde Excel y la tarjeta de datos en grupos— se integraron en `develop`: backend `851b4d09` y frontend `3a49f141` (§2.11). Faltan las sondas en vivo de las fases 2 a 5, que necesitan la contraseña de verificación del responsable, y las propuestas R23 a R25 para el diccionario, que decide el responsable. El paquete de cargas sigue pospuesto por decisión del responsable del 03/11/2026 («Aún no haremos cargas iniciales, solo implementación», §4).
 
 **Cómo se llegó aquí:**
 - **Versión 1:** auditó tres puntos de partida, el backend `b1264ed5` (hasta V91), el frontend `88312e13` y la documentación `6ebb900`, junto con una investigación de ERP comparables y de la norma de SUNAT.
@@ -13,11 +13,12 @@
   - audita las fases 4 y 5 y el paquete de cargas, y los cierra con D-190 a D-202 (§2.8);
   - agrega sus especificaciones: [notas de crédito](especificacion-notas-de-credito-2026-11-03.md), [pagos a proveedores](especificacion-pagos-a-proveedores-2026-11-03.md) y [cargas de archivos](especificacion-cargas-de-archivos-2026-11-03.md);
   - el 04/11/2026 registra la revisión de punta a punta de las fases construidas y sus correcciones (§2.10);
-  - el mismo día registra las propuestas para el diccionario que aprobó el responsable, aplicadas en la v1.39 (documentación `7cc29f4`), y R22, la fecha base de cada unidad (backend `c43d1bc1`, merge `1bd767f1`; §2.10, §3.2).
+  - el mismo día registra las propuestas para el diccionario que aprobó el responsable, aplicadas en la v1.39 (documentación `7cc29f4`), y R22, la fecha base de cada unidad (backend `c43d1bc1`, merge `1bd767f1`; §2.10, §3.2);
+  - y registra la segunda revisión de punta a punta y sus correcciones, con los tres pedidos del responsable y el contrato C10 (backend `851b4d09`, frontend `3a49f141`; §2.11).
 
 **Cómo leerlo.**
 - **§1** fija el alcance.
-- **§2** resume los hallazgos de las auditorías y de la revisión de punta a punta (§2.10), y cómo quedó cada uno.
+- **§2** resume los hallazgos de las auditorías y de las dos revisiones de punta a punta (§2.10 y §2.11), y cómo quedó cada uno.
 - **§3** lista las decisiones y lo que sigue abierto.
 - **§4** fija el orden.
 - **§5** es el plan por fases, con su esfuerzo.
@@ -327,6 +328,98 @@ Cada especificación tiene su versión 4, con la marca **Como se corrigió (04/1
   - el texto del permiso `compras.registrar_nota_credito` (Q7) no se propuso aplicar y queda como está.
 - **Un límite conocido del formulario de pagos:** lo que se puede pagar no trae marcas, así que el formulario no retiene una aplicación a una factura de una marca que el permiso no alcanza; la rechaza el backend, con `403`.
 
+### 2.11 Segunda revisión de punta a punta y correcciones (04/11/2026)
+
+Con las correcciones de §2.10 integradas, cuatro revisores independientes volvieron a leer el plan v4 de punta a punta el 04/11/2026, y el responsable pidió tres cambios de pantalla. Las correcciones y los pedidos se integraron en `develop` el mismo día, sin migraciones:
+- **backend** `851b4d09`, la rama `feature/review-2-findings`, 20 commits de `a126216f` a `607e6756` sobre `1bd767f1`;
+- **frontend** `3a49f141`, la rama del mismo nombre, 50 commits de `a8ccc252` a `c64888e9` sobre `2908405f`, con las revisiones 40 y 41 de `DESIGN.md`.
+
+Cada especificación registra lo suyo con la marca **Como se corrigió (04/11/2026, segunda revisión)** y su §10.4: [facturas](especificacion-facturas-de-compra-2026-11-02.md), versión 5, con el contrato C10 en su §11; [habilitación](especificacion-habilitacion-2026-11-02.md) y [notas](especificacion-notas-de-credito-2026-11-03.md), versión 5; y [pagos](especificacion-pagos-a-proveedores-2026-11-03.md), versión 6.
+
+**Lo que se comprobó y estaba bien:** los contratos entre el frontend y el backend; el cálculo de la absorción del redondeo, idéntico en los dos repositorios con siete vectores hechos a mano; los candados; Row Level Security; los permisos; y que existen las 250 pruebas que citan las especificaciones.
+
+**Los pedidos del responsable (04/11/2026):**
+
+| Pedido | Cómo quedó | Commits |
+|---|---|---|
+| La barra de una lista con varios filtros | Revisión 40 de `DESIGN.md`: una lista con tres filtros o más lleva la búsqueda y las acciones en una fila, y los filtros en otra, alineados al inicio, cada uno con un valor —«Todos …» o «Todas …»; los días, con la etiqueta flotando—, con «Limpiar filtros» mientras uno está puesto y, en el teléfono, «Filtros» con la cuenta de los activos. La toman Facturas, Notas de crédito, Pagos, Inventario, Habilitación y Vencimientos, Tipos de cambio, Bitácora, Roles, Marcas y modelos, Plantillas de OC, Ubicaciones y Colaboradores; Órdenes de compra y las listas de una ficha, de dos filtros o menos, conservan su barra | Frontend `89f9f6c5`, `83a83cce`, `68f17cbc`, `71ccb43c`, `0036e50c`, `1c06b9c5`, `9b09c97b`, `977636db`, `61b08bf4`, `0d51eec3`, `48235558`, `bebbab4f`, `9ed75604`, `f5425b24` |
+| Importar las líneas de una factura desde Excel, solo en las facturas de compra | El contrato C10: `GET /purchase-invoices/line-template`, la plantilla como documento generado (D-106), y `POST /purchase-invoices/line-import`, que lee el libro y responde sus líneas y los errores de sus filas sin guardar nada, con cuatro `422 PURCHASEINVOICE_IMPORT_*`; en la pantalla, «Importar desde Excel» reemplaza «Pegar columnas» ([especificación de facturas](especificacion-facturas-de-compra-2026-11-02.md) §11) | Backend `6eee6878`, `d3b1e6ae`, `23fb6bba`; frontend `1184be6f`, `6a25fabe`, `4e7d440b`, `3d5387b9`, `1a1775d7` |
+| La tarjeta de datos de los formularios en grupos | Revisión 41: la factura en Comprobante, Importes, Orden de compra y Archivos; la nota en Comprobante, Motivo, Importe y Archivo; el pago en Pago, Importe y Notas; cada grupo nombrado, sobre una grilla de 12 columnas, cada campo con la etiqueta flotando y la tasa o la moneda leídas como un dato | Frontend `f6510432`, `94c1c6a3`, `c288a00d`, `2da6c23f` |
+
+**Las decisiones**, tomadas por la coordinación con la orden del responsable, como C1 a C8 (§2.10):
+
+| N.º | Decisión |
+|---|---|
+| C10 | La importación de las líneas de una factura: la plantilla es un documento generado, del tipo `purchase-invoice-line-template`, con el alcance de tener `compras.registrar_factura` y la versión de los datos de `vehiclecatalog`; la importación no guarda nada y no es una carga de archivos (D-200, D-208); los nombres se resuelven sin mayúsculas ni tildes contra los modelos que una unidad nueva puede tomar (D-108); hasta 100 filas y 2 MB. No necesita cambiar el diccionario |
+| C5, completada | Lo que la empresa puede pagar de una factura de dealers es lo que se debe menos las iniciales de sus unidades saldadas (`AmountOwedPolicy.payable`): si no es mayor que cero, la factura sale de lo que se ofrece pagar y su ficha no ofrece `registerPayment` |
+| — | El regreso automático desde Vendido salta la puerta solo mientras Vendido la exige; el catálogo mantiene la exención por el código. Propuestas R23 (§8.2) y R24 (D-164) |
+| — | La diferencia de cambio del formulario suma lo que absorbió el equivalente, como el backend. Propuesta R25 (D-213) |
+| — | Una prueba que confirma datos reusa la escena de las carreras, nunca un país ni una empresa nuevos (§7) |
+
+**Fase 2 · Facturas de compra**
+
+| Severidad | Hallazgo | Cómo quedó | Commits |
+|---|---|---|---|
+| Medio | El formulario no retenía una línea que vincula una unidad de una marca que el permiso no alcanza: leía el valor del formulario, que deja fuera los campos deshabilitados de esa línea. «Marca comercial por omisión» ofrecía marcas donde la sesión no registra | Cuenta la marca de la unidad; la marca por omisión ofrece solo las de la sesión (C8) | Frontend `cbf35bf6` |
+| Bajo | Una línea de concepto respondía `500` al anular la factura o cambiar su orden: B17 no alcanzó `brandsOf` | Deja fuera las marcas nulas | Backend `76fa8f0d` |
+| Bajo | Las marcas de un rechazo seguían la posición de la línea, en la factura y en la nota | Se marcan por la línea misma | Frontend `10b31b28`, `4aef618a` |
+| Bajo | Una revisión del VIN que respondía después de cambiar de empresa se aplicaba igual | Se descarta | Frontend `36b4d052` |
+| Bajo | El selector buscado en el servidor no volvía a preguntar un texto escrito después de elegir, y lo leído para opciones que se borraron quedaba entre las siguientes (también en notas y pagos) | Corregidos en la pieza compartida y en los servicios de búsqueda | Frontend `842c98b5`, `21cf2277` |
+| Bajo | El ingreso desde la ficha de la factura confundía una unidad anulada mientras tanto con una ingresada | La anulada ya no se lista, y lo dice | Frontend `cb2b7efd` |
+
+**Fase 3 · Habilitación**
+
+| Severidad | Hallazgo | Cómo quedó | Commits |
+|---|---|---|---|
+| Alto | La puerta de Disponible se saltaba con el regreso de las 48 h una vez desmarcado Vendido (D-184): a una unidad vendida se le podía retirar el GPS y volvía sola a Disponible sin él, lo que rompe D-170 | El proceso exime el regreso desde Vendido solo mientras Vendido exige la habilitación; desmarcado, deja en Vendido a la unidad incompleta (`AutomaticReturnGate.appliesToTheReturn`) | Backend `a126216f` |
+| Bajo | El inventario antes de V96 no decía si el estado inicial es Disponible o Vendido, ni los caminos `mover_sola` hacia ellos desde otro estado que Vendido | El inventario y su README los listan, con qué hacer antes del merge | Backend `ea5f342c` |
+| Bajo | El proceso escribía el mismo `WARN` en cada corrida por una unidad retenida | Solo en la primera corrida después del vencimiento; las demás, en `DEBUG` | Backend `62708a60` |
+| Bajo | Marcar un estado y guardar un camino hacia él revisaban sin candado: dos pedidos a la vez dejaban juntas las dos filas que la puerta prohíbe | El camino lee su destino `FOR SHARE`; marcar o retirar un estado lo lee `FOR NO KEY UPDATE` antes de sus caminos ([patrones de persistencia](patrones-de-persistencia-millennium-mobility.md)) | Backend `5bcd796b` |
+| Bajo | Los diálogos: «Registrar costo» por el acceso de la página y un costo vacío; un `{{ status }}` literal en el aviso de un camino reabierto; el texto de la lista dentro del diálogo del camino; el ingreso en lote que obligaba a quitar a mano las unidades ya ingresadas; un destino que la puerta rechazó, todavía elegido; una ubicación desactivada mientras tanto; el mock de `PUT /vehicle-statuses` en otro orden que el backend | Cada uno en su pantalla | Frontend `7cd9f40f`, `46d36540`, `4b24c845`, `d184bceb`, `b698c392`, `e18a6754`, `5d6d34c5`, `1d278ad7` |
+| Bajo | Los filtros Modelo y Documento de Habilitación leen catálogos que piden `catalogos.ver`, y quedaban vacíos sin decirlo | Solo con `catalogos.ver`, como Estado | Frontend `d2ae9682` |
+| Bajo | Comentarios y descripciones de la API viejos: ocho permisos de accesos y roles en lugar de once; el costo de una instalación por la empresa sola; el descarte de `VehicleDocumentFiles` por `open` | Corregidos | Backend `6e71a19d`; frontend `a8ccc252` |
+
+**Fase 4 · Notas de crédito**
+
+| Severidad | Hallazgo | Cómo quedó | Commits |
+|---|---|---|---|
+| Medio | Con montos fijos, `CREDITNOTE_EXCEEDS_VALUE` dejaba el formulario sin salida | Toma lo que le queda a la línea, lo dice y deja volver a registrar; con montos escritos, actualiza el valor actual | Frontend `01b667c2`, `4aef618a` |
+| Bajo | `CREDITNOTE_INVOICE_ANNULMENT_PARTIAL` no nombraba las facturas que quedarían con valor | Las nombra | Frontend `01b667c2`, `4aef618a` |
+| Bajo | Decir que no a «Cambiar empresa» perdía el proveedor | La empresa y su proveedor se quedan | Frontend `b5511c54` |
+| Bajo | El aviso de las unidades devueltas mandaba anular una unidad que otra factura ya volvió a comprar | Dice qué hacer mientras siga sin factura vigente | Frontend `a3f532b1` |
+
+**Fase 5 · Pagos a proveedores**
+
+| Severidad | Hallazgo | Cómo quedó | Commits |
+|---|---|---|---|
+| Medio | La diferencia de cambio del formulario no sumaba lo que absorbió el equivalente: con V1 mostraba PEN 47,87, y el backend guardaba 47,89 | Lo suma, como `ExchangeDifferencePolicy` | Frontend `fd6d0ca8` |
+| Bajo | Una factura de dealers que solo debe las iniciales de sus unidades saldadas, sin estarlo todas, seguía entre lo que se puede pagar, y su ficha ofrecía «Registrar pago»: C5 estaba incompleto | C5, completada (arriba) | Backend `5c6f5134`, `74397269`; frontend `cc9379ab` |
+| Bajo | «Anular y copiar» de un pago con dos aplicaciones a un mismo documento perdía el monto de una; `?factura=` de una factura que no se debe abría sin fila y sin decirlo | La copia las junta; el formulario lo dice | Frontend `4ea36a0d` |
+
+**En todas las fases**
+
+| Severidad | Hallazgo | Cómo quedó | Commits |
+|---|---|---|---|
+| Bajo | En Spaces, `KeptFileStore.put` escribía el objeto antes que su fila: una fila que fallaba dejaba un objeto sin fila y sin descarte | Primero la fila, después el objeto ([patrones de persistencia](patrones-de-persistencia-millennium-mobility.md)) | Backend `5df515b8` |
+| Bajo | Pruebas más débiles que su regla: PRC-R101 con un identificador al azar; PRC-R102 sin la marca; PRC-R98 que fallaba antes de escribir; el intervalo del equivalente con seis vectores; FLT-R95 y `readAllLocked` sin transacciones reales; FLT-R131 y FLT-R63 sin su caso; el `put` repetido dentro de la misma transacción | Pruebas nuevas, sin cambiar el código: `SupplierPaymentsIntegrationTests` (dos casos), `CreditNoteRollbackTests`, la prueba de propiedades y los vectores V7 a V10 de `PaymentEquivalentsTests` (y V9 en el frontend), `FleetContextFacadeLockTests`, `VehiclesIntegrationTests.theRecordOfADeliveredUnitCountsItsGapUpToItsFirstMoveIntoActivo`, `EnablementDatesInLimaTests.aCorrectedArrivalOfTomorrowInLimaIsRefused`, `KeptFileStoreUpsertTests.aKeyAnEarlierTransactionCommittedIsNotWrittenFirstAgain` | Backend `e1c0400f`, `fb84d6c8`, `d19b16ba`, `eed0c204`, `22b16143`, `5f967ae3`; frontend `be081bc8` |
+| Bajo | Las pruebas confirmadas gastaban datos: `PurchaseInvoiceRollbackTests`, `CreditNoteRollbackTests` y `VehicleLockTests.setUp` confirmaban una empresa en un país de prueba nuevo en cada corrida. Al 04/11/2026 había 26 en `erp_mm_db_verify`, todos los de `XA` a `XZ`, y `AccessFixtures.countryWithoutCompany` fallaba sin código libre | Las dos de reversión registran sobre la escena de las carreras (`InvoiceRaces.root`); `VehicleLockTests` arma su empresa solo dentro de la transacción de la prueba; `countryWithoutCompany` busca entre todos los códigos que ISO 3166 deja a sus usuarios (AA, QM a QZ, XA a XZ y ZZ). La regla queda en §7 | Backend `dd225f1a`, `607e6756` |
+| — | La e2e del armazón, `e2e/shell.spec.ts`, fallaba a veces: medía la barra lateral y la superior a mitad de su transición. Ya fallaba así en `develop` | Las mide cuando las dos se asientan | Frontend `c64888e9` |
+
+**Lo que corrió el 04/11/2026** (la verificación de la coordinación):
+- **Backend:** la suite completa dos veces seguidas, 3 619 pruebas sobre `erp_mm_db_verify` con la cuenta `postgres`: fallan 78, todas de la línea base del superusuario, y ninguna corrida gastó un país de prueba.
+- **Frontend:** 3 327 pruebas unitarias en 275 archivos; stylelint limpio; la compilación, bien. La e2e completa de escritorio: 659 pasan, 3 se saltan y una falla de forma intermitente, la del armazón; con `c64888e9`, 116 de 116 en cuatro repeticiones, en escritorio y en tableta. Las imágenes de referencia de las 16 pantallas que cambiaron se tomaron otra vez en las tres anchuras, 48 en total, y cada una se miró (`abb8a556`).
+- **Las capturas** de las barras nuevas y de las tarjetas en grupos, a 1 440 y a 375 px, se revisaron a ojo.
+
+**Lo que queda.**
+- **Las sondas en vivo** de las fases 2 a 5: 45 casos que nunca corrieron (§2.10). Necesitan la contraseña de verificación del responsable. Ninguna cubre la importación desde Excel.
+- **El CI con las dos cuentas** (§2.10).
+- **El despliegue de lo integrado desde el 03/11/2026**, las migraciones V86 a V107, con V96: antes, el responsable corre el inventario contra la base desplegada, que desde `ea5f342c` lista también el estado inicial y los caminos `mover_sola` que V96 no detiene (§3.2).
+- **La validación del contador** de D-190, D-192, D-194 y D-196 (§3.2).
+- **Las propuestas para el diccionario** de esta revisión, redactadas y sin aplicar, que decide el responsable:
+  - R23 (§8.2) y R24 (D-164): el regreso desde Vendido salta la puerta solo mientras Vendido la exige; desmarcado, deja en Vendido a una unidad incompleta (D-170, D-184);
+  - R25 (D-213): la diferencia de cambio suma los céntimos que el equivalente tomó del redondeo (§10.2), para que diga lo que de verdad salió.
+  - La importación desde Excel no necesita cambiar el diccionario: no guarda nada, no es una carga de archivos y sigue D-106 como documento generado.
+
 ---
 
 ## 3. Decisiones
@@ -394,7 +487,8 @@ El texto completo de cada una está en el diccionario v1.38. La v1.39 (04/11/202
 | Negocio | La lista de modelos conciliada (diccionario §7.3) | Registrar facturas reales |
 | Negocio | Los Excel reales de autos y de motos (Flota Lizzo New y Flota Lima Bikes), y un archivo real del impuesto vehicular y otro de la garantía mobiliaria, para perfilarlos (D-177) | El primer paso del paquete de cargas |
 | Negocio | Qué proveedores son del canal de dealers, para marcarlos (D-197) | La carga de proveedores reales |
-| Responsable | Correr el inventario antes de V96 contra la base desplegada (§2.10) | El despliegue de V96 en `develop` |
+| Responsable | Correr el inventario antes de V96 contra la base desplegada (§2.10). Desde el 04/11/2026 (`ea5f342c`, §2.11) lista también si el estado inicial es Disponible o Vendido y los caminos `mover_sola` hacia ellos desde otro estado que Vendido, que se corrigen antes del merge | El despliegue de V96 en `develop` |
+| Responsable | Validar las propuestas para el diccionario de la segunda revisión (§2.11): R23 (§8.2) y R24 (D-164), el regreso desde Vendido con la puerta según su marca; R25 (D-213), la diferencia de cambio con lo que absorbió el equivalente | Nada: el código ya las sigue desde el 04/11/2026 (backend `a126216f`; frontend `fd6d0ca8`) |
 | Responsable | La contraseña de verificación, para las sondas en vivo de las fases 2 a 5 | El cierre de los pasos 5.12, 6.13, 7.12 y 8.9 |
 | ~~Responsable~~ | ~~Validar las propuestas para el diccionario de las fases 4 y 5 y de la revisión de punta a punta (§2.10)~~ | Hecho el 04/11/2026: el responsable las aprobó y la documentación `7cc29f4` las aplica en el diccionario v1.39, con R22, la fecha base de cada unidad (§2.10) |
 
@@ -783,7 +877,8 @@ La estimación es gruesa: S = 1 día, M = 2,5 y L = 5, y los tamaños no se han 
   - con tablas nuevas, también las de RLS y de filas que no se borran;
   - las suites completas antes de integrar en `develop`;
   - las de integración y las sondas en vivo sobre la base de verificación, que crea el responsable;
-  - las e2e en el puerto 4300, con el equipo enchufado.
+  - las e2e en el puerto 4300, con el equipo enchufado;
+  - **una prueba que confirma datos reusa la escena de las carreras, nunca un país ni una empresa nuevos** (desde el 04/11/2026, §2.11). Una prueba sin la transacción de la prueba —una carrera con dos transacciones reales, una reversión que tiene que escribir antes de fallar— confirma lo que escribe, y lo que confirma queda en `erp_mm_db_verify` para siempre, porque la cuenta de la aplicación no borra. Por eso registra sobre la escena que las carreras ya guardan y reusan (`InvoiceRaces.scene`, `InvoiceRaces.root`, la empresa de Perú de las pruebas de candados), y comprueba solo lo suyo —su número de factura, sus VIN, su número de nota, su llave—, nuevo en cada corrida. Lo que arma para una prueba con transacción se arma dentro de ella, que lo revierte (`VehicleLockTests.setUp`). `AccessFixtures.countryWithoutCompany`, para las pruebas que sí necesitan un país propio, busca entre todos los códigos que ISO 3166 deja a sus usuarios (AA, QM a QZ, XA a XZ y ZZ), y sin ninguno libre falla diciendo que alguna prueba confirma su país. Dos corridas seguidas de la suite completa no gastaron ninguno (backend `dd225f1a`, `607e6756`).
 - **Despliegue:**
   - las migraciones solo agregan;
   - se respalda la base antes de desplegar cada fase;
@@ -792,4 +887,4 @@ La estimación es gruesa: S = 1 día, M = 2,5 y L = 5, y los tamaños no se han 
 - **Documentación:**
   - cada fase cierra actualizando su contexto, sus procesos, su especificación y este plan, citando commits y fechas;
   - las reglas pasan de ❌ a ✅ con su prueba.
-- **Siguiente paso** (04/11/2026): lo que queda de §2.10, que es del responsable: el inventario antes de V96, las sondas en vivo, el CI con las dos cuentas y la validación del contador. Las propuestas para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
+- **Siguiente paso** (04/11/2026, después de la segunda revisión): lo que queda de §2.10 y §2.11, que es del responsable: el inventario antes de V96 y el despliegue de V86 a V107, las sondas en vivo, el CI con las dos cuentas, la validación del contador y las propuestas R23 a R25 para el diccionario. Las propuestas anteriores para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
