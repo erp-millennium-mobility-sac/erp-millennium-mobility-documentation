@@ -1862,7 +1862,7 @@ Con la primera revisión integrada, cuatro revisores independientes volvieron a 
 
 **El pedido del responsable que toca esta fase:** la barra de una lista con varios filtros, en Unidades y en Vencimientos (revisión 40 de `DESIGN.md`; §6.3), con Habilitación en «Todas» (frontend `0036e50c`, `f5425b24`). Inventario la toma también, con Empresa, Marca comercial, Estado, Tolerancia y Factura vigente ([contextos/fleet.md](contextos/fleet.md)).
 
-**Lo que se comprobó y estaba bien en esta fase:** los candados del ingreso en lote y de la puerta, Row Level Security de las tablas nuevas, los permisos y las pruebas que citan §5 y §7.
+**Lo que se comprobó y estaba bien en esta fase:** los candados de la unidad en el ingreso en lote y en el cambio de estado —los del catálogo eran el hallazgo de arriba—, Row Level Security de las tablas nuevas, los permisos y las pruebas que citan §5 y §7.
 
 **Las propuestas para el diccionario** que deja esta revisión, R23 (§8.2) y R24 (D-164): el regreso desde Vendido salta la puerta solo mientras Vendido la exige, y desmarcado deja en Vendido a una unidad incompleta (D-170, D-184). No se aplicaron: las decide el responsable, y el diccionario sigue diciendo la exención sin la condición.
 
