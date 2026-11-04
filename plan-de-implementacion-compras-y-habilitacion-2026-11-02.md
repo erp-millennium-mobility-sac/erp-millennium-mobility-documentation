@@ -1,6 +1,6 @@
 # Auditoría y plan de implementación: de la factura de compra a la habilitación, las notas, los pagos y las cargas
 
-**Versión 4 · 03/11/2026.** Cierra de punta a punta todo lo que planifica: las fases 1 a 5 y el paquete de cargas de archivos, cada uno con su especificación. **Avance al 03/11/2026:** las fases 1 a 5 están construidas e integradas en `develop` (§5, el «Hecho» de cada una): lo que esta versión implementa está construido de punta a punta, y la fase 5, los pagos a proveedores, cerró el 03/11/2026 (backend `601cc177`, frontend `e0ed0f68`). El 03 y el 04/11/2026, una revisión de punta a punta encontró lo que el código hacía distinto de las reglas, y sus correcciones se integraron en `develop` el 04/11/2026: backend `44136ae1` y frontend `cc782649` (§2.10). Faltan las sondas en vivo de las fases 2 a 5, que necesitan la contraseña de verificación del responsable. El paquete de cargas sigue pospuesto por decisión del responsable del 03/11/2026 («Aún no haremos cargas iniciales, solo implementación», §4).
+**Versión 4 · 03/11/2026.** Cierra de punta a punta todo lo que planifica: las fases 1 a 5 y el paquete de cargas de archivos, cada uno con su especificación. **Avance al 03/11/2026:** las fases 1 a 5 están construidas e integradas en `develop` (§5, el «Hecho» de cada una): lo que esta versión implementa está construido de punta a punta, y la fase 5, los pagos a proveedores, cerró el 03/11/2026 (backend `601cc177`, frontend `e0ed0f68`). El 03 y el 04/11/2026, una revisión de punta a punta encontró lo que el código hacía distinto de las reglas, y sus correcciones se integraron en `develop` el 04/11/2026: backend `44136ae1` y frontend `cc782649` (§2.10). El mismo día el responsable aprobó las propuestas para el diccionario de los cierres de las fases 4 y 5 y de la revisión, que la documentación `7cc29f4` aplica en el diccionario v1.39, y entre ellas R22, la fecha base de la brecha de cada unidad, integrada con el backend `1bd767f1` (§2.10). Faltan las sondas en vivo de las fases 2 a 5, que necesitan la contraseña de verificación del responsable. El paquete de cargas sigue pospuesto por decisión del responsable del 03/11/2026 («Aún no haremos cargas iniciales, solo implementación», §4).
 
 **Cómo se llegó aquí:**
 - **Versión 1:** auditó tres puntos de partida, el backend `b1264ed5` (hasta V91), el frontend `88312e13` y la documentación `6ebb900`, junto con una investigación de ERP comparables y de la norma de SUNAT.
@@ -12,7 +12,8 @@
 - **Versión 4:**
   - audita las fases 4 y 5 y el paquete de cargas, y los cierra con D-190 a D-202 (§2.8);
   - agrega sus especificaciones: [notas de crédito](especificacion-notas-de-credito-2026-11-03.md), [pagos a proveedores](especificacion-pagos-a-proveedores-2026-11-03.md) y [cargas de archivos](especificacion-cargas-de-archivos-2026-11-03.md);
-  - el 04/11/2026 registra la revisión de punta a punta de las fases construidas y sus correcciones (§2.10).
+  - el 04/11/2026 registra la revisión de punta a punta de las fases construidas y sus correcciones (§2.10);
+  - el mismo día registra las propuestas para el diccionario que aprobó el responsable, aplicadas en la v1.39 (documentación `7cc29f4`), y R22, la fecha base de cada unidad (backend `c43d1bc1`, merge `1bd767f1`; §2.10, §3.2).
 
 **Cómo leerlo.**
 - **§1** fija el alcance.
@@ -220,7 +221,9 @@ El código existente no tiene defectos críticos. Las políticas de RLS, las car
 
 Con las fases 1 a 5 integradas, el responsable pidió una revisión crítica de punta a punta de esta versión, y el 04/11/2026 ordenó «Resuelve todos los hallazgos como experto». Cuatro revisores leyeron el código, uno por fase (2 a 5), y cada hallazgo clave se verificó en el código antes de corregirlo. Las correcciones se integraron en `develop` el 04/11/2026, sin migraciones:
 - **backend** `44136ae1`, la rama `feature/review-findings`, 23 commits de `5c77bc8f` a `df6b7276` sobre `059a4457`;
-- **frontend** `cc782649`, la rama del mismo nombre, 35 commits de `6386f2fa` a `1ef10642` sobre `e0ed0f68`, con la revisión 39 de `DESIGN.md`.
+- **frontend** `cc782649`, la rama del mismo nombre, 35 commits de `6386f2fa` a `1ef10642` sobre `e0ed0f68`, con la revisión 39 de `DESIGN.md`;
+- después, el mismo día, dos textos: el backend cuenta en `UserQueryServiceImpl` y `SessionCompanyResource` los once permisos de accesos y roles que la sesión deja fuera, y no ocho (`728dbc52`, merge `63a56051`), y el rechazo del canal de dealers pide pasar los pagos de las órdenes a sus facturas o anularlos, nunca anular las órdenes (frontend `89402f13`, merge `a1956861`);
+- y R22, la fecha base de cada unidad, con la aprobación del responsable: backend `c43d1bc1`, merge `1bd767f1`.
 
 Cada especificación tiene su versión 4, con la marca **Como se corrigió (04/11/2026)** donde cambió el comportamiento y su §10 con el detalle de su fase: [facturas](especificacion-facturas-de-compra-2026-11-02.md), [habilitación](especificacion-habilitacion-2026-11-02.md), [notas](especificacion-notas-de-credito-2026-11-03.md) y [pagos](especificacion-pagos-a-proveedores-2026-11-03.md).
 
@@ -231,7 +234,7 @@ Cada especificación tiene su versión 4, con la marca **Como se corrigió (04/1
 
 **Severidades.** La revisión clasificó como alto el redondeo de la conversión de los pagos. El resto lo clasifica este cierre por su efecto, con la escala de §2.
 
-**Las decisiones.** Las tomó la coordinación con la orden del responsable, y las dos ramas las siguieron:
+**Las decisiones.** C1 a C8 las tomó la coordinación con la orden del responsable, y las dos ramas las siguieron. R22 la aprobó el responsable el 04/11/2026, con las demás propuestas para el diccionario (abajo):
 
 | N.º | Decisión |
 |---|---|
@@ -243,6 +246,7 @@ Cada especificación tiene su versión 4, con la marca **Como se corrigió (04/1
 | C6 | La bitácora oculta el costo y la moneda de una instalación sin `stock.ver_costos` en la marca de la unidad, y el monto de una aplicación sin `pagos.ver` |
 | C7 | La búsqueda de facturas y notas encuentra el número escrito como un número de comprobante, normalizado |
 | C8 | La sesión dice, por empresa, qué permisos actúan en toda la empresa (`wholeCompanyPermissions`) y cuáles en una marca (`brandPermissions`) |
+| R22 | La brecha de días de cada unidad cuenta desde el primer pago que la cubre —por su imputación, o por su parte de lo que su factura no imputó— o, sin ninguno, desde su factura, y no desde el primer pago aplicado a la factura (guía, columnas 24 y 43): de 50 motos pagadas en dos bloques de 25, cada bloque cuenta desde su propio pago. La posición de la factura conserva su primer pago. D-199 y §10.5 del diccionario v1.39 lo dicen. Backend `c43d1bc1`, merge `1bd767f1`; el frontend no cambió |
 
 **Lo que no cambió, por decisión.**
 - **El subtotal de la orden como tope de un pago:** D-211 dice que no lo es, porque puede no llevar el IGV.
@@ -301,12 +305,14 @@ Cada especificación tiene su versión 4, con la marca **Como se corrigió (04/1
 | Bajo | Una factura de dealers con todas sus unidades saldadas se seguía ofreciendo | C5 | Backend `96c62684`; frontend `a52c6a71` |
 | Bajo | Los rechazos no nombraban lo que se debía, y su marca quedaba; un pago sin número de operación se mostraba como de saldo a favor; «Ver pagos» abría la lista sin su empresa | Corregidos en la pantalla | Frontend `2b023ba4`, `be45bcfc`, `131314dc`, `6205e8d4` |
 | Bajo | El objetivo de 1 s de un pago de 100 aplicaciones no se había medido (B19) | Se midió (fase 5, abajo) | Backend `b44950c8` |
+| Medio | La brecha de días de cada unidad contaba desde el primer pago aplicado a su factura, no desde el pago del bloque que la incluye | R22: `UnitCoverage.baseDate`, que `PurchaseInvoiceUnitPurchasesAdapter` pasa a `fleet` en la ficha y en el costo de compra de la unidad. Lo prueban `UnitCoveragePolicyTests.eachUnitCountsItsGapFromTheFirstPaymentThatCoversIt`, el ejemplo 4 (`aPaymentWithoutUnitsAfterPayingHalfTheMotorcyclesGoesToTheOtherHalf`), que ahora comprueba la fecha de cada bloque, y `VehiclesIntegrationTests.eachUnitOfAnInvoicePaidInTwoBlocksCountsItsGapFromItsOwnPayment` | Backend `c43d1bc1`, merge `1bd767f1` |
 
 **Pruebas más débiles que su regla** (B20; todas las fases): las de mañana en Lima dependían de la hora en que corría la suite, y `ProcurementCalendar` reemplaza el `Clock.systemUTC()` fijo (`ProcurementDatesInLimaTests`, `EnablementDatesInLimaTests`); el fallo en la línea 100 nunca escribía nada antes de fallar; y la línea de cero, la tasa 1, la fila delicada, el redondeo de la exportación, el corte de las notas, la retención contra lo que se debe y las anulaciones por la ruta se leen ahora donde la regla los pone (backend `6165ba5d`, `7984202f`, `7b92a7de`, `fbd6f291`). Las citas de pruebas de las especificaciones y de los contextos quedaron al día.
 
 **Lo que corrió el 04/11/2026.**
 - **Backend:** la suite completa, 3 570 pruebas sobre `erp_mm_db_verify` con la cuenta `postgres`: fallan 78, todas de la línea base del superusuario, las de Row Level Security y de filas que no se borran, que necesitan las dos cuentas.
 - **Frontend:** 3 285 pruebas unitarias en 275 archivos; stylelint limpio; la e2e completa de escritorio, 657 pasan, 3 se saltan y ninguna falla; axe limpio en las tres anchuras en las pantallas que cambiaron. No se regeneró ninguna imagen de referencia.
+- **R22** (backend `c43d1bc1`): las 117 pruebas que alcanza el cambio —la política, el adaptador, la ficha y el costo de compra de la unidad, los pagos, las de OpenAPI y `ModularityTests`— pasan. El frontend no cambió.
 
 **Lo que queda.**
 - **Las sondas en vivo** de las fases 2 a 5, `e2e-live/purchase-invoices`, `enablement`, `credit-notes` y `supplier-payments`: 45 casos (12, 10, 12 y 11) que nunca corrieron. Necesitan la contraseña de verificación del responsable.
@@ -314,10 +320,11 @@ Cada especificación tiene su versión 4, con la marca **Como se corrigió (04/1
 - **El inventario antes de V96**, contra la base desplegada, antes de que `develop` despliegue V96. Lo corre el responsable.
 - **El rendimiento:** la línea base de una factura de 100 líneas se midió con `postgres` (mediana 1 731 ms, máximo 2 063 ms), no con la cuenta de la aplicación; y el máximo de un pago de 100 aplicaciones, 1 911 ms, supera el objetivo de 1 s, aunque la mediana, 899 ms, lo cumple.
 - **La validación del contador** de D-190, D-192, D-194 y D-196, y la Consulta RUC, que dice si Millennium es agente de retención (§3.2).
-- **Las propuestas para el diccionario**, que decide el responsable y no se aplicaron:
-  - de los cierres de las fases 4 y 5: §2.7 (los archivos de las notas), §3 filas 7 a 9, §9.2 (la orden con pagos no se anula ni se cumple), §10.1 a §10.3 y §13.1 (la anulación de un pago, delicada);
-  - de esta revisión: §10.2 (la absorción del redondeo), §10.3 (los céntimos de a uno), §9.1 (`suppliers.is_dealer` no se marca con pagos en sus órdenes), §8.2 (la puerta fuera del alcance de los caminos que mueven solas las unidades y del estado inicial) y §13.1 (los valores que la bitácora oculta);
-  - y la frase de §2.7 sobre el descarte, «Es seguro sin leer la tabla», que la revisión encontró falsa para un `PUT`: todavía no tiene texto propuesto.
+- ~~**Las propuestas para el diccionario**, que decide el responsable y no se aplicaron:~~ Aprobadas por el responsable el 04/11/2026 y aplicadas ese día: documentación `7cc29f4`, diccionario v1.39.
+  - del cierre de la fase 4 (Q1 a Q6): §2.7 (los archivos de las notas), §3 fila 7 y §13.1 (la anulación de un pago, delicada);
+  - del cierre de la fase 5 (R8 a R16): §3 filas 8 y 9; §10.2 (la aplicación exacta, el paso de una orden a su factura, el comprobante de retención); §10.3 (el reparto por lo que le falta a cada unidad, los céntimos, el tope, la imputación que no cambia); §9.2 (la orden con pagos); §10.1 (la regla del `request_id`); y §10.5 (la brecha en la zona de la empresa);
+  - de esta revisión (R17 a R22): §10.2 (el equivalente que absorbe el redondeo), §9.1 (`suppliers.is_dealer` no se marca con pagos en sus órdenes), §8.2 (ningún camino salvo el regreso desde Vendido mueve sola una unidad a un estado con puerta, y el estado inicial no se marca), §13.1 (los campos cuyos valores solo muestra un permiso), §2.7 (una sola regla de descarte, en el párrafo y en la fila de `storage_key`, que reemplaza la frase «Es seguro sin leer la tabla») y D-199 con §10.5 (la fecha base de cada unidad, R22, arriba);
+  - el texto del permiso `compras.registrar_nota_credito` (Q7) no se propuso aplicar y queda como está.
 - **Un límite conocido del formulario de pagos:** lo que se puede pagar no trae marcas, así que el formulario no retiene una aplicación a una factura de una marca que el permiso no alcanza; la rechaza el backend, con `403`.
 
 ---
@@ -326,7 +333,7 @@ Cada especificación tiene su versión 4, con la marca **Como se corrigió (04/1
 
 ### 3.1 Tomadas por el responsable el 02/11/2026
 
-El texto completo de cada una está en el diccionario v1.38.
+El texto completo de cada una está en el diccionario v1.38. La v1.39 (04/11/2026, documentación `7cc29f4`) corrige D-199: la brecha de cada unidad cuenta desde el primer pago que la cubre (R22, §2.10).
 
 | N.º | Decisión |
 |---|---|
@@ -389,7 +396,7 @@ El texto completo de cada una está en el diccionario v1.38.
 | Negocio | Qué proveedores son del canal de dealers, para marcarlos (D-197) | La carga de proveedores reales |
 | Responsable | Correr el inventario antes de V96 contra la base desplegada (§2.10) | El despliegue de V96 en `develop` |
 | Responsable | La contraseña de verificación, para las sondas en vivo de las fases 2 a 5 | El cierre de los pasos 5.12, 6.13, 7.12 y 8.9 |
-| Responsable | Validar las propuestas para el diccionario de las fases 4 y 5 y de la revisión de punta a punta (§2.10) | Nada: el código ya las sigue |
+| ~~Responsable~~ | ~~Validar las propuestas para el diccionario de las fases 4 y 5 y de la revisión de punta a punta (§2.10)~~ | Hecho el 04/11/2026: el responsable las aprobó y la documentación `7cc29f4` las aplica en el diccionario v1.39, con R22, la fecha base de cada unidad (§2.10) |
 
 Las preguntas abiertas de las cinco especificaciones quedaron decididas el 03/11/2026:
 - facturas y habilitación, con D-178 a D-189;
@@ -574,7 +581,7 @@ Cada paso termina en uno o varios commits que compilan, con sus pruebas. **La se
 - **Pruebas:** la suite completa del backend, 3 254 pruebas sobre `erp_mm_db_verify` con la cuenta `postgres`, con solo seis fallos nuevos frente a la línea base de 67 de `16f69af3`, todos porque el superusuario se salta Row Level Security y los permisos; las unitarias del frontend, 3 007 de 3 007; las e2e en escritorio de habilitación, flota, facturas de compra y tipos de documento, 63 de 63; las de accesibilidad de la habilitación en los tres anchos, 18 de 18; y todas las capturas en los tres anchos.
 - **La revisión del contrato** del frontend contra el backend, antes de integrar: el backend respondía lo especificado, y las diferencias del frontend —una rotura, cuatro textos, diez respuestas del simulador y los campos que pueden llegar en `null`— quedaron corregidas.
 - **Lo que el código hizo distinto** queda en la versión 3 de la especificación, con la marca «Como se construyó»: entre otras cosas, los cuatro textos de `VEHICLE_ENABLEMENT_HELD_BY_STATUS`, que reemplazan al único que proponía; `location::acl` desde el paso de los tipos de documento; y la fachada del ingreso de una factura, que recibe la empresa.
-- **Falta** (paso 8.9): las sondas en vivo, que existen desde el frontend `4ca16d02` y necesitan la contraseña de verificación del responsable (especificación §7.6); y el texto de §2.7 del diccionario sobre la llave, la empresa y el descarte de los archivos de un documento, que es una propuesta para el responsable.
+- **Falta** (paso 8.9): las sondas en vivo, que existen desde el frontend `4ca16d02` y necesitan la contraseña de verificación del responsable (especificación §7.6). ~~Y el texto de §2.7 del diccionario sobre la llave, la empresa y el descarte de los archivos de un documento, que es una propuesta para el responsable.~~ Aprobado por el responsable y aplicado el 04/11/2026 (documentación `7cc29f4`, diccionario v1.39).
 
 ### Cargas, primera entrega · Registro, impuesto vehicular y garantía mobiliaria
 
@@ -785,4 +792,4 @@ La estimación es gruesa: S = 1 día, M = 2,5 y L = 5, y los tamaños no se han 
 - **Documentación:**
   - cada fase cierra actualizando su contexto, sus procesos, su especificación y este plan, citando commits y fechas;
   - las reglas pasan de ❌ a ✅ con su prueba.
-- **Siguiente paso** (04/11/2026): lo que queda de §2.10, que es del responsable: el inventario antes de V96, las sondas en vivo, el CI con las dos cuentas, la validación del contador y las propuestas para el diccionario. Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
+- **Siguiente paso** (04/11/2026): lo que queda de §2.10, que es del responsable: el inventario antes de V96, las sondas en vivo, el CI con las dos cuentas y la validación del contador. Las propuestas para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
