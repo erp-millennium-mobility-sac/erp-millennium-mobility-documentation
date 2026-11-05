@@ -1387,7 +1387,7 @@ Los rechazos van en el diálogo, con el texto de su código (sección 4.10).
 **Unidades.**
 - **Columnas:** Placa («Sin placa»), VIN, Marca y modelo, Estado del ciclo de vida, Ubicación, Ingreso, Habilitación y Próximo vencimiento.
 - **Habilitación** es una insignia con el nombre del código y, debajo, lo que falta: «Sin GPS · Sin pantalla», «Falta: Tarjeta de identificación vehicular».
-- **Filtros:** Habilitación (selección múltiple de los seis), Estado, Ubicación, Marca comercial y Modelo. Busca por VIN, placa o número de motor.
+- **Filtros:** Habilitación (selección múltiple de los seis), Ubicación, Marca comercial y Modelo. Busca por VIN, placa o número de motor.
 - **Orden:** por las filas de la habilitación y después por VIN.
 - **Exportar:** descarga `habilitacion-<fecha>.xlsx`.
 - **Cada fila:** «Ver habilitación» abre la página de la unidad (6.4).

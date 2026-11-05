@@ -1495,7 +1495,6 @@ Siguen en [contextos/fleet.md](contextos/fleet.md) a las de la fase 4, FLT-R94 a
   - proveedor (`mm-search-select`, activos e inactivos; desde el 04/11/2026 busca en el servidor, frontend `3a995e95`);
   - método;
   - estado (Todos, Vigentes, Anulados);
-  - moneda;
   - período Desde–Hasta, que incluye el último día elegido.
 - **Columnas:**
 
