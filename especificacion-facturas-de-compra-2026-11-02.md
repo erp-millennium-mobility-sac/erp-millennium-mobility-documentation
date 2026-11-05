@@ -1089,11 +1089,12 @@ En `app-navigation.ts`, la opción `/procurement/invoices` pierde `pending: true
 - **Acciones** (`.mm-page-actions`): «Registrar factura», solo con `hasPermission(REGISTER_INVOICES)`, y «Exportar».
 - **Filtros:** empresa (`mm-company-filter`), proveedor (`mm-search-select` con los proveedores de la empresa, activos e inactivos; desde el 04/11/2026, buscados en el servidor por razón social o documento, una página a la vez, y el elegido sigue nombrado aunque la búsqueda siguiente no lo traiga, frontend `3a995e95` sobre `6c779bc3`), tipo, estado (Todas, Vigentes, Anuladas), moneda y período Desde–Hasta, que incluye el último día elegido (la pantalla manda `to` como el día siguiente).
 
-  **Como se corrigió (04/11/2026, segunda revisión): la barra de una lista con varios filtros** (pedido del responsable; frontend `83a83cce`, `71ccb43c`, `bebbab4f`; revisión 40 de `DESIGN.md`, `89f9f6c5`). Con seis filtros, la barra de una sola fila empujaba los filtros al final con un hueco antes, dejaba las acciones solas en una tercera fila y mostraba la etiqueta de un filtro vacío dentro de la caja, como un texto de ayuda. La lista toma la variante `filterRows` de `mm-data-manager`:
-  - **Fila 1:** la búsqueda, de al menos 22rem, y al final «Exportar», delineado, y «Registrar factura», relleno.
-  - **Fila 2:** los filtros alineados al inicio, en el orden de las listas de compras: Empresa (si la sesión llega a más de una), Proveedor (`.mm-filter--wide`), Tipo, Estado y Moneda (`--narrow`), Desde y Hasta (`--day`). Cada filtro muestra un valor: «Todos …» o «Todas …» con el valor `all`, y los días con la etiqueta flotando sobre la caja vacía (`floatLabel="always"`).
+  **Como se corrigió (04/11/2026, segunda revisión): la barra de una lista con varios filtros** (pedido del responsable; frontend `83a83cce`, `71ccb43c`, `bebbab4f`; revisión 40 de `DESIGN.md`, `89f9f6c5`). Con seis filtros, la barra de una sola fila empujaba los filtros al final con un hueco antes, dejaba las acciones solas en una tercera fila y mostraba la etiqueta de un filtro vacío dentro de la caja, como un texto de ayuda. La lista toma la variante `filterRows` de `mm-data-manager`, con el orden de la revisión 42 (`58d55bd8`), también por pedido del responsable:
+  - **Fila de arriba:** la búsqueda y los filtros, que llenan el ancho.
+  - **Los filtros,** en el orden de las listas de compras: Empresa (si la sesión llega a más de una), Proveedor (`.mm-filter--wide`), Tipo, Estado y Moneda (`--narrow`).
+  - **Fila de abajo:** Desde y Hasta (`--day`) y «Limpiar filtros» al inicio; al final «Exportar», delineado, y «Registrar factura», relleno. Cada filtro muestra un valor: «Todos …» o «Todas …» con el valor `all`, y los días con la etiqueta flotando sobre la caja vacía (`floatLabel="always"`).
   - **«Limpiar filtros»** (`filter_alt_off`), solo mientras un filtro difiere de su valor inicial: vuelve los filtros atrás, no la búsqueda.
-  - **En el teléfono:** la búsqueda, las acciones y «Filtros» con la cuenta de los activos, que despliega los filtros (`aria-expanded`, `aria-controls`).
+  - **En el teléfono:** la búsqueda, «Filtros» con la cuenta de los activos, que despliega los filtros y las fechas (`aria-expanded`, `aria-controls`), y las acciones, que comparten el ancho.
 - **Columnas:**
 
   | Columna | Contenido | Ordena |
@@ -1171,7 +1172,7 @@ No cambian la validación, el comportamiento, el orden de los campos ni su orden
 
   | Botón | Acción |
   |---|---|
-  | «Cambiar archivo u orden» | Un diálogo de edición (`CreateAndEditDialog`) con el archivo, el XML y la orden. Manda `updatedAt` y trata `OUTDATED` volviendo a leer. Desde el 04/11/2026: después de `OUTDATED` toma la factura leída otra vez, con su orden y su `updatedAt`, y conserva los archivos elegidos (§4.6, frontend `ea714437`); la orden se busca en el servidor por número, con la vinculada ahora primero aunque ya no esté enviada (frontend `9f011f06`) |
+  | «Cambiar archivo u orden» | Un diálogo de edición (`CreateAndEditDialog`) con el archivo, el XML y la orden. Desde la revisión 43, el archivo y el XML son las zonas de la tarjeta, y cada una dice lo que la factura conserva hasta que se elija otro. Manda `updatedAt` y trata `OUTDATED` volviendo a leer. Desde el 04/11/2026: después de `OUTDATED` toma la factura leída otra vez, con su orden y su `updatedAt`, y conserva los archivos elegidos (§4.6, frontend `ea714437`); la orden se busca en el servidor por número, con la vinculada ahora primero aunque ya no esté enviada (frontend `9f011f06`) |
   | «Anular» | Un diálogo con el motivo en dos opciones, «Error de registro» y «Anulada por el emisor», y el texto «Sus N unidades no se anulan: quedan sin factura vigente y se vinculan por su VIN a la factura que la reemplace.». Botón destructivo «Anular factura» |
   | «Anular y copiar» | El mismo diálogo; al anular, abre `/procurement/invoices/new?copiaDe={id}` con la copia (PRC-R66). El formulario descarga el archivo y el XML de la anulada y los vuelve a enviar como partes del alta |
   | «Descargar comprobante», «Descargar XML» | Descargan el archivo |
@@ -1240,6 +1241,10 @@ No cambian la validación, el comportamiento, el orden de los campos ni su orden
 **Revisiones 40 y 41 (04/11/2026, segunda revisión).** Las escribió el frontend con los pedidos del responsable; aquí se citan, no se repiten:
 - **Revisión 40** (`89f9f6c5`, `bebbab4f`): la barra de una lista con tres filtros o más, en dos filas, con «Limpiar filtros» y, en el teléfono, «Filtros» (§6.2). La toman Facturas, Notas de crédito, Pagos y las demás listas de varios filtros; Órdenes de compra y las listas de una ficha, de dos filtros o menos, conservan su barra.
 - **Revisión 41** (`f6510432`): «Importar desde Excel» reemplaza «Pegar columnas» —enmienda el punto 2 de la revisión 34 y la revisión 39— (§6.3, §11.3), y la tarjeta de datos de la factura, de la nota y del pago agrupa sus campos (§6.3).
+
+**Revisiones 42 y 43 (04/11/2026, pedidos del responsable; frontend `863817c3`).** Plan de compras y habilitación, §2.12:
+- **Revisión 42** (`3da41678`): los filtros arriba y, abajo, las fechas y «Limpiar filtros» al inicio y las acciones al final (§6.2).
+- **Revisión 43** (`d25f3fe6`): una sola zona de archivo, una sola voz, un ejemplo o una indicación en cada campo vacío y una sola grilla, en las tres tarjetas, en «Importar desde Excel» y en los dos diálogos que toman un archivo. Enmienda la revisión 18 por decisión del responsable, y corrige en la revisión 40 el texto de Habilitación, que empieza en «Todas».
 
 ---
 
