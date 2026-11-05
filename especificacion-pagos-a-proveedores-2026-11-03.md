@@ -1553,7 +1553,7 @@ Una página con sus paneles, como los dibuja la revisión 37 de `DESIGN.md`, que
 - **El pie:** «Imputado 92 000,00 de 92 000,00», con «Cuadra» o la diferencia.
 - **Sin imputar:** en un proveedor normal, el pie dice «Sin imputar: se reparte en proporción al valor», y no es obligatorio. En uno de dealers, la fila de la factura dice «Faltan las unidades» hasta que se imputen.
 
-**La barra de totales**, al pie y fija en el teléfono (patrón de la revisión 34):
+**La barra de totales**, desde la tableta fija al pie de la pantalla con «Cancelar» y «Registrar pago», y en el teléfono en su barra (revisiones 34 y 51):
 - «Monto del pago»;
 - «Aplicado», la suma de los equivalentes;
 - «Falta aplicar», que tiene que llegar a cero (D-210);
@@ -1589,6 +1589,7 @@ Lo prueban, entre otras, `supplier-payment-form-view.spec` ("searches the suppli
 - **`?factura=` de una factura que no se debe** abría el formulario sin ninguna fila marcada y sin decirlo. Ahora lo dice (`supplier-payment-form-view.spec`: "says it when the invoice of `?factura=` is not owed, rather than open on no row").
 - **La copia de un pago** junta dos aplicaciones a un mismo documento (§6.4), y una copia que trae «Saldo a favor» queda retenida a quien registra pagos de una marca sola ("holds back a copy that brings the method with balance to who registers payments of a brand only (C8)").
 - **El proveedor buscado en el servidor:** `mm-search-select` vuelve a preguntar sus primeras opciones al elegir una, así que el mismo texto escrito después se pregunta otra vez (`842c98b5`); y un proveedor o una orden leídos para unas opciones que se borraron mientras tanto, al cambiar de empresa o de proveedor, no se guardan entre las siguientes (`21cf2277`).
+- **El formulario de la factura** (05/11/2026, decisión del responsable; frontend `3a78ba49`; revisión 51 de `DESIGN.md`; plan §2.19). Reemplaza los grupos del punto siguiente. Una tarjeta en tres filas: Proveedor, Fecha, Método y N.° de operación; Moneda, que muestra su código, Monto y el tipo de cambio; y Notas a lo ancho, en una línea que crece hasta cuatro. El pago no lleva archivo, así que no se dibuja nada al lado. Todos los encabezados de «Aplicar a» van centrados, y también las celdas menos Documento; la tabla llega a los dos bordes de su marco y se desplaza por debajo de sus 98rem.
 - **La tarjeta de datos en grupos** (pedido del responsable; revisión 41 de `DESIGN.md`, `2da6c23f`). El aviso de una copia sigue primero, sobre los grupos. Cada grupo es un `role="group"` nombrado por su `h3`, separado por una línea, sobre la grilla de 12 columnas desde 1024 px, 6 por debajo y una en el teléfono, cada campo con la etiqueta flotando:
   - **Pago:** Proveedor, Fecha y Método (4 cada uno); en la fila siguiente, Número de operación (4) mientras el método lo lleva. Empresa, cuando la sesión paga en más de una, en su propia fila antes.
   - **Importe:** Moneda, Monto y «Tipo de cambio» (4 cada uno), en el orden del responsable: la tasa se lee como un dato (`dl.mm-form-fact`) después del monto, y sus botones, cuando los ofrece, siguen a Monto como en pantalla; el saldo que puede usar un pago con saldo y un tipo de tasa que no se pudo leer, a lo ancho del grupo.

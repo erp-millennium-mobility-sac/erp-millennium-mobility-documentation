@@ -321,6 +321,7 @@ Con las notas de crédito el paso 7 queda construido; faltan las sondas en vivo 
 - **Archivos:** en Spaces, la fila de `kept_files` antes que el objeto (`5df515b8`).
 - **Pantallas:** la barra de varios filtros en Facturas y Notas (DESIGN.md, revisión 40) y la tarjeta de datos en grupos en sus formularios (revisión 41).
 - **La regla de Desde y Hasta y el período de las órdenes** (pedidos del responsable; frontend `bcfb4c93`, backend `7c8cd891`, plan §2.14): desde solo es ese día; Desde y Hasta, el intervalo completo, con los dos días; Hasta solo, todo hasta ese día, en todas las listas; y Órdenes de compra filtra por fecha de emisión.
+- **La nota de crédito y el pago, sobre el formulario de la factura** (decisión del responsable; frontend `3a78ba49`, plan §2.19): datos en filas, el comprobante de la nota al lado, totales y acciones fijos al pie, y tablas centradas (revisión 51).
 - **La plantilla de líneas dice qué pide cada columna** (decisión del responsable; backend `7504e45f`, frontend `da92edb6`, plan §2.18): obligatorias, opcionales y un ejemplo que se importa (revisión 50).
 - **El encabezado de las cards con tono propio** (decisión del responsable; frontend `6b2883d6`, plan §2.17): ya no se pierde en el fondo de la página (revisión 49).
 - **Registrar factura en tres filas, con el comprobante al lado** (decisión del responsable; frontend `bd0e4a54`, plan §2.16): el PDF o la imagen se abren junto a los datos o se minimizan, los totales y las acciones quedan fijos al pie, y las líneas se centran (revisión 47).

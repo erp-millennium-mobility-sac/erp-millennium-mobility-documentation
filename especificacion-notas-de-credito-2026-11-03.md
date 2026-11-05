@@ -1157,11 +1157,11 @@ Una página con dos paneles, registrada en `UnsavedWork`: salir con cambios preg
 | Empresa | Solo si la sesión registra notas en más de una |
 | Proveedor | `mm-search-select` con los proveedores de la empresa, activos e inactivos (D-204) |
 | Número | Muestra debajo cómo se guardará (`Se guarda como FC01-45`); en Perú avisa el formato antes de enviar (D-204) |
-| Fecha de emisión | Calendario hasta hoy en la zona de la empresa, y desde la fecha de la factura más reciente de las líneas elegidas |
+| Fecha | Calendario hasta hoy en la zona de la empresa, y desde la fecha de la factura más reciente de las líneas elegidas |
 | Motivo | Cuatro opciones. Debajo, una línea dice su efecto: «Descuento de campaña: baja el valor de las unidades.»; «Ajuste de precio: baja el valor de las unidades.»; «Anulación de la factura: deja en cero todas las líneas de la factura; sus unidades quedan sin factura vigente.»; «Anulación de unidad: las unidades vuelven al proveedor y se anulan, salvo las que tengan contratos o una cesión abierta.» |
 | Mes de campaña | Solo con descuento de campaña: mes y año (D-204). Cambiar de motivo lo vacía |
 | Moneda | La de la primera factura elegida, de solo lectura. Antes de elegir una, «Se toma de la factura» |
-| Total de la nota | Monto, con los decimales de la moneda |
+| Total | Monto, con los decimales de la moneda |
 | Archivo | Selector con su nombre y su peso; avisa del tipo y del tope antes de enviar |
 
 **Panel «Unidades»:**
@@ -1176,7 +1176,7 @@ Una página con dos paneles, registrada en `UnsavedWork`: salir con cambios preg
   - Con «Anulación de unidad» o «Anulación de la factura», cada monto es el valor actual de su línea, fijo (D-204).
   - Con los otros motivos se escriben, o los llena «Repartir en partes iguales»: el total de la nota entre las líneas, en enteros, con los céntimos sobrantes en la primera (D-193, guía columna 40). 100,00 entre tres da 33,34, 33,33 y 33,33.
   - Una línea que se pasa de su valor actual se marca: «Supera lo que le queda a la unidad: 3 400,00».
-- **Totales,** al pie y fijos en el teléfono: lo repartido frente al total de la nota, con «Cuadra» o la diferencia («Faltan PEN 2 500,00»); unidades; y el total en la moneda de la empresa con «(calculado)». Se calculan con `computed` y `BigInt` (`amountMinor`, `sumMinor` y `fromMinor` de `purchase-order-amounts.ts`).
+- **Totales,** desde la tableta en una barra fija al pie de la pantalla, con «Cancelar» y «Registrar nota», y en el teléfono en su barra (revisión 51): lo repartido frente al total de la nota, con «Cuadra» o la diferencia («Faltan PEN 2 500,00»); unidades; y el total en la moneda de la empresa con «(calculado)». Se calculan con `computed` y `BigInt` (`amountMinor`, `sumMinor` y `fromMinor` de `purchase-order-amounts.ts`).
 - **Registrar nota:** no se envía mientras no cuadre, falten líneas o una se pase, y dice por qué. Un error con `context.lines` marca esas líneas. `CREDITNOTE_SINGLE_INVOICE_REQUIRED` marca las facturas sobrantes con el texto del corte.
 
 **Como se construyó** (`63b21566`, `d5a5b3ef`, `7fb7c1a0`):
@@ -1200,6 +1200,11 @@ Una página con dos paneles, registrada en `UnsavedWork`: salir con cambios preg
 - **«Cambiar empresa» rechazado.** Con líneas, cambiar de empresa pregunta antes (revisión 36). Si la persona decía que no, el campo volvía a la empresa pero el proveedor se perdía. Ahora la empresa y su proveedor se quedan como estaban; confirmar empieza la otra empresa.
 
 Pruebas: `credit-notes.store.spec` ("leaves the invoices an annulment of the invoice would leave with value, and forgets them with the refusal"); `credit-note-form-view.spec` ("with a fixed amount, takes what a refused line has left, says it, and lets the note be sent again", "with a typed amount, shows what a refused line has left as its current value and keeps the line marked", "names the invoices an annulment of the invoice would leave with value", "keeps the mark of a refused line on it when a line before it is removed", "lets go of the marks of the cutoff once the date moves before it (D-192)", "keeps the company and its supplier when the person declines another company, and starts the other one when confirmed").
+
+**Como se cambió (05/11/2026): el formulario de la factura** (decisión del responsable; frontend `3a78ba49`; revisión 51 de `DESIGN.md`; plan §2.19). Reemplaza los grupos del párrafo siguiente.
+- **Una tarjeta, sin títulos de grupo:** Proveedor, Número y Fecha; Motivo, con Mes de campaña cuando corresponde, Moneda y Total; el efecto del motivo en una fila debajo, y el archivo en una fila propia, porque ni XML ni tipo de cambio la comparten. Las filas siguen el ancho de la tarjeta, no el de la ventana.
+- **El comprobante al lado:** desde la tableta, un PDF o una imagen se abren a la izquierda de los datos y se minimizan en la tarjeta de `mm-image-slot`, como en la factura. En el teléfono, o un PDF donde el navegador no tiene visor, el archivo se nombra en su cuadro.
+- **Las líneas:** todos los encabezados van centrados, y también las celdas menos VIN y Modelo. La tabla llega a los dos bordes de su marco y se desplaza por debajo de sus 88,25rem.
 
 **Como se corrigió (04/11/2026, segunda revisión): la tarjeta de datos en grupos** (pedido del responsable; frontend `c288a00d`; revisión 41 de `DESIGN.md`). El panel «Datos de la nota» agrupa sus campos por lo que dicen (`.mm-form-groups`, cada grupo un `role="group"` nombrado por su `h3`, separados por una línea), sobre la grilla de 12 columnas desde 1024 px, 6 por debajo y una en el teléfono, cada campo con la etiqueta flotando:
 - **Comprobante:** Proveedor, Número y Fecha (4 cada uno); Empresa, cuando la sesión registra en más de una, en su propia fila antes.

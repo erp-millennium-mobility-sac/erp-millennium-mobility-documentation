@@ -517,6 +517,21 @@ El encabezado de las cards tenía el mismo tono que la página y se perdía en e
 
 El responsable pidió que «Descargar plantilla» ocupe el ancho disponible y que la plantilla diga qué es obligatorio y qué opcional, con un ejemplo si cabía (backend `7504e45f`, frontend `da92edb6`, revisión 50 de `DESIGN.md`). La cabecera de «Líneas» lo dice en cada columna, y el texto del paso 1 del diálogo repite lo mismo. El ejemplo va en «Instrucciones», y no en «Líneas», porque ahí toda fila con datos se importa. Una prueba importa el ejemplo tal como sale. La cabecera anterior se sigue aceptando, así que no se invalida una plantilla ya descargada. Falta abrir el archivo en Excel: se revisó su contenido, no cómo se ve.
 
+### 2.19 La nota de crédito y el pago, sobre el formulario de la factura (05/11/2026)
+
+El responsable pidió llevar Registrar nota de crédito y Registrar pago al modelo de Registrar factura, según fuera adecuado (frontend `3a78ba49`, revisión 51 de `DESIGN.md`). La nota toma todo el modelo, porque también se copia de un documento del proveedor. El pago toma todo menos el comprobante, porque no lleva archivo. Quedan en sus especificaciones, §6.3 de cada una.
+
+Las piezas salieron de la factura para no copiarlas: `src/styles/_document-form.scss` con el formulario y los totales, que las tres tablas repetían, y `DocumentFile` con el estado del comprobante.
+
+Lo que apareció al hacerlo:
+- **En el teléfono, la barra de totales tapaba «Registrar factura»** al final de la página: la factura nunca le reservó espacio. El formulario compartido se lo reserva en las tres pantallas.
+- **Con los totales fuera, las filas podían dejar de refrescarse:** cada tabla lee la versión de sus filas en su plantilla, como la de la factura desde la revisión 47.
+- **Las columnas de dinero van centradas** por la regla del responsable para las tablas de un formulario, aunque los montos se comparan mejor a la derecha.
+
+Una revisión independiente no halló comportamiento perdido, y dejó cinco correcciones: la etiqueta de una prueba en vivo, el ancho del comprobante de retención, la muesca del contorno en los campos del pago, código sin usar y los avisos vacíos, que quedaban fuera del árbol de accesibilidad y no anunciaban su primer mensaje.
+
+Pruebas sobre el código final: 3365 unitarias y 1909 de extremo a extremo en los tres anchos (302 omitidas por su proyecto), con axe en cada pantalla. Las tablas se midieron en Chrome con su barra de desplazamiento: a 1920px no se desplazan. Faltan Android, iPad y las pruebas en vivo.
+
 ---
 
 ## 3. Decisiones
