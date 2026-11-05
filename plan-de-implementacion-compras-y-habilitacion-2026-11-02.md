@@ -491,6 +491,20 @@ Dos pedidos más del responsable, en la misma revisión:
 
 Lo demás de §2.13 sigue igual. Corrió lo que el cambio alcanza en los tres anchos: las capturas, la barra en nueve anchos, las listas con fechas y accesibilidad, 901 pruebas que pasan; y las compilaciones y stylelint, bien.
 
+### 2.16 Registrar factura: tres filas y el comprobante al lado (05/11/2026)
+
+El responsable pidió opciones de la vista antes de construirla, y eligió combinar dos: compacta sin comprobante y, con él, el comprobante a la izquierda, para copiar sus datos mirándolo. La revisión 47 de `DESIGN.md` lo construye (frontend `bd0e4a54`). Quedan en su especificación, §«Como se corrigió (05/11/2026)».
+
+Lo que el código obligó a resolver distinto del lienzo:
+- **El visor es el del navegador:** ya pagina, acerca e imprime, así que el zoom del lienzo es su barra y no se suma una librería. Se comprobó con un PDF real en Chrome.
+- **Las filas siguen la tarjeta:** entre 1024 y 1280px se cortaban etiquetas y el tope del archivo, según el menú y el comprobante. Las filas responden al ancho de la tarjeta, Fecha, Total e Impuesto llevan esos nombres cortos, Moneda muestra su código, y el tipo y el tope van en el borde del cuadro.
+- **Marca y Modelo son dos columnas,** porque cada una es un campo que se edita.
+- **Minimizar va antes de Cambiar y Quitar,** en el mismo lugar que Expandir, y no junto a Quitar.
+
+Se eligió la tarjeta de `mm-image-slot` tal cual para el estado minimizado, la que describió el responsable. Casi no cambia la altura sobre las unidades; el cuadro en la celda del botón, dibujado en el lienzo, daría unos 200px más.
+
+Pruebas sobre el código final: 3365 unitarias y 1887 de extremo a extremo en los tres anchos (282 omitidas por su proyecto); dos de accesibilidad agotaron su tiempo con cuatro hilos y pasaron con dos. Una auditoría aparte dejó nueve hallazgos, resueltos antes de integrar: un PDF sin visor en el navegador, «Incluye ISC» cortado con el archivo minimizado, el archivo que desaparecía al rechazar otro, un paso de más en el historial, la miniatura de una imagen minimizada, una zona fuera de su ancho en tarjetas muy anchas, el contraste sobre la cabecera oscura, el archivo minimizado al copiar una factura anulada y el ancho declarado de la tabla.
+
 ---
 
 ## 3. Decisiones
