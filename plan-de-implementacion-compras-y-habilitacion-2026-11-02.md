@@ -470,6 +470,17 @@ Cada especificación registra lo suyo con la marca **Como se corrigió (04/11/20
 
 **Lo que corrió el 04/11/2026**, sobre `b1b60754`: 3 336 pruebas unitarias en 275 archivos; stylelint limpio; las compilaciones de desarrollo y de producción, bien; la e2e completa en los tres anchos, 1 843 pasan, 248 se saltan y ninguna falla. `e2e/toolbar-rows.spec.ts` mide además 1 280, 1 366, 1 536, 1 680, 1 920 y 2 560 px: una barra con un filtro estirado ya no pasa.
 
+### 2.14 La regla de Desde y Hasta y el período de las órdenes (04/11/2026)
+
+**Por qué.** El responsable pidió dos cosas: que Órdenes de compra, la única lista de compras sin fechas, filtre por fecha o por intervalo, y que un Desde sin Hasta muestre solo ese día, no todo lo posterior.
+
+**Commits:** frontend `bcfb4c93`, backend `7c8cd891`. Sin migraciones.
+
+- **La regla:** Desde solo es ese día; Desde y Hasta, el intervalo completo, con los dos días; Hasta solo, todo hasta ese día. Vive en un solo lugar, `dayPeriod` de `calendar-day.ts`, y la usan Facturas, Notas de crédito, Pagos a proveedores, Tipos de cambio, Bitácora de cambios y Órdenes de compra. La exportación usa los mismos filtros, así que dice lo mismo que la pantalla. La API no cambia: sigue leyendo `[from, to)`, y es la pantalla la que manda `to` como el día siguiente. El caso de Hasta solo no lo pidió el responsable: conserva lo que ya hacía.
+- **Las órdenes:** `GET /purchase-orders` acepta `from` y `to` sobre la fecha de emisión, y la lista toma la barra de las demás (DESIGN.md, revisión 45).
+
+**Lo que corrió el 04/11/2026:** 3 341 pruebas unitarias en 275 archivos, y las compilaciones y stylelint, bien; la e2e de lo que el cambio alcanza en los tres anchos, 259 que pasan; el proyecto de teléfono completo, 576 que pasan y 124 que se saltan; y accesibilidad y fechas en escritorio y tableta, 325 que pasan y una inestable por carga, que pasa 16 de 16 repetida sola y con cinco workers. En el backend, 312 pruebas de compras y de módulos, con los 16 fallos de la línea base del superusuario.
+
 ---
 
 ## 3. Decisiones
@@ -937,4 +948,4 @@ La estimación es gruesa: S = 1 día, M = 2,5 y L = 5, y los tamaños no se han 
 - **Documentación:**
   - cada fase cierra actualizando su contexto, sus procesos, su especificación y este plan, citando commits y fechas;
   - las reglas pasan de ❌ a ✅ con su prueba.
-- **Siguiente paso** (04/11/2026, después de §2.12): lo que queda de §2.10 a §2.13, que es del responsable: las sondas en vivo, el CI con las dos cuentas, la validación del contador y las propuestas R23 a R25 para el diccionario. Las propuestas anteriores para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
+- **Siguiente paso** (04/11/2026, después de §2.12): lo que queda de §2.10 a §2.14, que es del responsable: las sondas en vivo, el CI con las dos cuentas, la validación del contador y las propuestas R23 a R25 para el diccionario. Las propuestas anteriores para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
