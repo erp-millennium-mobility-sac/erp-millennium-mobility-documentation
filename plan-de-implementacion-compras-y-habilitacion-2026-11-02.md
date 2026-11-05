@@ -505,6 +505,8 @@ Se eligió la tarjeta de `mm-image-slot` tal cual para el estado minimizado, la 
 
 Pruebas sobre el código final: 3365 unitarias y 1887 de extremo a extremo en los tres anchos (282 omitidas por su proyecto); dos de accesibilidad agotaron su tiempo con cuatro hilos y pasaron con dos. Una auditoría aparte dejó nueve hallazgos, resueltos antes de integrar: un PDF sin visor en el navegador, «Incluye ISC» cortado con el archivo minimizado, el archivo que desaparecía al rechazar otro, un paso de más en el historial, la miniatura de una imagen minimizada, una zona fuera de su ancho en tarjetas muy anchas, el contraste sobre la cabecera oscura, el archivo minimizado al copiar una factura anulada y el ancho declarado de la tabla.
 
+**Revisión 48 (05/11/2026, observación del responsable; frontend `d7acbcb0`):** el marco y la cabecera del comprobante usaban los tokens de la barra lateral para empalmar con la barra del visor, y dejaban dos franjas oscuras sobre una pantalla clara. Ahora son un panel como la tarjeta de datos, y las líneas de ambas cabeceras coinciden. La barra del visor sigue oscura porque es del navegador: taparla quitaría el zoom y la impresión, y una barra propia exigiría un visor con librería.
+
 ---
 
 ## 3. Decisiones
