@@ -513,6 +513,10 @@ El encabezado de las cards tenía el mismo tono que la página y se perdía en e
 
 `#F1F5F9` se descartó al verlo en pantalla: pasaba todos los contrastes, pero casi no se distinguía de la página. El tono elegido deja el texto secundario por debajo de 4,5:1, así que las pestañas inactivas y el peso del archivo usan `#475569` con su propio token.
 
+### 2.18 La plantilla dice qué pide cada columna (05/11/2026)
+
+El responsable pidió que «Descargar plantilla» ocupe el ancho disponible y que la plantilla diga qué es obligatorio y qué opcional, con un ejemplo si cabía (backend `7504e45f`, frontend `da92edb6`, revisión 50 de `DESIGN.md`). La cabecera de «Líneas» lo dice en cada columna, y el texto del paso 1 del diálogo repite lo mismo. El ejemplo va en «Instrucciones», y no en «Líneas», porque ahí toda fila con datos se importa. Una prueba importa el ejemplo tal como sale. La cabecera anterior se sigue aceptando, así que no se invalida una plantilla ya descargada. Falta abrir el archivo en Excel: se revisó su contenido, no cómo se ve.
+
 ---
 
 ## 3. Decisiones
