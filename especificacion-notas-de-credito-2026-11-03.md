@@ -1125,7 +1125,7 @@ Continúan la numeración de la fase 3, cuya última es FLT-R93.
 ### 6.2 Lista
 
 - **Acciones** (`.mm-page-actions`): «Registrar nota», solo con `hasPermission(REGISTER_CREDIT_NOTES)`, y «Exportar».
-- **Filtros:** empresa (`mm-company-filter`), proveedor (`mm-search-select`, activos e inactivos), motivo, estado (Todas, Vigentes, Anuladas) y período Desde–Hasta, que incluye el último día elegido (la pantalla manda `to` como el día siguiente).
+- **Filtros:** empresa (`mm-company-filter`), proveedor (`mm-search-select`, activos e inactivos), motivo, estado (Todas, Vigentes, Anuladas) y período Desde–Hasta: Desde solo es ese día; Desde y Hasta, el intervalo completo, con los dos días; Hasta solo, todo hasta ese día (`dayPeriod`; la pantalla manda `to` como el día siguiente).
 - **Columnas:**
 
   | Columna | Contenido | Ordena |

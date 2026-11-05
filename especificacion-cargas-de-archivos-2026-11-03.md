@@ -1068,7 +1068,7 @@ Capas y estados según el [README de los contextos](contextos/README.md). Las pr
   - «Migración inicial».
 
   Sin ninguna, el botón no aparece.
-- **Filtros:** empresa (`mm-company-filter`), tipo (Todas y los tres), período Desde–Hasta, que incluye el último día elegido, y la búsqueda por nombre del archivo.
+- **Filtros:** empresa (`mm-company-filter`), tipo (Todas y los tres), período Desde–Hasta (Desde solo es ese día; Desde y Hasta, el intervalo completo, con los dos días; Hasta solo, todo hasta ese día), y la búsqueda por nombre del archivo.
 - **Columnas** (`mm-data-manager`, paginada en el servidor):
 
   | Columna | Contenido | Ordena |
