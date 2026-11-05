@@ -507,6 +507,12 @@ Pruebas sobre el código final: 3365 unitarias y 1887 de extremo a extremo en lo
 
 **Revisión 48 (05/11/2026, observación del responsable; frontend `d7acbcb0`):** el marco y la cabecera del comprobante usaban los tokens de la barra lateral para empalmar con la barra del visor, y dejaban dos franjas oscuras sobre una pantalla clara. Ahora son un panel como la tarjeta de datos, y las líneas de ambas cabeceras coinciden. La barra del visor sigue oscura porque es del navegador: taparla quitaría el zoom y la impresión, y una barra propia exigiría un visor con librería.
 
+### 2.17 El encabezado de las cards (05/11/2026)
+
+El encabezado de las cards tenía el mismo tono que la página y se perdía en el fondo. A pedido del responsable, la revisión 49 de `DESIGN.md` le da un tono propio, `#EDF1F6`, a medio camino entre la página y la cabecera de las tablas (frontend `6b2883d6`). Lo llevan todas las cards, las pestañas que abren una card y la cabecera del comprobante en Registrar factura. Los diálogos y las bandas de totales conservan el tono de la página.
+
+`#F1F5F9` se descartó al verlo en pantalla: pasaba todos los contrastes, pero casi no se distinguía de la página. El tono elegido deja el texto secundario por debajo de 4,5:1, así que las pestañas inactivas y el peso del archivo usan `#475569` con su propio token.
+
 ---
 
 ## 3. Decisiones
