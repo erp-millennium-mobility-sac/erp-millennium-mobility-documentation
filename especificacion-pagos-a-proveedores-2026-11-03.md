@@ -1514,7 +1514,7 @@ Siguen en [contextos/fleet.md](contextos/fleet.md) a las de la fase 4, FLT-R94 a
 
 ### 6.3 Formulario
 
-Una página con sus paneles, como los dibuja la revisión 37 de `DESIGN.md`, que manda en lo visual. Se registra en `UnsavedWork`: salir con cambios pregunta con `UnsavedChangesQuestion`. Desde la ficha de una factura llega con el proveedor y esa factura marcada; desde la ficha del proveedor, con el proveedor.
+Una página con sus paneles, como los dibuja la revisión 37 de `DESIGN.md`, que manda en lo visual. Se registra en `UnsavedWork`: salir con cambios pregunta con `UnsavedChangesQuestion`. Desde la ficha de una factura llega con el proveedor, esa factura marcada con lo que se debe y el monto del pago (revisión 52); desde la ficha del proveedor, con el proveedor.
 
 **Panel «Datos del pago»:**
 
@@ -1535,14 +1535,21 @@ Una página con sus paneles, como los dibuja la revisión 37 de `DESIGN.md`, que
 - **Tabla editable**, fuera de `mm-data-manager` (revisión 37, ítem 1). Cada fila tiene:
   - una casilla «Aplicar»;
   - el documento, que abre su ficha en otra pestaña, con su fecha;
-  - la moneda, el total, las notas, lo aplicado y lo que se debe;
+  - lo que se debe, con su moneda y, si la factura debe menos que su total, ese total debajo; en una orden, su subtotal;
   - el monto a aplicar;
-  - la retención y su comprobante, que se muestran con «Agregar retención»;
+  - la retención y debajo su comprobante, que se muestran con «Agregar retención»;
   - en otra moneda, la tasa de la aplicación con su día y el equivalente en la moneda del pago;
   - «Unidades», que abre la imputación.
 - **Una fila que no se puede aplicar** queda deshabilitada y dice por qué: «Se paga en USD o PEN, no en EUR» (D-194), o «Dealer: se paga contra sus facturas» en una orden.
 - **Acciones por fila:** «Aplicar lo que se debe» llena el monto con lo que se debe; desde el 04/11/2026, menos la retención de la fila y, en una factura de dealers, menos `settledInitials`.
 - **Acción del panel:** «Repartir el monto» llena las filas marcadas, de la más antigua a la más nueva, hasta agotar el monto. Nunca pasa de lo que se debe de cada factura, con el mismo descuento; desde el 04/11/2026 llena desde el lado del pago, y los equivalentes absorben el redondeo (§2.4).
+
+**Como se cambió (05/11/2026): el formulario usa lo que ya sabe** (decisión del responsable; frontend `d9c732e9`; revisión 52 de `DESIGN.md`; plan §2.20).
+- **Marcar llena la fila:** una fila marcada toma lo que se debe, hasta lo que dejan del monto del pago las filas anteriores; la casilla del encabezado lo hace de la más antigua a la más nueva. Una fila con importe lo conserva, y una orden, sin monto del pago, espera a la persona porque no tiene tope.
+- **El monto del pago no se llena solo:** el monto del voucher, escrito, es lo que controla las filas. Sigue a las filas solo al abrir desde una factura o con «Usar lo aplicado como monto», que se ofrece mientras el monto no sea lo aplicado, y escribirlo termina ese seguimiento.
+- **La tabla entra a 1536px con el menú abierto:** Moneda, Total, Notas y Aplicado dan lugar a «Se debe», y el comprobante de una retención va bajo su monto. Son siete columnas y 72,5rem. El detalle sigue en la ficha del documento, que la fila abre.
+- **Pagar parte de una factura lo dice:** sin elegir unidades, todas quedan en «Pago parcial», y ese estado es el que dice a Operaciones qué unidades retirar (D-212). Un aviso bajo la fila lo dice y abre las unidades, sin retener el pago, porque imputar es opcional (D-211). En una factura de una sola unidad o de un dealer no aparece.
+- **«Registrar otro pago»,** en la ficha del pago, abre el formulario con el mismo proveedor, para un bloque pagado con varios vouchers.
 
 **El diálogo «Unidades de F001-123»** (revisión 37, ítem 2):
 - **Qué lista:** la posición de la factura (§4.2.8): VIN, modelo, valor, cubierto, lo que le falta y el estado. Una unidad saldada está deshabilitada y dice «Saldada: no recibe más pagos».

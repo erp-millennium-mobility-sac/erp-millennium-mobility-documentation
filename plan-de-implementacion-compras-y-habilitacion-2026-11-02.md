@@ -532,6 +532,21 @@ Una revisión independiente no halló comportamiento perdido, y dejó cinco corr
 
 Pruebas sobre el código final: 3365 unitarias y 1909 de extremo a extremo en los tres anchos (302 omitidas por su proyecto), con axe en cada pantalla. Las tablas se midieron en Chrome con su barra de desplazamiento: a 1920px no se desplazan. Faltan Android, iPad y las pruebas en vivo.
 
+### 2.20 La mejora del registro de pago (05/11/2026)
+
+El responsable pidió evaluar cómo mejorar el registro de pago y aprobó las decisiones recomendadas, con el orden siguiente. Los pagos no salen siempre de la misma cuenta, y la guía funcional da el voucher como origen de los datos, así que el pago necesita registrar ambos (D-214, D-215; diccionario v1.40).
+
+1. **Lo que el formulario ya sabe** (frontend `d9c732e9`, revisión 52): solo frontend. Queda en la especificación de pagos, §6.3.
+2. **La cuenta de origen y el voucher:** juntos, porque comparten la migración y la tarjeta del formulario. La cuenta fija la moneda.
+3. **La vista «Por pagar»:** por antigüedad de la factura, porque las facturas no tienen fecha de vencimiento.
+4. **Pagar por unidades:** solo con evidencia. Después de un mes de uso se mira cuántos pagos imputan unidades en varias facturas.
+
+Quedan fuera reasignar sin anular (D-211) y la retención automática, que depende del contador (D-196).
+
+Dos ajustes salieron al construir la etapa 1. El monto del pago no se calcula solo, porque el monto del voucher escrito es el control de las filas y un formulario que lo escribiera siempre diría «Cuadra». Y proponer la moneda pasó a la etapa 2, porque la cuenta la fija: mientras tanto, pagar una factura en dólares exige cambiar la moneda.
+
+Pruebas de la etapa 1: 3377 unitarias y 1914 de extremo a extremo en los tres anchos (304 omitidas por su proyecto); cuatro fallas fueron imágenes de referencia, revisadas y actualizadas, y una prueba de Habilitación, inestable bajo carga, pasó tres de tres sola. Faltan Android, iPad y las pruebas en vivo.
+
 ---
 
 ## 3. Decisiones
