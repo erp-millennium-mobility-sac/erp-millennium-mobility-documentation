@@ -447,6 +447,29 @@ Cada especificación registra lo suyo con la marca **Como se corrigió (04/11/20
 - **Las sondas en vivo, el CI con las dos cuentas, la validación del contador y R23 a R25** (§2.11).
 - **La decisión sobre D-184:** si se conserva la opción de desmarcar Vendido, que también permite entregar unidades incompletas, contra la columna 22 de la guía.
 
+### 2.13 Un solo flujo, las fechas a la derecha y solo los filtros necesarios (04/11/2026)
+
+**Por qué.** El responsable abrió las listas y no vio el espacio bien aprovechado. Lo que veía era la barra de la revisión 40, en una pestaña anterior al despliegue de `863817c3`, pero al reproducirlo a su ancho apareció un fallo de la revisión 42: solo se había medido a 1 440, 1 024 y 375 px. A 1 280 px un filtro ocupaba los 966 px de una línea, a 1 536 px ocupaba 1 222 px, y las listas sin fechas gastaban una fila en sus botones. Después de ver cada lista antes y después, decidió las tres cosas de abajo.
+
+**Commits:** frontend `4593514f`, el merge de `feature/toolbar-fit` (de `6721267e` a `b1b60754`), con la revisión 44 de `DESIGN.md`. Sin migraciones y sin cambios en el backend, que sigue aceptando los filtros retirados.
+
+- **Un solo flujo (`6721267e`):** la búsqueda, los filtros y, al final, un bloque indivisible con las fechas y los botones, que se queda en la línea si cabe entero y baja a la siguiente si no. Un filtro crece hasta 25rem.
+- **Las fechas a la derecha:** Desde y Hasta van pegados a los botones, al final de la fila.
+- **Filtros retirados (`916e20e4`):** Tipo en Facturas; Moneda en Facturas, Notas y Pagos; Estado en Habilitación; Moneda de destino en Tipos de cambio; Alcance y Tipo de rol en Roles. Marca comercial, en Inventario, aparece al elegir una empresa. El diccionario no exigía ninguno. La consulta de facturas conserva `currency`, porque el formulario de la nota pide las facturas del proveedor en su moneda.
+- **Las búsquedas** dicen por qué campos buscan, nunca un ejemplo: «Buscar por placa, VIN o motor» en Inventario y Habilitación, y «Buscar por permiso, módulo o categoría» en la matriz de permisos (`916e20e4`, `5424a030`).
+- **Las fechas de la Bitácora (`eb4f1dfc`)** usan el calendario de las demás listas, en la zona en que se leen.
+- **Todos los campos de calendario (`5424a030`)** muestran «dd/mm/aaaa», y Mes de campaña «mm/aaaa». Cuatro mostraban un día de ejemplo y los otros 22, nada.
+- **Debajo de las pestañas (`f4a8716d`):** en Habilitación y Roles y permisos, el contenido empieza a 16 px de la barra de pestañas, no a 40.
+
+| Medido en 12 listas a 8 anchos, de 1 024 a 2 560 px | Antes | Después |
+|---|---|---|
+| Barras de una fila | 0 | 47 de 96 |
+| Barras de dos filas | 71 | 49 |
+| Barras de tres filas | 25 | 0 |
+| Filtro más ancho | 1 366 px | 400 px |
+
+**Lo que corrió el 04/11/2026**, sobre `b1b60754`: 3 336 pruebas unitarias en 275 archivos; stylelint limpio; las compilaciones de desarrollo y de producción, bien; la e2e completa en los tres anchos, 1 843 pasan, 248 se saltan y ninguna falla. `e2e/toolbar-rows.spec.ts` mide además 1 280, 1 366, 1 536, 1 680, 1 920 y 2 560 px: una barra con un filtro estirado ya no pasa.
+
 ---
 
 ## 3. Decisiones
@@ -914,4 +937,4 @@ La estimación es gruesa: S = 1 día, M = 2,5 y L = 5, y los tamaños no se han 
 - **Documentación:**
   - cada fase cierra actualizando su contexto, sus procesos, su especificación y este plan, citando commits y fechas;
   - las reglas pasan de ❌ a ✅ con su prueba.
-- **Siguiente paso** (04/11/2026, después de §2.12): lo que queda de §2.10 a §2.12, que es del responsable: las sondas en vivo, el CI con las dos cuentas, la validación del contador y las propuestas R23 a R25 para el diccionario. Las propuestas anteriores para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
+- **Siguiente paso** (04/11/2026, después de §2.12): lo que queda de §2.10 a §2.13, que es del responsable: las sondas en vivo, el CI con las dos cuentas, la validación del contador y las propuestas R23 a R25 para el diccionario. Las propuestas anteriores para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
