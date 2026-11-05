@@ -445,7 +445,7 @@ Cada especificación registra lo suyo con la marca **Como se corrigió (04/11/20
 **Lo que queda.**
 - **El job e2e del CI:** con este merge debería pasar; `8d41eb99` debió fallar por las 23 pruebas. Desde aquí no se puede leer el CI.
 - **Las sondas en vivo, el CI con las dos cuentas, la validación del contador y R23 a R25** (§2.11).
-- **La decisión sobre D-184:** si se conserva la opción de desmarcar Vendido (§3.2).
+- **La decisión sobre D-184:** si se conserva la opción de desmarcar Vendido, que también permite entregar unidades incompletas, contra la columna 22 de la guía.
 
 ---
 
@@ -514,7 +514,7 @@ El texto completo de cada una está en el diccionario v1.38. La v1.39 (04/11/202
 | Negocio | La lista de modelos conciliada (diccionario §7.3) | Registrar facturas reales |
 | Negocio | Los Excel reales de autos y de motos (Flota Lizzo New y Flota Lima Bikes), y un archivo real del impuesto vehicular y otro de la garantía mobiliaria, para perfilarlos (D-177) | El primer paso del paquete de cargas |
 | Negocio | Qué proveedores son del canal de dealers, para marcarlos (D-197) | La carga de proveedores reales |
-| Responsable | Correr el inventario antes de V96 contra la base desplegada (§2.10). Desde el 04/11/2026 (`ea5f342c`, §2.11) lista también si el estado inicial es Disponible o Vendido y los caminos `mover_sola` hacia ellos desde otro estado que Vendido, que se corrigen antes del merge | El despliegue de V96 en `develop` |
+| Responsable | **Cerrado el 04/11/2026:** el despliegue de `851b4d09` pasó V96 (§2.12). Correr el inventario antes de V96 contra la base desplegada (§2.10). Desde el 04/11/2026 (`ea5f342c`, §2.11) lista también si el estado inicial es Disponible o Vendido y los caminos `mover_sola` hacia ellos desde otro estado que Vendido, que se corrigen antes del merge | El despliegue de V96 en `develop` |
 | Responsable | Validar las propuestas para el diccionario de la segunda revisión (§2.11): R23 (§8.2) y R24 (D-164), el regreso desde Vendido con la puerta según su marca; R25 (D-213), la diferencia de cambio con lo que absorbió el equivalente | Nada: el código ya las sigue desde el 04/11/2026 (backend `a126216f`; frontend `fd6d0ca8`) |
 | Responsable | La contraseña de verificación, para las sondas en vivo de las fases 2 a 5 | El cierre de los pasos 5.12, 6.13, 7.12 y 8.9 |
 | ~~Responsable~~ | ~~Validar las propuestas para el diccionario de las fases 4 y 5 y de la revisión de punta a punta (§2.10)~~ | Hecho el 04/11/2026: el responsable las aprobó y la documentación `7cc29f4` las aplica en el diccionario v1.39, con R22, la fecha base de cada unidad (§2.10) |
