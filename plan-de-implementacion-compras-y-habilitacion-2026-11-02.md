@@ -413,12 +413,39 @@ Cada especificación registra lo suyo con la marca **Como se corrigió (04/11/20
 **Lo que queda.**
 - **Las sondas en vivo** de las fases 2 a 5: 45 casos que nunca corrieron (§2.10). Necesitan la contraseña de verificación del responsable. Ninguna cubre la importación desde Excel.
 - **El CI con las dos cuentas** (§2.10).
-- **El despliegue de lo integrado desde el 03/11/2026**, las migraciones V92 a V107 (la base desplegada llegó a V91 con backend `b1264ed5`, el 02/11/2026), con V96: antes, el responsable corre el inventario contra la base desplegada, que desde `ea5f342c` lista también el estado inicial y los caminos `mover_sola` que V96 no detiene (§3.2).
+- **El despliegue de lo integrado desde el 03/11/2026** (hecho el 04/11/2026, §2.12), las migraciones V92 a V107 (la base desplegada llegó a V91 con backend `b1264ed5`, el 02/11/2026), con V96: antes, el responsable corre el inventario contra la base desplegada, que desde `ea5f342c` lista también el estado inicial y los caminos `mover_sola` que V96 no detiene (§3.2).
 - **La validación del contador** de D-190, D-192, D-194 y D-196 (§3.2).
 - **Las propuestas para el diccionario** de esta revisión, redactadas y sin aplicar, que decide el responsable:
   - R23 (§8.2) y R24 (D-164): el regreso desde Vendido salta la puerta solo mientras Vendido la exige; desmarcado, deja en Vendido a una unidad incompleta (D-170, D-184);
   - R25 (D-213): la diferencia de cambio suma los céntimos que el equivalente tomó del redondeo (§10.2), para que diga lo que de verdad salió.
   - La importación desde Excel no necesita cambiar el diccionario: no guarda nada, no es una carga de archivos y sigue D-106 como documento generado.
+
+### 2.12 La barra de las listas y las tarjetas iguales (04/11/2026)
+
+**Por qué.** Después de la segunda revisión, el responsable pidió dos cambios de pantalla: en todas las listas, los filtros arriba y las fechas abajo, seguidas de importar, exportar o crear, aprovechando el espacio; y uniformidad en las tarjetas de datos, con placeholders pertinentes y un «Descargar plantilla» más visible.
+
+**Commits:** frontend `863817c3`, el merge de `feature/toolbar-rows-2` (de `58d55bd8` a `d90e045e`). Sin migraciones y sin cambios en el backend.
+
+- **La barra (revisión 42 de `DESIGN.md`; `58d55bd8`, `ba0959dd`, `3da41678`):** en las listas de varios filtros, la búsqueda y los selects llenan el ancho arriba; abajo van las fechas y «Limpiar filtros» al inicio, y las acciones al final. Una lista sin fechas conserva esa fila, con las acciones al final. En el teléfono, «Filtros» pliega los selects y las fechas, y las acciones comparten el ancho.
+- **Las tarjetas (revisión 43; `5678d636`, `ce9d1aee`, `70199bfb`, `01f667ab`, `075576ee`, `f93038a2`):** una sola zona de archivo, con sus tipos y su límite reales, en las tres tarjetas, en «Importar desde Excel», en «Cambiar archivo u orden» y en «Cargar documento»; ya no queda ningún «Elegir archivo». Una sola voz, de usted. Cada campo vacío dice algo: un ejemplo real en los de texto, una indicación en los selects. Campos de cuatro columnas de doce, y los datos que se leen, con la altura de un campo. «Descargar plantilla» es un botón delineado en el color primario.
+- **Un límite que estaba mal:** el diálogo de importación decía 5 MB y el backend rechaza más de 2 MB (`PURCHASEINVOICE_IMPORT_FILE_SIZE`, C10). Ahora dice 2 MB y rechaza antes de enviar (`075576ee`).
+- **La enmienda:** la revisión 43 enmienda la revisión 18, que no pedía textos de ayuda, por decisión del responsable del 04/11/2026.
+
+**Un hallazgo de esta verificación, y una falla de la anterior.** El CI corre la e2e en los tres anchos, y la verificación de §2.11 solo corrió escritorio. Por eso no se vio que 23 pruebas de teléfono fallaban en `develop` desde `3a49f141`: buscaban filtros que la revisión 40 pliega detrás de «Filtros». Las pantallas estaban bien; las pruebas, no. Las corrige un solo ayudante, `unfoldFilters` (`8353b38b`, `d90e045e`), que decide por el proyecto y no por si el botón se ve, porque la barra puede no haberse dibujado. Un cambio de pantalla se verifica en los tres anchos, no solo en escritorio.
+
+**Lo que ya no se usa, retirado:** `isCreditNoteReason`, que solo nombraba su prueba; el tipo `LineImportCode`; dos importaciones de `SearchSelectOption` (`c8958263`); `formatFileSize` y los 12 textos que dejaron los dos diálogos y «Todas» en Habilitación (`f93038a2`); y los comentarios que seguían hablando de líneas pegadas (`2f611910`). Se buscó también en el backend: ninguna clase quedó sin uso, y el resto de lo señalado se usa por inyección de Spring o por claves de texto construidas al vuelo.
+
+**Lo que corrió el 04/11/2026**, sobre `d8197f3a`, con `develop` en `8d41eb99` ya integrado:
+- 3 336 pruebas unitarias en 275 archivos; stylelint limpio; las compilaciones de desarrollo y de producción, bien.
+- La e2e completa en los tres anchos, 2 055 pruebas: las 685 de escritorio, sin fallas; en tableta y teléfono, 1 143 pasan, 221 se saltan y 6 de teléfono fallaron por la misma causa de arriba. Esas 6 se corrigieron en `d90e045e`, y `access.spec` y `company-profile.spec` pasan completas en los tres anchos, 231 pruebas.
+- Una muestra de las listas, las tres tarjetas y los tres diálogos, a 1 440, 1 024 y 375 px, se revisó a ojo.
+
+**El despliegue de V92 a V107.** El backend `851b4d09` terminó de desplegarse bien el 04/11/2026 a las 15:02 (captura del responsable). En `prod`, Flyway corre al arrancar y Hibernate valida el esquema, así que las migraciones quedaron aplicadas y V96 no se detuvo. Se deduce del despliegue; nadie leyó la base desplegada.
+
+**Lo que queda.**
+- **El job e2e del CI:** con este merge debería pasar; `8d41eb99` debió fallar por las 23 pruebas. Desde aquí no se puede leer el CI.
+- **Las sondas en vivo, el CI con las dos cuentas, la validación del contador y R23 a R25** (§2.11).
+- **La decisión sobre D-184:** si se conserva la opción de desmarcar Vendido (§3.2).
 
 ---
 
@@ -887,4 +914,4 @@ La estimación es gruesa: S = 1 día, M = 2,5 y L = 5, y los tamaños no se han 
 - **Documentación:**
   - cada fase cierra actualizando su contexto, sus procesos, su especificación y este plan, citando commits y fechas;
   - las reglas pasan de ❌ a ✅ con su prueba.
-- **Siguiente paso** (04/11/2026, después de la segunda revisión): lo que queda de §2.10 y §2.11, que es del responsable: el inventario antes de V96 y el despliegue de V92 a V107, las sondas en vivo, el CI con las dos cuentas, la validación del contador y las propuestas R23 a R25 para el diccionario. Las propuestas anteriores para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
+- **Siguiente paso** (04/11/2026, después de §2.12): lo que queda de §2.10 a §2.12, que es del responsable: las sondas en vivo, el CI con las dos cuentas, la validación del contador y las propuestas R23 a R25 para el diccionario. Las propuestas anteriores para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
