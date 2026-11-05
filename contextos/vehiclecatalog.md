@@ -364,7 +364,7 @@ En el frontend, el diálogo del equipamiento ya bloqueaba el código por `codeLo
 | Qué cambió | Commits |
 |---|---|
 | La fachada suma `fetchActiveVehicleModelSummaries` y `fetchActiveColorSummaries`, para la plantilla de las líneas de una factura y su importación desde Excel, que pidió el responsable (contrato C10; VCT-R32; [especificación de facturas](../especificacion-facturas-de-compra-2026-11-02.md) §11). La plantilla es un documento generado de `procurement`, cuya versión cuenta la de los datos de este contexto: un cambio de un tipo de vehículo, una marca, un modelo o un color genera otra | Backend `6eee6878`; en `procurement`, `d3b1e6ae`, `23fb6bba` |
-| Marcas y modelos lleva la barra de una lista con varios filtros: la búsqueda, Marca, Tipo de vehículo y Estado, cada uno con un valor; y al final, a la derecha, «Limpiar filtros», que deja la marca de la dirección como cada filtro la guarda, y las acciones, con «Gestionar marcas»; y «Filtros» en el teléfono (DESIGN.md, revisiones 40, 42 y 44) | Frontend `61b08bf4`, `58d55bd8`, `6721267e` |
+| Marcas y modelos lleva la barra de una lista con varios filtros: la búsqueda, Marca, Tipo de vehículo y Estado, cada uno con un valor; luego «Limpiar filtros», que deja la marca de la dirección como cada filtro la guarda; al final las acciones, con «Gestionar marcas»; y «Filtros» en el teléfono (DESIGN.md, revisiones 40, 42, 44 y 46) | Frontend `61b08bf4`, `58d55bd8`, `6721267e` |
 
 ### c) Pendientes, cada uno con su momento
 

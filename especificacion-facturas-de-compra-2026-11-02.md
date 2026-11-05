@@ -1092,7 +1092,7 @@ En `app-navigation.ts`, la opción `/procurement/invoices` pierde `pending: true
   **Como se corrigió (04/11/2026, segunda revisión): la barra de una lista con varios filtros** (pedido del responsable; frontend `83a83cce`, `71ccb43c`, `bebbab4f`; revisión 40 de `DESIGN.md`, `89f9f6c5`). Con seis filtros, la barra de una sola fila empujaba los filtros al final con un hueco antes, dejaba las acciones solas en una tercera fila y mostraba la etiqueta de un filtro vacío dentro de la caja, como un texto de ayuda. La lista toma la variante `filterRows` de `mm-data-manager`, con el orden de las revisiones 42 y 44 (`58d55bd8`, `6721267e`), también por pedido del responsable:
   - **Fila de arriba:** la búsqueda y los filtros, que llenan el ancho.
   - **Los filtros,** en el orden de las listas de compras: Empresa (si la sesión llega a más de una), Proveedor (`.mm-filter--wide`) y Estado (`--narrow`).
-  - **Fila de abajo, a la derecha:** Desde y Hasta (`--day`), «Limpiar filtros», «Exportar», delineado, y «Registrar factura», relleno. Cada filtro muestra un valor: «Todos …» o «Todas …» con el valor `all`, y los días con la etiqueta flotando sobre la caja vacía (`floatLabel="always"`).
+  - **Fila de abajo:** Desde y Hasta (`--day`) y «Limpiar filtros» a la izquierda; a la derecha «Exportar», delineado, y «Registrar factura», relleno. Cada filtro muestra un valor: «Todos …» o «Todas …» con el valor `all`, y los días con la etiqueta flotando sobre la caja vacía (`floatLabel="always"`).
   - **«Limpiar filtros»** (`filter_alt_off`), solo mientras un filtro difiere de su valor inicial: vuelve los filtros atrás, no la búsqueda.
   - **En el teléfono:** la búsqueda, «Filtros» con la cuenta de los activos, que despliega los filtros y las fechas (`aria-expanded`, `aria-controls`), y las acciones, que comparten el ancho.
 - **Columnas:**
@@ -1244,7 +1244,8 @@ No cambian la validación, el comportamiento, el orden de los campos ni su orden
 
 **Revisiones 42 y 43 (04/11/2026, pedidos del responsable; frontend `863817c3`).** Plan de compras y habilitación, §2.12:
 - **Revisión 42** (`3da41678`): los filtros arriba y, abajo, las fechas y «Limpiar filtros» al inicio y las acciones al final (§6.2).
-- **Revisión 44** (`3738bc51`, `b1b60754`): un solo flujo, con las fechas y los botones a la derecha, y solo los filtros necesarios. Enmienda la revisión 42; Facturas deja Tipo y Moneda (plan de compras y habilitación, §2.13).
+- **Revisión 46** (frontend `4a0cfd49`): las fechas a la izquierda y los botones a la derecha; corrige las revisiones 44 y 45.
+- **Revisión 44** (`3738bc51`, `b1b60754`): un solo flujo y solo los filtros necesarios. Enmienda la revisión 42; Facturas deja Tipo y Moneda (plan de compras y habilitación, §2.13).
 - **Revisión 43** (`d25f3fe6`): una sola zona de archivo, una sola voz, un ejemplo o una indicación en cada campo vacío y una sola grilla, en las tres tarjetas, en «Importar desde Excel» y en los dos diálogos que toman un archivo. Enmienda la revisión 18 por decisión del responsable, y corrige en la revisión 40 el texto de Habilitación, que empieza en «Todas».
 
 ---

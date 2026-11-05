@@ -454,7 +454,7 @@ Cada especificación registra lo suyo con la marca **Como se corrigió (04/11/20
 **Commits:** frontend `4593514f`, el merge de `feature/toolbar-fit` (de `6721267e` a `b1b60754`), con la revisión 44 de `DESIGN.md`. Sin migraciones y sin cambios en el backend, que sigue aceptando los filtros retirados.
 
 - **Un solo flujo (`6721267e`):** la búsqueda, los filtros y, al final, un bloque indivisible con las fechas y los botones, que se queda en la línea si cabe entero y baja a la siguiente si no. Un filtro crece hasta 25rem.
-- **Las fechas a la derecha:** Desde y Hasta van pegados a los botones, al final de la fila.
+- **Las fechas a la derecha:** Desde y Hasta van pegados a los botones, al final de la fila. Corregido en §2.15: van a la izquierda.
 - **Filtros retirados (`916e20e4`):** Tipo en Facturas; Moneda en Facturas, Notas y Pagos; Estado en Habilitación; Moneda de destino en Tipos de cambio; Alcance y Tipo de rol en Roles. Marca comercial, en Inventario, aparece al elegir una empresa. El diccionario no exigía ninguno. La consulta de facturas conserva `currency`, porque el formulario de la nota pide las facturas del proveedor en su moneda.
 - **Las búsquedas** dicen por qué campos buscan, nunca un ejemplo: «Buscar por placa, VIN o motor» en Inventario y Habilitación, y «Buscar por permiso, módulo o categoría» en la matriz de permisos (`916e20e4`, `5424a030`).
 - **Las fechas de la Bitácora (`eb4f1dfc`)** usan el calendario de las demás listas, en la zona en que se leen.
@@ -480,6 +480,16 @@ Cada especificación registra lo suyo con la marca **Como se corrigió (04/11/20
 - **Las órdenes:** `GET /purchase-orders` acepta `from` y `to` sobre la fecha de emisión, y la lista toma la barra de las demás (DESIGN.md, revisión 45).
 
 **Lo que corrió el 04/11/2026:** 3 341 pruebas unitarias en 275 archivos, y las compilaciones y stylelint, bien; la e2e de lo que el cambio alcanza en los tres anchos, 259 que pasan; el proyecto de teléfono completo, 576 que pasan y 124 que se saltan; y accesibilidad y fechas en escritorio y tableta, 325 que pasan y una inestable por carga, que pasa 16 de 16 repetida sola y con cinco workers. En el backend, 312 pruebas de compras y de módulos, con los 16 fallos de la línea base del superusuario.
+
+### 2.15 Las fechas a la izquierda (05/11/2026)
+
+La revisión 44 puso Desde y Hasta a la derecha, junto a los botones (§2.13), por una mala lectura de la decisión: el responsable había pedido las fechas a la izquierda y los botones a la derecha. La revisión 46 de `DESIGN.md` lo corrige (frontend `4a0cfd49`): el bloque de la fila de abajo no se separa, con las fechas y «Limpiar filtros» al inicio y los botones al final.
+
+Dos pedidos más del responsable, en la misma revisión:
+- **El mismo ancho:** la búsqueda mide un tercio de la barra, con un mínimo de 22rem, y un filtro crece hasta esa misma medida, así que el filtro que baja a la segunda fila, como Modelo o Factura vigente, mide lo mismo que la búsqueda de arriba. Reemplaza el tope de 25rem de §2.13. A 1 280 px, si en esa fila van además las fechas y los botones, el filtro queda unos 35 px más angosto, porque no hay más espacio.
+- **Sin huecos:** los filtros de una fila toman su espacio antes que el bloque de las fechas y los botones, así que no queda un hueco entre el último filtro y Desde, ni entre Hasta y los botones mientras un filtro pueda crecer.
+
+Lo demás de §2.13 sigue igual. Corrió lo que el cambio alcanza en los tres anchos: las capturas, la barra en nueve anchos, las listas con fechas y accesibilidad, 901 pruebas que pasan; y las compilaciones y stylelint, bien.
 
 ---
 
@@ -948,4 +958,4 @@ La estimación es gruesa: S = 1 día, M = 2,5 y L = 5, y los tamaños no se han 
 - **Documentación:**
   - cada fase cierra actualizando su contexto, sus procesos, su especificación y este plan, citando commits y fechas;
   - las reglas pasan de ❌ a ✅ con su prueba.
-- **Siguiente paso** (04/11/2026, después de §2.12): lo que queda de §2.10 a §2.14, que es del responsable: las sondas en vivo, el CI con las dos cuentas, la validación del contador y las propuestas R23 a R25 para el diccionario. Las propuestas anteriores para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
+- **Siguiente paso** (04/11/2026, después de §2.12): lo que queda de §2.10 a §2.15, que es del responsable: las sondas en vivo, el CI con las dos cuentas, la validación del contador y las propuestas R23 a R25 para el diccionario. Las propuestas anteriores para el diccionario, que también estaban aquí, las aprobó el responsable el 04/11/2026, y la documentación `7cc29f4` las aplica (diccionario v1.39). Hasta el 03/11/2026 decía que el responsable validara la v1.38, las especificaciones y las revisiones 34 a 38 de `DESIGN.md` para empezar las fases 1 y 2, que ya se construyeron.
