@@ -265,6 +265,8 @@ Toda modificación de un registro deja una fila por campo, con el valor anterior
 
 La brecha de días se recalcula siempre con la mejor información disponible (D-27). La diferencia por inicial sale de compras y se valida contra la inicial registrada en el contrato del cliente (D-31); esa validación espera a ventas (bloque 12), fuera del alcance actual. Ninguno de los dos indicadores se guarda como campo (§10.5). El exportable de stock se genera desde la capa de lectura (mapa §7).
 
+Logística › Reportes es de una empresa (D-233) y tiene tres pestañas: Indicadores, Brecha de días y, para quien tiene `stock.ver_costos`, Diferencia por inicial. «Exportar stock» baja las 52 columnas de la plantilla del cliente (D-234). Los indicadores están en §10.5; validar la inicial contra el contrato espera al bloque 12.
+
 | Pantalla | Logística › Reportes |
 |---|---|
 

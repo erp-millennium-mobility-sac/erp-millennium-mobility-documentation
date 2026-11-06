@@ -600,6 +600,17 @@ Segunda etapa de lo que faltaba en Logística (D-225 a D-231; backend `7f01d0b2`
 - **Carga inicial:** las 52 columnas, con facturas, notas y pagos, cada uno en su transacción, y la lista de precarga, que no escribe nada.
 - **Lo que no se pudo medir:** solo está la plantilla, así que el perfil de los archivos reales y el ensayo de §8.7 siguen pendientes ([perfil](retroalimentacion/2026-11-06-perfil-de-los-archivos-reales.md)).
 
+### 2.26 Reportes (06/11/2026)
+
+La última etapa de Logística (D-232 a D-237; backend `e5bcc028`, `c69f097d`, `ff52ea1e`, `486428cd`, `85f23e2e`, `bd37d618`, `4f62a26e` y `d68e3b24`, frontend `90a0a7ee`, `ab142f03`, `2896de23` y `85520b76`, migraciones V120 y V121, revisión 58 de `DESIGN.md`; [especificación](especificacion-reportes-2026-11-06.md)).
+
+- **Un módulo `reporting` que solo lee,** y que pide a `fleet` las reglas con dueño en lugar de reescribirlas en SQL.
+- **`reportes.ver` no existía en el catálogo,** aunque la matriz lo listaba: lo siembra V120.
+- **El exportable conserva la plantilla del cliente,** y una prueba compara sus 52 encabezados con ella.
+- **Robado y Pérdida total no cuentan como paralizadas.**
+
+**No calculable hoy:** el costo por día paralizada, porque no hay ese dato, y la validación de la inicial contra el contrato, que espera al bloque 12.
+
 ---
 
 ## 3. Decisiones
