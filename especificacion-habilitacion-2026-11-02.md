@@ -135,6 +135,8 @@ Una política pura, en `fleet/domain/services/EnablementPolicy`, sin Spring ni b
 | 5 | `!delivered` | `LISTO_PARA_ENTREGA` | vacío |
 | 6 | `delivered` | `ENTREGADO` | vacío |
 
+> **Actualización del 05/11/2026.** `delivered` es ahora que la entrega sigue vigente: *Entregado* termina cuando la unidad entra a Puesta a punto (D-216), y salir de ahí pide la revisión física (D-217). La consulta de la lista siguió ese cambio (`JdbcVehicleEnablementReadRepository`).
+
 **Lo que devuelve** (`EnablementStatus`): `code`, `detail` (lo que falta de la fila que respondió), y además el cuadro completo, para que la puerta y la pantalla nombren todo lo que falta de una vez: `arrived`, `missingDocuments`, `missingEquipments` y `platesReceived`. `isComplete()` es verdadero cuando ninguna de las filas 1 a 4 aplica: el código es `LISTO_PARA_ENTREGA` o `ENTREGADO` (D-183). Así una unidad reacondicionada, que ya se entregó alguna vez y por eso sale Entregado, vuelve a Disponible por «Reacondicionada».
 
 **El estado de entrega.** El código `ACTIVO` lo lee esta regla, como lo leen §11.9 y el flujograma; el código de un estado nunca cambia (FLT-R14), así que no hace falta fijarlo de nuevo. La constante es `VehicleStatus.DELIVERY_CODE = "ACTIVO"`, y el servicio resuelve su identificador una vez por operación. Si el catálogo no tuviera ese estado, ninguna unidad estaría entregada. `deliveredAt`, el momento de la primera entrega (guía, columna 23), sale de la primera fila del historial hacia ese estado.

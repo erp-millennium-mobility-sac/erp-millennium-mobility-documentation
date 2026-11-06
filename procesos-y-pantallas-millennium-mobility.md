@@ -210,6 +210,7 @@ stateDiagram-v2
 - La única transición automática es la que tiene configurado un estado de destino al vencer su tolerancia: Vendido vuelve a Disponible a las 48 horas (§8.3).
 - Inactivo es de categoría terminal en el ejemplo de §8.2. Con los caminos de ejemplo de §8.3 no tiene salida, porque no hay ninguna fila con ese origen; los caminos son datos (D-19).
 - La fecha de entrega es el momento en que la unidad pasó a Activo; no hay un campo aparte (§11.9).
+- Una unidad se recoloca: Puesta a punto cierra su entrega (D-216) y se sale de ahí con la revisión física de quien la mueve, que queda en el historial (D-217). No vuelve a En habilitación.
 - Las unidades que superan la tolerancia de su motivo aparecen en una lista de vencidas (§8.3).
 
 El diagrama de la v1.8 traía más caminos. Son datos, no reglas: se cargan como filas de `status_change_reasons` si el negocio los confirma (pregunta abierta 2).

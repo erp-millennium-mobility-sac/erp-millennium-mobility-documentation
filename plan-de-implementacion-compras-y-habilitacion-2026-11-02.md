@@ -561,6 +561,15 @@ Una revisión independiente comparó los dos lados leyendo el código y no hall�
 
 Nunca corrieron los dos lados juntos: el extremo a extremo usa un simulador. Faltan `e2e-live`, Android, iPad, la carrera sobre el candado de la cuenta y el almacenamiento real de archivos.
 
+### 2.22 Puesta a punto en un negocio de leasing (05/11/2026)
+
+El responsable explicó el negocio: Millennium coloca sus unidades en leasing, una unidad puede volver por incumplimiento y entregarse a otra persona, siempre pasando por Puesta a punto. El flujograma ya dibuja ese retorno, así que el modelo se sostiene; dos reglas asumían una sola vida (D-216, D-217; backend `674a6cda` y `209b7cf3`, frontend `6c7a0773`, migración V111, revisión 54 de `DESIGN.md`).
+
+- **«Entregado» no terminaba nunca:** una unidad recuperada y lista quedaba fuera del filtro *Listo para entrega*. Ahora Puesta a punto cierra la entrega y la siguiente la abre.
+- **La puerta leía datos del primer ciclo:** una unidad devuelta sin GPS pasaba. Ahora salir de Puesta a punto pide la revisión física, que queda en el historial.
+
+Siguen abiertos con el responsable: el nombre de Vendido, los caminos del flujograma que faltan cargar (procesos, pregunta 2), si de Inactivo se vuelve, a dónde va Choque, y cómo trata la carga inicial a las unidades recuperadas o de contrato terminado (D-202).
+
 ---
 
 ## 3. Decisiones
