@@ -591,6 +591,15 @@ El responsable pidió construir lo que falta de Logística: registro del traspas
 
 Un traspaso registrado se corrige, pero no se deshace: a una unidad equivocada solo se le corrigen los datos, como Inactivo tampoco tiene vuelta.
 
+### 2.25 Las cargas de archivos (06/11/2026)
+
+Segunda etapa de lo que faltaba en Logística (D-225 a D-231; backend `7f01d0b2`, frontend `94ed5925`, migraciones V114 a V119, revisión 57 de `DESIGN.md`). La [especificación de cargas](especificacion-cargas-de-archivos-2026-11-03.md) queda construida.
+
+- **El registro:** `import_batches`, en `shared`, con su archivo y su informe, y Logística › Cargas de archivos con la ficha de cada carga.
+- **Impuesto vehicular y garantía mobiliaria:** en `fleet`, sin crear unidades.
+- **Carga inicial:** las 52 columnas, con facturas, notas y pagos, cada uno en su transacción, y la lista de precarga, que no escribe nada.
+- **Lo que no se pudo medir:** solo está la plantilla, así que el perfil de los archivos reales y el ensayo de §8.7 siguen pendientes ([perfil](retroalimentacion/2026-11-06-perfil-de-los-archivos-reales.md)).
+
 ---
 
 ## 3. Decisiones
