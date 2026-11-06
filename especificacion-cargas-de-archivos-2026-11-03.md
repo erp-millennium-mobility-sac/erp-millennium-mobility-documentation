@@ -1,6 +1,6 @@
 # Especificación: cargas de archivos (paquete de cargas)
 
-**Versión 2 · 03/11/2026** (las nueve preguntas de la versión 1, del mismo día, quedan decididas por D-206 a D-209, delegadas por el responsable: §10) · **Estado:** borrador para validar · **Punto de partida:** backend `b1264ed5` (hasta V91), frontend `88312e13`, documentación `6ebb900` con el diccionario v1.38 (D-157 a D-209), las especificaciones de [facturas de compra](especificacion-facturas-de-compra-2026-11-02.md) y de [habilitación](especificacion-habilitacion-2026-11-02.md), las dos en su versión 2, y el [plan de implementación](plan-de-implementacion-compras-y-habilitacion-2026-11-02.md) v3. Las especificaciones de [notas de crédito](especificacion-notas-de-credito-2026-11-03.md) (versión 2) y de [pagos a proveedores](especificacion-pagos-a-proveedores-2026-11-03.md) (versión 1) se escribieron en paralelo con esta, que se alinea con ellas: los motivos y el tope de líneas de la nota (D-204), y los pagos del Excel registrados con el modelo de la fase 5, como propone su P11. Si esta especificación y el diccionario no coinciden, manda el diccionario.
+**Versión 3 · 06/11/2026** (construida y reconciliada con D-216 a D-224; los ajustes son D-225 a D-231, por delegación del responsable) · **Estado:** construida: backend `7f01d0b2`, frontend `94ed5925`, migraciones V114 a V119, dictionary v1.45 · **Versión 2:** 03/11/2026, las nueve preguntas de la versión 1 quedaron decididas por D-206 a D-209 (§10).
 
 **Fuentes:**
 - el diccionario: §2.2, §2.5 a §2.7, §5.6, §8.1 a §8.4, §9.3 a §9.6, §10, §11, §12 y §13; las decisiones D-18, D-23, D-30, D-133, D-134, D-153, D-160, D-168, D-169, D-176, D-177, D-183, D-186, D-189, D-190 a D-199 y D-200 a D-209;
@@ -15,9 +15,9 @@
 - §1 fija el alcance, el primer paso (perfilar los archivos reales) y el orden.
 - §2 a §4 son para el equipo: el modelo del backend, el esquema y el contrato de la API, que los commits D2, D7 y D10, uno por entrega, pasan a las convenciones antes del código.
 - §5 es el formato de cada archivo, con el destino de cada una de las 52 columnas.
-- §6 son las reglas, todas en ❌ hasta construirse: `SHR-R01` en adelante para `shared`, que no tenía prefijo propio; `FLT-R100` en adelante para `fleet`; `PRC-R140` en adelante para `procurement`.
+- §6 son las reglas, construidas: `SHR-R01` en adelante para `shared`, que no tenía prefijo propio; `FLT-R100` en adelante para `fleet`; `PRC-R142` en adelante para `procurement`. La etapa de Por pagar tomó `PRC-R140` y `PRC-R141`, así que las dos reglas de aquí con esos números son `PRC-R158` y `PRC-R159`.
 - §7 son las pantallas; §8, las pruebas y sus archivos; §9, la secuencia de commits, en las tres entregas de D-208; §10, las preguntas de la versión 1 y la decisión que cerró cada una.
-- Lo marcado **(propuesta)** es un nombre o una regla que ninguna decisión fija.
+- Ya no queda nada marcado: D-225 a D-231 lo decidieron.
 - En la columna *Fuente* de las tablas de reglas, §*n* es del diccionario. En el texto, un §*n* que existe en esta especificación es suyo y los demás son del diccionario; uno del diccionario que se confundiría con uno de aquí lo dice («§2.6 del diccionario»).
 
 ---
@@ -97,6 +97,8 @@ Cada carga vive en el contexto dueño de lo que actualiza y registra su lote por
 | 19 | SAT | Hoja y fila de encabezados; el texto exacto de las columnas de placa, estado y fecha de inscripción; los valores distintos del estado; formato de la fecha; placas con guion; placas repetidas; motos | Fija los encabezados provisionales de §5.2. Si el archivo trae una fila por placa y por año, FLT-R105 cambia de «la placa repetida falla» a «vale la fila más reciente» |
 | 20 | Garantía | Encabezados; si trae una columna de fondo, una fecha por placa o una fecha de corte en alguna celda; placas repetidas | Fija §5.3. Una fecha por placa reemplaza la fecha de la lista como inicio de cada cesión nueva (FLT-R111); una columna de fondo permite validar que la lista es del fondo elegido |
 | 21 | Los cuatro | Tamaño en bytes y en filas | Los topes de SHR-R06 y PRC-R151 |
+
+**Resultado (06/11/2026).** Solo está la plantilla, con sus 52 encabezados exactos y ninguna fila. Los cuatro archivos reales no están, así que los puntos 2 a 21 quedan sin medir y los encabezados de §5.2 y §5.3 siguen provisionales: [perfil de los archivos reales](retroalimentacion/2026-11-06-perfil-de-los-archivos-reales.md).
 
 **Después de construir, y antes de producción,** se hace un ensayo con los archivos reales sobre `erp_mm_db_verify` (§8.7).
 
@@ -217,7 +219,7 @@ public record RegisteredImportBatch(Long id, UUID publicId, Instant importedAt) 
 - **Números:** una celda numérica, o un texto con un solo separador decimal y sin separador de miles; un texto con punto y coma a la vez se rechaza, como el analizador del texto pegado de la fase 2. El valor binario de Excel se redondea a la escala de la columna solo si la diferencia es menor que 10⁻⁹; si no, la escala sobra y la fila falla.
 - **Texto:** sin espacios al borde y con los seguidos colapsados.
 
-Los topes de filas (propuesta, fijados por la línea base de §8.4): 5 000 para el SAT y para la garantía, 1 000 para la carga inicial. Se configuran por tipo (`imports.max-rows.<tipo>`).
+Los topes de filas, fijados por la línea base de §8.4: 5 000 para el SAT y para la garantía, 400 para la carga inicial (D-231). Se configuran por tipo (`imports.max-rows.<tipo>`).
 
 ### 2.4 El informe de la carga (el archivo de errores)
 
@@ -291,7 +293,7 @@ Hay informe cuando alguna fila falló. La garantía lo escribe siempre: sus cier
 | Ese cierre no queda posterior al inicio de la cesión | No se cierra; va a la hoja Cesiones cerradas como fallido (`VEHICLEFUNDASSIGNMENT_END_NOT_AFTER_START`) |
 | Cesión abierta al fondo de una unidad sin placa | No se cierra: la lista se cruza por placa y esa unidad no puede figurar. Va a la hoja Cesiones cerradas como «sin placa» |
 
-8. **Los cierres se confirman** (propuesta, el patrón de los avisos de la fase 2, su §4.4). Si la carga cerraría al menos una cesión y el pedido no trae `confirmClosures: true`, responde `422 VEHICLEFUNDASSIGNMENT_IMPORT_UNCONFIRMED` con `context.toOpen`, `toClose`, `unchanged`, `failed` y `withoutPlate`, y no escribe nada. La pantalla muestra esos números y vuelve a enviar el archivo con la confirmación. Así una lista equivocada no cierra cesiones sin que nadie lo vea.
+8. **Los cierres se confirman** (el patrón de los avisos de la fase 2, su §4.4). Si la carga cerraría al menos una cesión y el pedido no trae `confirmClosures: true`, responde `422 VEHICLEFUNDASSIGNMENT_IMPORT_UNCONFIRMED` con `context.toOpen`, `toClose`, `unchanged`, `failed` y `withoutPlate`, y no escribe nada. La pantalla muestra esos números y vuelve a enviar el archivo con la confirmación. Así una lista equivocada no cierra cesiones sin que nadie lo vea.
 9. Arma el informe, registra el lote, escribe las cesiones nuevas con `saveAll` y cierra las que corresponden con `VehicleFundAssignment.close`. Cada cierre deja su fila en la bitácora con `ChangeLogCommandService.recordChanges`, en una llamada: el período anterior y el nuevo, como el cierre a mano, y como motivo «Carga de garantía mobiliaria del {fecha de la lista}: la placa no figura en la lista».
 
 **Las cesiones a mano también se cierran** si su placa no figura (D-209): la lista es la fuente de lo que el fondo tiene en garantía.
@@ -325,7 +327,8 @@ public record RegisterMigratedUnitsRequest(Long companyId, Long commercialBrandI
         List<MigratedUnitLine> lines) {}
 
 public record MigratedUnitLine(int row, String vin, @Nullable String engineNumber, Long modelId, int modelYear,
-        Long colorId, int legacyNumber, MigratedEnablement enablement) {}
+        Long colorId, int legacyNumber, @Nullable String ownerName,      // D-225: quien no es la empresa
+        MigratedEnablement enablement) {}
 
 public record MigratedEnablement(
         @Nullable LocalDate arrivalDate,                                 // vacía: no ingresó
@@ -333,7 +336,7 @@ public record MigratedEnablement(
         @Nullable LocalDate tiveIssueDate, boolean hasTive,              // D-206: sin archivo
         @Nullable String plate, @Nullable LocalDate platesReceivedDate,
         @Nullable LocalDate gpsInstalledOn,                              // D-206: sin serial
-        @Nullable LocalDate screenInstalledOn, boolean screenFromFactory,
+        boolean screenDeclared, @Nullable LocalDate screenInstalledOn, boolean screenFromFactory,
         @Nullable MigratedSoat soat,                                     // D-206: sin archivo
         @Nullable MigratedKey duplicateKey,                              // D-206: etiqueta provisional
         @Nullable LocalDate deliveredOn,
@@ -342,13 +345,16 @@ public record MigratedEnablement(
 public record MigratedSoat(LocalDate startDate, LocalDate endDate) {}
 public record MigratedKey(String tagCode, String storageGroup, @Nullable String serial) {}
 public record MigratedUnit(int row, Long vehicleId, UUID vehiclePublicId, String statusCode) {}
+
+// Además: resolveMigrationLocation(companyId, locationPublicId), con los códigos de la ubicación del ingreso,
+// y MigratedUnitRefusals(rows), con row, code y MigratedUnitField: fleet no conoce las columnas del Excel.
 ```
 
 `fleet` recibe fechas y etiquetas explícitas. Lo que el Excel no trae lo deduce `StockRowMapper`, de `procurement`, porque es una lectura del formato ajeno (D-206, PRC-R154):
 - **el ingreso:** la fecha más temprana entre el GPS (19), la pantalla (21), la primera entrega (23) y la declaración de stock (51), o la de la factura (36) si no hay ninguna; así ninguna instalación queda antes del ingreso (D-186);
 - **las placas físicas:** la más temprana entre la primera entrega y la declaración de stock, o la del título (15);
 - **la etiqueta de la llave:** el código de la marca comercial y el `N°`, unidos por un guion (`LIZZO-1050`), con `holder = empresa`;
-- **el propietario** (50) no se lee: la unidad entra como de la empresa, y su traspaso se registra después (D-20).
+- **el propietario** (50): `StockRowMapper` lo compara con el nombre de la empresa, sin mayúsculas, tildes, espacios ni puntuación, y también por una parte de él, y solo pasa a `ownerName` quien no es la empresa (D-225, D-228).
 
 **`matchMigratedUnits`:** `NEW`, el VIN no existe; `MIGRATED`, existe en la empresa con `legacy_number`, que solo pone esta carga (FLT-R11, `Vehicle.java:50` y `:61`); `REGISTERED`, existe en la empresa sin él, porque nació con una factura o en Inventario; `OTHER_COMPANY`, existe en otra empresa.
 
@@ -370,14 +376,14 @@ public record MigratedUnit(int row, Long vehicleId, UUID vehiclePublicId, String
    - si no, **En habilitación**.
 5. **La escritura**, en este orden:
    - cada unidad, con `Vehicle.migrated(…)`: una fábrica nueva, la única que recibe `legacyNumber`, los hitos y el estado elegido;
-   - su única fila del historial, por el camino «Migración inicial» hacia ese estado (§2.7.1);
+   - su fila del historial, por el camino «Migración inicial» hacia ese estado (§2.7.1), y una segunda, de Activo a Inactivo por «Contrato completado», si otro es su propietario (D-225);
    - la TIVE y el SOAT, sin archivo, rotulados «Migrado, sin archivo» (D-206): la TIVE con su emisión en la fecha del título, y el SOAT con su inicio y su fin;
    - el GPS, sin serial (D-206), y la pantalla, con costo 0 en la moneda funcional de la empresa (D-187) y `markEquipmentTypeInUse`;
    - la llave duplicada, con su etiqueta provisional, su caja y su serial (D-206); una etiqueta que ya existe en la empresa hace fallar la línea (`VEHICLEKEY_CONFLICT`);
    - `markModelsInUse` de la fase 2, una vez por lote.
 
    Nada deja fila en la bitácora: son altas (§13.1, «Qué no cubre»).
-6. **La prueba de coherencia:** después de escribir, `VehicleEnablementFactsReader` y `EnablementPolicy` responden para cada unidad lo mismo que decidió el paso 4 (FLT-R123).
+6. **La prueba de coherencia:** después de escribir, `VehicleEnablementFactsReader` y `EnablementPolicy` responden para cada unidad no entregada lo mismo que decidió el paso 4 (FLT-R123). Una entregada es Activo le falte lo que le falte, así que no se lee: son catorce sentencias por unidad que no prueban nada.
 
 Un fallo de la base en una carrera —el VIN o la placa que otra carga tomó mientras tanto— marca la transacción para revertir, como `discardWrites()` del alta, y responde el código de su recurso (`VEHICLE_VIN_CONFLICT`, `VEHICLE_PLATE_CONFLICT`) con `context.rows`.
 
@@ -387,16 +393,18 @@ D-202 y §8.3 del diccionario lo agregan: `(alta) → En habilitación, Disponib
 - **Un solo camino de alta abierto por estado.** Lo exige `status_change_reasons_registration_uq` (V48) y lo revisa `StatusChangeReasonCommandServiceImpl.java:90-94`. En habilitación ya tiene «Registro de compra».
 - **Un camino de alta lleva al estado inicial** (`StatusChangeReasonCommandServiceImpl.java:73-75`). Disponible y Activo no lo son.
 
-**Propuesta:**
+**Decidido (D-229):**
 - los tres caminos llevan el código reservado `MIGRACION_INICIAL` (`StatusChangeReason.INITIAL_MIGRATION_CODE`);
 - las dos reglas los dejan fuera: el índice de V48 se redefine con `AND code <> 'MIGRACION_INICIAL'` (§3.5), y `findRegistrationTo`, que usa el alta de la fase 2, no los devuelve;
 - la API no acepta ese código en un camino nuevo ni lo deja cambiar (`422 STATUSCHANGEREASON_CODE_RESERVED`), como el motivo automático (D-110);
 - su nombre se corrige y el camino se cierra o se reabre en Catálogos › Estados y motivos, como cualquier camino (D-19). Cerrado, la carga inicial responde `422 STATUSCHANGEREASON_INITIAL_MIGRATION_MISSING`;
 - no nombra permiso: un camino de alta no lo hace (V48), y la carga inicial pide `stock.cargar_migracion_inicial` en su ruta.
 
-> **(propuesta, 05/11/2026)** D-202 da de alta como Activo toda unidad entregada, y eso cuenta como activas unidades que ya no lo están. Propuesta para aprobar antes de construir la carga:
-> - **Contrato terminado:** una unidad con `PROPIETARIO` (50) distinto de Millennium entra en Inactivo por «Contrato completado», no en Activo; su fecha de traspaso se registra después (D-20).
-> - **Unidad recuperada:** el Excel de stock no la distingue de una entregada, así que entra en Activo y se corrige por sus caminos, que ya existen (Activo → Custodia → Puesta a punto → Disponible). La revisión previa dice cuántas unidades tienen `ENTREGADO=SI`, para contrastarlas con el registro de clientes antes de cargar.
+**Contrato terminado y unidad recuperada (D-225, D-227; delegadas por el responsable el 06/11/2026).** D-202 da de alta como Activo toda unidad entregada, y eso contaría como activas unidades que ya no lo están:
+- **Contrato terminado:** una unidad con `PROPIETARIO` (50) distinto de la empresa entra en Activo con su fecha de primera entrega y, en la misma carga, pasa a Inactivo por «Contrato completado». Son dos filas de historial: conserva su entrega y su brecha de días, el filtro por motivo la encuentra (D-222) y no hace falta un camino de alta a Inactivo.
+- **El traspaso queda por registrar:** los campos del traspaso no se escriben, porque `vehicles_transfer_whole_ck` exige fecha, motivo y propietario juntos, y el Excel no trae la fecha. El nombre queda en la nota de la segunda fila («Propietario en el Excel: …. Traspaso por registrar.»), la lista de precarga y el informe lo dicen, y «Registrar traspaso» (D-223) lo completa.
+- **Por omisión es «Contrato completado»,** porque el Excel no distingue una venta directa. `ENTREGADO=NO` con otro propietario falla (`INITIALMIGRATION_OWNER_WITHOUT_DELIVERY`).
+- **Unidad recuperada:** el Excel de stock no la distingue de una entregada, así que entra en Activo y se corrige por sus caminos, que ya existen (Activo → Custodia → Puesta a punto → Disponible, D-216). La lista de precarga dice cuántas unidades tienen `ENTREGADO=SI`, para contrastarlas con el registro de clientes antes de cargar (D-226).
 
 **El momento de la fila del historial:**
 - **Activo:** la fecha de primera entrega, a las 00:00 en la zona de la empresa (D-202). Es la entrega que leen el estado Entregado y la brecha de días (§11.9).
@@ -408,12 +416,13 @@ D-202 y §8.3 del diccionario lo agregan: `(alta) → En habilitación, Disponib
 #### 2.7.2 Lo que la carga inicial deja para después (D-206)
 
 - **El archivo de un documento migrado** se sube con la ruta de la fase 3 (`POST /vehicles/{id}/documents`): el documento nuevo queda vigente y el migrado se conserva, como todo reemplazo (D-28). No hace falta nada nuevo.
-- **El serial de un GPS migrado** se completa una sola vez, con `PUT /vehicle-equipments/{id}/serial` **(propuesta)** y `CompleteVehicleEquipmentSerialCommand(UUID equipmentId, String serial)` en `VehicleEquipmentCommandServiceImpl`:
+- **El serial de un GPS migrado** se completa una sola vez, con `PUT /vehicle-equipments/{id}/serial` (D-229) y `CompleteVehicleEquipmentSerialCommand(UUID equipmentId, String serial)` en `VehicleEquipmentCommandServiceImpl`:
   - exige `habilitacion.gestionar_equipos` donde está la unidad, como las demás escrituras de equipos (FLT-R86 de la fase 3);
   - bloquea la unidad y después el equipo, en el orden de la fase 3 (su 2.6);
   - procede solo si el serial está vacío; si no, `422 VEHICLEEQUIPMENT_SERIAL_ALREADY_SET`. Un serial mal escrito se corrige reemplazando el equipo;
   - el serial tiene hasta 100 caracteres, recortado, como el de la instalación;
-  - deja una fila en la bitácora, con `vehicle_equipments`, sin motivo.
+  - deja una fila en la bitácora, con `vehicle_equipments`, sin motivo;
+  - V119 da a la aplicación `UPDATE (serial)`, porque V100 solo le daba el período, el motivo y el costo.
 
   `VehicleEquipment.completeSerial(String)` es la única escritura del serial fuera del alta, y `allowedActions` del equipo suma `completeSerial`.
 
@@ -423,7 +432,7 @@ D-202 y §8.3 del diccionario lo agregan: `(alta) → En habilitación, Disponib
 
 **Los pasos:**
 
-1. **Lectura** (§2.3) con la hoja de 52 columnas (§5.4), y `StockRowMapper` (`application/internal/commandservices`) traduce cada fila a un `StockRow` (`domain/model/valueobjects`). Es el adaptador del formato ajeno (mapa §6.5): ninguna otra clase conoce las columnas del Excel. Un error de celda deja la fila marcada y sigue.
+1. **Lectura** (§2.3) con la hoja de 52 columnas (§5.4). Después del alcance y del candado, `StockRowMapper` (`application/internal/commandservices`) traduce cada fila a un `StockRow` (`domain/model/valueobjects`). Es el adaptador del formato ajeno (mapa §6.5): ninguna otra clase conoce las columnas del Excel. Un error de celda deja la fila marcada y sigue.
 2. **Alcance:**
    - la empresa (`404`);
    - `stock.cargar_migracion_inicial` en toda la empresa y en la marca comercial elegida (`AccessScope.actsOnWholeCompanyBrand`, línea 231; `PermissionCodes.Stock.LOAD_INITIAL_MIGRATION`, línea 116), y `habilitacion.ver_cargas` (`403`);
@@ -467,15 +476,19 @@ D-202 y §8.3 del diccionario lo agregan: `(alta) → En habilitación, Disponib
      - **la fecha**, la del primer voucher (43), no futura (su P7); puede ser anterior a la factura;
      - **el monto**, el acumulado del bloque (44), en la moneda de sus facturas;
      - **el método**, `TRANSFERENCIA`, que exige el número de operación, y **el número**, el texto de la columna 42 normalizado con `OperationNumber`;
-     - **la tasa del pago**, 1 en la moneda funcional (D-169); en otra, la de venta vigente para el día del pago (`fetchEffectiveRate`, con su día), y si el catálogo no tiene ninguna, el TC de las filas del bloque, con la fecha del pago como su día (D-177). Si en ese caso las filas traen dos TC distintos, el bloque falla (`INITIALMIGRATION_PAYMENT_INCONSISTENT`, columna TC);
-     - **una aplicación por factura**, en la moneda de la factura, que es la del pago, con la tasa del pago como su tasa (su §2.4 y su P2), sin retención;
+     - **la tasa del pago**, 1 en la moneda funcional (D-169); en otra, la del tipo de compra del país, `venta` en Perú, vigente para el día del pago (`fetchEffectiveRate`, con su día; D-230), y si el catálogo no tiene ninguna, el TC de las filas del bloque, con la fecha del pago como su día (D-177). Si en ese caso las filas traen dos TC distintos, el bloque falla (`INITIALMIGRATION_PAYMENT_INCONSISTENT`, columna TC);
+     - **una aplicación por factura**, en la moneda de la factura, que es la del pago, con tasa 1, la que el constructor exige en la misma moneda (D-230), sin retención;
      - fuera del canal de dealers, cada aplicación reparte el monto en proporción al valor del vehículo (D-199) de las unidades del bloque en esa factura, con los céntimos en la primera, como §10.3, y **sin imputaciones**: la fase 5 reparte lo aplicado en proporción a lo que le falta a cada unidad (su P6);
      - en el canal de dealers (`suppliers.is_dealer`, D-197), **una imputación por unidad**, por su valor menos la diferencia por inicial de su fila (columna 45), con `settlesUnit` verdadero; cada aplicación es la suma de las imputaciones de sus unidades, y los céntimos que separan esa suma del monto del bloque van a la primera unidad, como §10.3;
      - si una aplicación supera lo que se debe de su factura (D-190) o una imputación lo que le falta a su unidad (su P6), el bloque falla con el código de la fase 5 (`SUPPLIERPAYMENT_EXCEEDS_OWED`, `SUPPLIERPAYMENT_ALLOCATION_EXCEEDS_UNIT`).
    - **El `requestId`** es un UUID versión 5 de la empresa, el proveedor y el número de operación, y la fase 5 lo trata como cualquier envío (su §4.6): volver a subir el bloque encuentra el mismo pago con el mismo contenido y cuenta sin cambios; un pago con ese `requestId` y otro contenido (`SUPPLIERPAYMENT_REQUEST_CONFLICT`), o un pago a mano con ese número de operación (`SUPPLIERPAYMENT_OPERATION_CONFLICT`), hace fallar el bloque, que el informe nombra `INITIALMIGRATION_PAYMENT_REGISTERED`.
    - **No pide** `pagos.registrar_pago`, `pagos.ver` ni `compras.ver`: basta el permiso de la carga, como en las facturas (D-202; recomendación de P5, aceptada por D-207). Los demás `SUPPLIERPAYMENT_*` de la fase 5 van al informe.
 9. **El lote**, en su transacción: el informe, los conteos de §2.4 y `ImportBatchCommandService.register`. Se registra también si todo falló, para que el informe se pueda descargar.
-10. **La respuesta:** el lote y sus efectos: facturas, unidades por estado, notas y pagos.
+10. **La respuesta:** el lote y sus efectos: facturas, unidades por estado, notas, pagos y traspasos por registrar.
+
+**Un fallo que nadie esperaba** no tumba la carga: lo que ya entró solo lo cuenta su lote. El paso cae en el informe con `INITIALMIGRATION_UNEXPECTED` y la carga sigue (D-230).
+
+**La lista de precarga** (D-226) es `POST /initial-migration-imports/preview`: hace los pasos 1 a 6 con cada factura en una transacción que se revierte, así que usa las mismas reglas y no se desvía de la carga; no escribe lote, y las notas y los pagos solo se cuentan, porque necesitan sus facturas confirmadas. Responde las cifras, las unidades por estado, cuántas dicen `ENTREGADO=SI`, los traspasos por registrar y las filas que fallarían.
 
 Las facturas, las notas y los pagos migrados implementan `CurrencyUsage` con los adaptadores de las fases 2, 4 y 5: fijan los decimales de su moneda, sin nada nuevo.
 
@@ -495,6 +508,8 @@ Las facturas, las notas y los pagos migrados implementan `CurrencyUsage` con los
 ---
 
 ## 3. Esquema
+
+**Construido como V114 a V119:** V(n) es V114, V(n+1) V115, V(n+2) V116, V(n+3) V117, V(n+4) V118, y V119 da a la aplicación `UPDATE (serial)` sobre `vehicle_equipments`, que esta especificación no había previsto (D-229).
 
 ### 3.1 Numeración
 
@@ -691,12 +706,12 @@ ALTER TABLE vehicle_documents
 | `GET /imports` | `shared` | `habilitacion.ver_cargas` | Página (§6.2 de las convenciones) o arreglo |
 | `GET /imports/{id}` | `shared` | `habilitacion.ver_cargas` | El lote |
 | `GET /imports/{id}/error-report` | `shared` | `habilitacion.ver_cargas` | El informe (.xlsx) |
-| `GET /imports/{id}/file` **(propuesta)** | `shared` | `habilitacion.ver_cargas` | El archivo cargado, con su nombre original: §11.8 lo guarda para auditar la carga sin pedirlo de nuevo |
+| `GET /imports/{id}/file` | `shared` | `habilitacion.ver_cargas` | El archivo cargado, con su nombre original: §11.8 lo guarda para auditar la carga sin pedirlo de nuevo |
 | `POST /tax-declaration-imports` | `fleet` | `habilitacion.cargar_archivo_sat` | `201` con el resultado |
 | `POST /fund-assignment-imports` | `fleet` | `fondos.cargar_archivo_garantia` | `201` con el resultado |
-| `POST /initial-migration-imports` **(propuesta)** | `procurement` | `stock.cargar_migracion_inicial` | `201` con el resultado |
+| `POST /initial-migration-imports` | `procurement` | `stock.cargar_migracion_inicial` | `201` con el resultado |
 | `GET /vehicles/{id}/tax-declarations` | `fleet` | `stock.ver` | El estado SAT y sus declaraciones |
-| `PUT /vehicle-equipments/{id}/serial` **(propuesta)** | `fleet` | `habilitacion.gestionar_equipos` | El equipo, con su serial completado una sola vez (§2.7.2, D-206) |
+| `PUT /vehicle-equipments/{id}/serial` | `fleet` | `habilitacion.gestionar_equipos` | El equipo, con su serial completado una sola vez (§2.7.2, D-206) |
 
 D-200 cierra §14.18 de las convenciones con su opción A: la carga entra por el contexto dueño de los datos. No hay `POST /imports` ni `DELETE`.
 
@@ -742,7 +757,7 @@ D-200 cierra §14.18 de las convenciones con su opción A: la carga entra por el
 |---|---|
 | `POST /tax-declaration-imports` | `{ "companyId": "…" }` |
 | `POST /fund-assignment-imports` | `{ "companyId": "…", "fundId": "…", "listDate": "2026-11-03", "confirmClosures": false }` |
-| `POST /initial-migration-imports` | `{ "companyId": "…", "commercialBrandId": "…", "locationId": "…" }`. `locationId` es opcional: hace falta solo si alguna fila ingresó |
+| `POST /initial-migration-imports` y `/preview` | `{ "companyId": "…", "commercialBrandId": "…", "locationId": "…" }`. `locationId` es opcional: hace falta solo si alguna fila ingresó. `/preview` responde `200` con la lista de precarga, sin escribir nada (D-226) |
 
 **Responde** `201` con `Location: /api/v1/imports/{id}` y el resultado:
 
@@ -751,9 +766,10 @@ D-200 cierra §14.18 de las convenciones con su opción A: la carga entra por el
   "batch": { "id": "0193…", "importType": "migracion_inicial", "rowsTotal": 412, "rowsOk": 380, "rowsUnchanged": 20, "rowsFailed": 12, "hasErrorReport": true, "…": "…" },
   "effects": {
     "invoices": 380,
-    "units": { "HABILITACION": 41, "DISPONIBLE": 37, "ACTIVO": 302 },
+    "units": { "HABILITACION": 41, "DISPONIBLE": 37, "ACTIVO": 290, "INACTIVO": 12 },
     "creditNotes": 55,
-    "payments": 41
+    "payments": 41,
+    "transfersToRegister": 12
   }
 }
 ```
@@ -844,6 +860,8 @@ No son respuestas HTTP: van en la hoja Errores del informe, con su mensaje en es
 | `VEHICLE_ARRIVED_WITHOUT_LOCATION` | Inicial | La unidad ingresó y la carga no eligió ubicación (el código de la fase 3) |
 | `VEHICLEKEY_CONFLICT` | Inicial | La etiqueta provisional de la llave ya existe en la empresa (el código de la fase 3) |
 | `INITIALMIGRATION_DELIVERY_DATE_MISSING` | Inicial | `ENTREGADO=SI` sin fecha de primera entrega |
+| `INITIALMIGRATION_OWNER_WITHOUT_DELIVERY` | Inicial | `PROPIETARIO` nombra a otro y la unidad nunca se entregó (D-225) |
+| `INITIALMIGRATION_UNEXPECTED` | Inicial | Un paso falló sin que nadie lo esperara: su fila se vuelve a subir (D-230) |
 | `INITIALMIGRATION_SCREEN_NOT_FROM_FACTORY` | Inicial | El Excel dice «de fábrica» y el modelo exige instalar la pantalla |
 | `INITIALMIGRATION_DEBIT_NOTE` | Inicial | Es una nota de débito: el sistema no las registra (D-23). La unidad entró sin ella |
 | `INITIALMIGRATION_CREDIT_NOTE_INCONSISTENT` | Inicial | Las filas de la nota no coinciden en fecha o moneda |
@@ -860,9 +878,9 @@ No son respuestas HTTP: van en la hoja Errores del informe, con su mensaje en es
 
 | Recurso | Cambio |
 |---|---|
-| `VehicleFundAssignmentResource` | Suma `importId`, el lote que abrió la cesión, o `null` si fue a mano. Lo resuelve `ImportBatchQueryService.fetchReferencesByIds`, de `shared`, en lote |
+| `VehicleFundAssignmentResource` | Suma `importId` e `importedAt`, el lote que abrió la cesión, o `null` si fue a mano. Lo resuelve `ImportBatchQueryService.fetchReferencesByIds`, de `shared`, en lote |
 | `StatusChangeReasonResource` | Suma `reserved`: verdadero en los caminos `MIGRACION_INICIAL`, cuyo código la pantalla no deja cambiar |
-| `VehicleEnablementView` (fase 3) | Suma el estado SAT de la unidad (§2.5) |
+| `VehicleEnablementView` (fase 3) | Suma `taxStatus`, el estado SAT de la unidad (§2.5) |
 | Documentos y equipos de la unidad (fase 3) | `fileName`, `mediaType` y `serial` pueden venir vacíos, y `migrated: true` lo explica (D-206). El equipo suma `completeSerial` a sus `allowedActions` |
 
 ---
@@ -947,15 +965,15 @@ Los encabezados son los de la plantilla, en este orden, desde la columna A. *Cel
 | 47 | `TC` | Monto | `purchase_invoices.exchange_rate`; la de cada línea de su nota (D-192) | En la moneda funcional, 1 o vacío (D-169). En otra, mayor que cero, hasta seis decimales, igual en el grupo (D-177) |
 | 48 | `PRECIO DE COMPRA PEN` | Monto | **No se importa** | Se calcula |
 | 49 | `VALOR CONTABLE PEN` | Monto | **No se importa** | Se calcula (D-159) |
-| 50 | `PROPIETARIO` | General | **No se importa** | La unidad entra como de la empresa, y su traspaso (D-20) se registra después con su fecha y su motivo, que el Excel no trae (D-206) |
+| 50 | `PROPIETARIO` | General | La nota de la fila del historial hacia Inactivo y la hoja «Traspasos por registrar» | Vacío, un centinela o la empresa, escrita como sea: la unidad es de la empresa (D-228). Otro nombre, hasta 150: entra en Inactivo por «Contrato completado», con el traspaso por registrar (D-225). `ENTREGADO=NO` con otro nombre falla |
 | 51 | `DECLARACIÓN DE STOCK` | Fecha | `vehicle_status_history.changed_at` de la entrada a Disponible; con la 23, deduce el ingreso y las placas físicas | No es un campo: el historial la guarda (§11.9). A las 00:00 en la zona de la empresa (D-206, §2.7.1) |
 | 52 | `TIPO DE VEHÍCULO` | General | **No se importa** | Sale del modelo (§7.3 del diccionario). El perfilado lo compara con el del catálogo |
 
-**En resumen:** 38 columnas llegan a un destino del sistema y 14 no se importan:
+**En resumen:** 39 columnas llegan a un destino del sistema y 13 no se importan:
 - se calculan: 5, 24, 41, 48, 49 y 52;
 - las traen otras cargas: 31 a 33;
 - son candidato: 28 a 30;
-- no tienen dónde ir en esta versión: 34, la orden anterior al sistema, y 50, el propietario, que D-206 deja para el traspaso.
+- no tiene dónde ir en esta versión: 34, la orden anterior al sistema.
 
 La 45 se lee solo en el canal de dealers (D-207), y de la 42 a la 44 llegan en la tercera entrega, con la fase 5 (D-208).
 
@@ -965,7 +983,7 @@ La 45 se lee solo en el canal de dealers (D-207), y de la 42 a la 44 llegan en l
 |---|---|---|---|
 | Impuesto vehicular | Las filas que fallaron, con los encabezados del archivo del SAT | `Placa` | — |
 | Garantía | Las placas que fallaron | `Placa` | Cesiones cerradas |
-| Carga inicial | `STOCK`, con los 52 encabezados | `VIN` y `N°` | — |
+| Carga inicial | `STOCK`, con los 52 encabezados | `VIN` y `N°` | Traspasos por registrar: `VIN`, `N°` y `Propietario`. Con alguno hay informe, aunque ninguna fila falle (D-225) |
 
 En la carga inicial, cuando una factura falla, **todas sus filas** van a la hoja `STOCK`. La que causó el fallo lleva su código, y las demás `INITIALMIGRATION_INVOICE_FAILED` con el número de esa fila. Una fila cuya unidad entró pero cuya nota falló también va: subirla de nuevo no repite la unidad (D-201) y vuelve a intentar la nota.
 
@@ -973,7 +991,7 @@ En la carga inicial, cuando una factura falla, **todas sus filas** van a la hoja
 
 ## 6. Reglas
 
-Capas y estados según el [README de los contextos](contextos/README.md). Las pruebas del backend van en `src/test/java/.../<contexto>`; las del frontend, junto a cada archivo; las de extremo a extremo, en `e2e/imports.spec.ts`. Ninguna está construida: todas están ❌. `SHR` es el prefijo nuevo de `shared`: hasta hoy ninguna regla de `shared` tenía uno, y el README suma `SHR-` a su lista.
+Capas y estados según el [README de los contextos](contextos/README.md). Las pruebas del backend van en `src/test/java/.../<contexto>`; las del frontend, junto a cada archivo; las de extremo a extremo, en `e2e/imports.spec.ts`. Todas están construidas: la columna *Pruebas* conserva el nombre planificado, y las pruebas reales son `InitialMigrationIntegrationTests`, `FleetImportsIntegrationTests`, `StockRowMapperTests`, `StockRowGroupsTests`, `InitialMigrationCatalogsTests`, `MigrationTargetPolicyTests`, `ImportCellTests`, `ImportWorkbookReaderTests`, `ImportReportWriterTests`, `TaxDeclarationRowPolicyTests` y `GuaranteeListPolicyTests`. `SHR` es el prefijo nuevo de `shared`: hasta hoy ninguna regla de `shared` tenía uno, y el README suma `SHR-` a su lista.
 
 **Los números de `fleet`.** La especificación de pagos propone para la fase 5 FLT-R100 a FLT-R102, o los siguientes libres si otra fase los toma antes (su P12). Esta especificación reserva FLT-R100 a FLT-R127, porque su primera entrega se integra antes que la fase 5 (D-208) y la segunda puede cruzarse con ella; la fase 5 toma desde FLT-R128.
 
@@ -981,71 +999,74 @@ Capas y estados según el [README de los contextos](contextos/README.md). Las pr
 
 | ID | Regla | Fuente | Dónde se aplica | Pruebas | Estado |
 |---|---|---|---|---|---|
-| SHR-R01 | Toda carga registra su lote una sola vez, al terminar, con su empresa, su tipo, su archivo, sus conteos, su informe, quién y cuándo. La fila no se edita ni se borra | §11.8, D-200 | Base: V(n+1), privilegios `SELECT` e `INSERT`. Servicio: `ImportBatchCommandServiceImpl` | `ImportBatchRegistrationIntegrationTests.aLoadIsRegisteredOnceWithItsFilesAndCounts`; `ImportTablesAreInsertOnlyTests.theApplicationCannotUpdateNorDeleteABatch` | ❌ |
-| SHR-R02 | Los conteos cuadran: hay filas, entraron más fallaron no pasa del total, y las sin cambios se calculan. Con filas fallidas hay informe | §11.8, §2.2 | Base: `import_batches_rows_ck`, `_report_ck`. Dominio: `ImportBatch` | `ImportBatchTests.theCountsAddUpAndTheUnchangedAreDerived`, `aBatchWithFailedRowsNeedsItsReport` | ❌ |
-| SHR-R03 | El archivo y el informe van a `kept_files` con la empresa de la carga, bajo una llave de su contenido; se escriben dentro de la transacción, y una llave nueva se descarta si se revierte | D-189, D-134, §2.7 | Puerto: `ImportBatchFileStore`, implementado por `documents`. Servicio: `ImportBatchCommandServiceImpl` | `ImportBatchFilesIntegrationTests.theSourceAndTheReportAreKeptWithTheCompanyOfTheLoad`, `aRolledBackLoadDiscardsOnlyTheKeysItWroteFirst` | ❌ |
-| SHR-R04 | Las cargas se leen con `habilitacion.ver_cargas` donde actúa en su empresa; la lista se acota con `companyReach`; una carga de otra empresa no existe para quien pregunta; ninguna llave de archivo sale del servidor | §5.6, D-99, §2.5 | Servicio: `ImportBatchAccessPolicy`, `ImportBatchQueryServiceImpl`. Base: RLS | `ImportBatchQueryIntegrationTests.aBatchOfAnotherCompanyIsNotFound`, `theListShowsOnlyTheCompaniesWhereTheReadingActs`; `ImportBatchResourceTests.noStorageKeyLeavesTheServer` | ❌ |
-| SHR-R05 | Cargar exige el permiso de la carga y además `habilitacion.ver_cargas` en la empresa: escribir exige leer. Las tres actúan sobre toda la empresa, sin sede | D-134, D-101, §5.6 | Servicio: cada carga, con `ImportBatchAccessPolicy` | `TaxDeclarationImportIntegrationTests.aLoaderWithoutTheReadingIsDenied`; las de §6.2 y §6.3 | ❌ |
-| SHR-R06 | El archivo es un .xlsx de a lo sumo 10 MB, el límite del servidor por archivo, verificado por su contenido: ZIP, tipo de libro sin macros, límites de entradas y de tamaño descomprimido, XML sin DTD. Si no, `422` antes de leer filas | D-174 (el mismo criterio), D-201 | Infraestructura: `XlsxContainerCheck`, `FastexcelImportWorkbookReader` | `ImportWorkbookReaderTests.aPdfRenamedXlsxIsRefused`, `aMacroWorkbookIsRefused`, `anInflationBombIsRefusedBeforeInflating`, `aDoctypeIsRefused` | ❌ |
-| SHR-R07 | Los encabezados se comparan exactos, normalizados solo en sus espacios; la hoja es la primera que los trae; la carga inicial exige los 52 en orden, y las exportaciones ajenas, los que lee. Una fila vacía se salta; pasar el tope responde `422` | D-201 | Infraestructura: `FastexcelImportWorkbookReader`, `ImportSheetSpec` | `ImportWorkbookReaderTests.theHeadersAreComparedExactlyAfterTheirSpaces`, `aDegreeSignIsNotAnOrdinalSign`, `theSheetIsFoundByItsHeaders`, `anEmptyRowIsSkipped`, `moreRowsThanTheCapAreRefused` | ❌ |
-| SHR-R08 | Las celdas: fechas de celda (1900 o 1904) o texto `dd/mm/aaaa` y `aaaa-mm-dd`; números sin separador de miles, redondeados solo en su ruido binario; los centinelas son vacío | §2.2, §2.6 | Aplicación: `ImportCell` | `ImportCellTests.aDateIsNeverReadMonthFirst`, `the1904SystemIsHonoured`, `aThousandsSeparatorIsRefused`, `binaryNoiseIsRoundedAndARealExtraDecimalIsNot`, `theSentinelsAreEmpty` | ❌ |
-| SHR-R09 | El informe devuelve las filas fallidas tal como llegaron, bajo los mismos encabezados, y explica cada fallo en español; corregido, se vuelve a subir | §11.8, D-201 | Infraestructura: `FastexcelImportReportWriter` | `ImportReportWriterTests.theFailedRowsGoBackUnderTheSameHeaders`, `aReportReadsBackThroughTheReader`, `eachFailureNamesItsRowColumnAndCode` | ❌ |
-| SHR-R10 | Una carga de un tipo a la vez por empresa: la segunda responde `409 IMPORTBATCH_CONFLICT` sin esperar | Plan §6 (riesgo de concurrencia) | Servicio: `pg_try_advisory_xact_lock` y su variante de sesión en la carga inicial | `ImportBatchConcurrencyTests.aSecondLoadOfTheSameTypeAndCompanyAnswersConflict`, `loadsOfTwoCompaniesDoNotWait` | ❌ |
-| SHR-R11 | Quién cargó se muestra por el nombre de su colaborador, resuelto en lote | Mapa, decisión 6; D-129 | Servicio: `ImportBatchViewFactory` con `AuditActorLookupPort` | `ImportBatchQueryIntegrationTests.theLoaderIsNamedByTheEmployee` | ❌ |
-| SHR-R12 | Los permisos del paquete siguen la matriz de §5.6: tres códigos y nueve marcas; `stock.cargar_migracion_inicial` conserva las dos de V46 | §5.6, D-95 | Base: V(n) | `FileLoadPermissionsMigrationTests.theThreeCodesAndTheirNineMarksFollowTheMatrix`; `PermissionCatalogConsistencyTests` | ❌ |
-| SHR-R13 | `import_batches` tiene las políticas de V29 sobre su `company_id` y ninguna de `UPDATE` ni de `DELETE` | §2.5, D-66 | Base: V(n+1) | `RowLevelSecurityMigrationTests`; `ImportBatchRowLevelSecurityTests.aCompanyScopeSeesOnlyItsBatches` | ❌ |
+| SHR-R01 | Toda carga registra su lote una sola vez, al terminar, con su empresa, su tipo, su archivo, sus conteos, su informe, quién y cuándo. La fila no se edita ni se borra | §11.8, D-200 | Base: V(n+1), privilegios `SELECT` e `INSERT`. Servicio: `ImportBatchCommandServiceImpl` | `ImportBatchRegistrationIntegrationTests.aLoadIsRegisteredOnceWithItsFilesAndCounts`; `ImportTablesAreInsertOnlyTests.theApplicationCannotUpdateNorDeleteABatch` | ✅ |
+| SHR-R02 | Los conteos cuadran: hay filas, entraron más fallaron no pasa del total, y las sin cambios se calculan. Con filas fallidas hay informe | §11.8, §2.2 | Base: `import_batches_rows_ck`, `_report_ck`. Dominio: `ImportBatch` | `ImportBatchTests.theCountsAddUpAndTheUnchangedAreDerived`, `aBatchWithFailedRowsNeedsItsReport` | ✅ |
+| SHR-R03 | El archivo y el informe van a `kept_files` con la empresa de la carga, bajo una llave de su contenido; se escriben dentro de la transacción, y una llave nueva se descarta si se revierte | D-189, D-134, §2.7 | Puerto: `ImportBatchFileStore`, implementado por `documents`. Servicio: `ImportBatchCommandServiceImpl` | `ImportBatchFilesIntegrationTests.theSourceAndTheReportAreKeptWithTheCompanyOfTheLoad`, `aRolledBackLoadDiscardsOnlyTheKeysItWroteFirst` | ✅ |
+| SHR-R04 | Las cargas se leen con `habilitacion.ver_cargas` donde actúa en su empresa; la lista se acota con `companyReach`; una carga de otra empresa no existe para quien pregunta; ninguna llave de archivo sale del servidor | §5.6, D-99, §2.5 | Servicio: `ImportBatchAccessPolicy`, `ImportBatchQueryServiceImpl`. Base: RLS | `ImportBatchQueryIntegrationTests.aBatchOfAnotherCompanyIsNotFound`, `theListShowsOnlyTheCompaniesWhereTheReadingActs`; `ImportBatchResourceTests.noStorageKeyLeavesTheServer` | ✅ |
+| SHR-R05 | Cargar exige el permiso de la carga y además `habilitacion.ver_cargas` en la empresa: escribir exige leer. Las tres actúan sobre toda la empresa, sin sede | D-134, D-101, §5.6 | Servicio: cada carga, con `ImportBatchAccessPolicy` | `TaxDeclarationImportIntegrationTests.aLoaderWithoutTheReadingIsDenied`; las de §6.2 y §6.3 | ✅ |
+| SHR-R06 | El archivo es un .xlsx de a lo sumo 10 MB, el límite del servidor por archivo, verificado por su contenido: ZIP, tipo de libro sin macros, límites de entradas y de tamaño descomprimido, XML sin DTD. Si no, `422` antes de leer filas | D-174 (el mismo criterio), D-201 | Infraestructura: `XlsxContainerCheck`, `FastexcelImportWorkbookReader` | `ImportWorkbookReaderTests.aPdfRenamedXlsxIsRefused`, `aMacroWorkbookIsRefused`, `anInflationBombIsRefusedBeforeInflating`, `aDoctypeIsRefused` | ✅ |
+| SHR-R07 | Los encabezados se comparan exactos, normalizados solo en sus espacios; la hoja es la primera que los trae; la carga inicial exige los 52 en orden, y las exportaciones ajenas, los que lee. Una fila vacía se salta; pasar el tope responde `422` | D-201 | Infraestructura: `FastexcelImportWorkbookReader`, `ImportSheetSpec` | `ImportWorkbookReaderTests.theHeadersAreComparedExactlyAfterTheirSpaces`, `aDegreeSignIsNotAnOrdinalSign`, `theSheetIsFoundByItsHeaders`, `anEmptyRowIsSkipped`, `moreRowsThanTheCapAreRefused` | ✅ |
+| SHR-R08 | Las celdas: fechas de celda (1900 o 1904) o texto `dd/mm/aaaa` y `aaaa-mm-dd`; números sin separador de miles, redondeados solo en su ruido binario; los centinelas son vacío | §2.2, §2.6 | Aplicación: `ImportCell` | `ImportCellTests.aDateIsNeverReadMonthFirst`, `the1904SystemIsHonoured`, `aThousandsSeparatorIsRefused`, `binaryNoiseIsRoundedAndARealExtraDecimalIsNot`, `theSentinelsAreEmpty` | ✅ |
+| SHR-R09 | El informe devuelve las filas fallidas tal como llegaron, bajo los mismos encabezados, y explica cada fallo en español; corregido, se vuelve a subir | §11.8, D-201 | Infraestructura: `FastexcelImportReportWriter` | `ImportReportWriterTests.theFailedRowsGoBackUnderTheSameHeaders`, `aReportReadsBackThroughTheReader`, `eachFailureNamesItsRowColumnAndCode` | ✅ |
+| SHR-R10 | Una carga de un tipo a la vez por empresa: la segunda responde `409 IMPORTBATCH_CONFLICT` sin esperar | Plan §6 (riesgo de concurrencia) | Servicio: `pg_try_advisory_xact_lock` y su variante de sesión en la carga inicial | `ImportBatchConcurrencyTests.aSecondLoadOfTheSameTypeAndCompanyAnswersConflict`, `loadsOfTwoCompaniesDoNotWait` | ✅ |
+| SHR-R11 | Quién cargó se muestra por el nombre de su colaborador, resuelto en lote | Mapa, decisión 6; D-129 | Servicio: `ImportBatchViewFactory` con `AuditActorLookupPort` | `ImportBatchQueryIntegrationTests.theLoaderIsNamedByTheEmployee` | ✅ |
+| SHR-R12 | Los permisos del paquete siguen la matriz de §5.6: tres códigos y nueve marcas; `stock.cargar_migracion_inicial` conserva las dos de V46 | §5.6, D-95 | Base: V(n) | `FileLoadPermissionsMigrationTests.theThreeCodesAndTheirNineMarksFollowTheMatrix`; `PermissionCatalogConsistencyTests` | ✅ |
+| SHR-R13 | `import_batches` tiene las políticas de V29 sobre su `company_id` y ninguna de `UPDATE` ni de `DELETE` | §2.5, D-66 | Base: V(n+1) | `RowLevelSecurityMigrationTests`; `ImportBatchRowLevelSecurityTests.aCompanyScopeSeesOnlyItsBatches` | ✅ |
 
 ### 6.2 `fleet`
 
 | ID | Regla | Fuente | Dónde se aplica | Pruebas | Estado |
 |---|---|---|---|---|---|
-| FLT-R100 | El archivo del SAT solo actualiza unidades de la empresa que ya existen, cruzadas por su placa normalizada; nunca crea una. Una placa sin unidad va al informe | §11.7, §11.8 | Servicio: `TaxDeclarationImportCommandServiceImpl` | `TaxDeclarationImportIntegrationTests.aPlateWithoutUnitGoesToTheReportAndNothingIsCreated`, `aPlateWrittenWithHyphensFindsItsUnit` | ❌ |
-| FLT-R101 | La declaración solo aplica a autos: el tipo del modelo es `AUTO` | §11.7; guía, columna 31 | Dominio: `TaxDeclarationRowPolicy` | `TaxDeclarationRowPolicyTests.aMotorcycleIsNotDeclared` | ❌ |
-| FLT-R102 | Una unidad sin la TIVE vigente no tiene declaración | §11.7 | Dominio: `TaxDeclarationRowPolicy`. Servicio: la TIVE leída en lote | `TaxDeclarationImportIntegrationTests.aCarWithoutTiveIsReportedAndNotDeclared` | ❌ |
-| FLT-R103 | Ninguna carga escribe sobre una unidad anulada | D-104, D-182 (fase 2, su FLT-R49) | Dominio: las dos políticas de las cargas | `TaxDeclarationImportIntegrationTests.anAnnulledUnitIsReported`; `GuaranteeImportIntegrationTests.anAnnulledUnitIsReported` | ❌ |
-| FLT-R104 | Una declaración guarda el estado del archivo, recortado y en mayúsculas, y la fecha si viene, no futura; se escribe solo si difiere de la última de la unidad; una por unidad y carga; no se edita | §11.7, D-186 | Base: `vehicle_tax_declarations_status_ck`, `_vehicle_batch_uq`, privilegios. Dominio: `VehicleTaxDeclaration` | `TaxDeclarationImportIntegrationTests.anUnchangedDeclarationIsNotWrittenAgain`, `aChangedStatusAddsADeclarationAndKeepsThePrevious` | ❌ |
-| FLT-R105 | Una placa repetida en el archivo del SAT o de la garantía hace fallar todas sus filas | Guía, columna 31 («no se espera duplicidad») | Dominio: las dos políticas | `TaxDeclarationRowPolicyTests.aRepeatedPlateFailsEveryRow`; `GuaranteeListPolicyTests.aRepeatedPlateFailsEveryRow` | ❌ |
-| FLT-R106 | El estado SAT de una unidad se calcula: `NO_CORRESPONDE`, `SIN_TIVE`, `PENDIENTE` o `DECLARADA` con el estado y la fecha de su última declaración; no se guarda | §11.7, §2.2; guía, columnas 31 y 32 | Dominio: `VehicleTaxStatusPolicy`. Servicio: `GET /vehicles/{id}/tax-declarations` | `VehicleTaxStatusPolicyTests.theFourCodesInTheirOrder`; `VehicleTaxDeclarationQueryIntegrationTests.theLatestDeclarationIsTheStatus` | ❌ |
-| FLT-R107 | Las declaraciones llevan la empresa de su unidad, con llaves compuestas hacia la unidad y hacia la carga, Row Level Security, y solo se insertan | §11.7, D-165, §2.5 | Base: V(n+2) | `FleetRowLevelSecurityTests.aCompanyScopeSeesOnlyItsDeclarations`, `aDeclarationOfAnotherCompanyThanItsUnitOrLoadIsRefused` | ❌ |
-| FLT-R108 | Cargar el SAT exige `habilitacion.cargar_archivo_sat` y `habilitacion.ver_cargas` en toda la empresa y en todas sus marcas, y la empresa activa | §5.6, D-134, D-84 | Servicio: `actsOnWholeCompanyEveryBrand` | `TaxDeclarationImportIntegrationTests.aBranchOrBrandAssignmentIsDenied`, `anInactiveCompanyIsRefused` | ❌ |
-| FLT-R109 | La declaración de una unidad dice de qué carga salió | §11.7 | Servicio: `ImportBatchQueryService.fetchReferencesByIds` | `VehicleTaxDeclarationQueryIntegrationTests.eachDeclarationNamesItsLoad` | ❌ |
-| FLT-R110 | La lista de garantía es la de un fondo a una fecha; solo actualiza unidades existentes y nunca crea una | §12.2, §11.8; guía, §8.2 | Servicio: `FundAssignmentImportCommandServiceImpl` | `GuaranteeImportIntegrationTests.aPlateWithoutUnitGoesToTheReportAndNothingIsCreated` | ❌ |
-| FLT-R111 | Una placa sin cesión abierta abre una al fondo desde la fecha de la lista, con su carga; con la cesión abierta a ese fondo, queda sin cambios | §12.2, D-30 | Dominio: `GuaranteeListPolicy`, `VehicleFundAssignment` (alta por carga) | `GuaranteeListPolicyTests.aNewPlateOpensAndAnAssignedOneIsUnchanged`; `GuaranteeImportIntegrationTests.theNewAssignmentNamesItsLoad` | ❌ |
-| FLT-R112 | Una cesión abierta al fondo cuya unidad tiene placa y no figura en la lista se cierra en la fecha de la lista, con su fila en la bitácora; la historia se conserva. Vale también para las cesiones registradas a mano. La de una unidad sin placa no se cierra y se informa | §12.2, D-30, D-209, §13.1 | Dominio: `GuaranteeListPolicy`. Servicio: `ChangeLogCommandService.recordChanges` | `GuaranteeImportIntegrationTests.aPlateThatLeavesTheListClosesItsAssignmentAndKeepsIt`, `aUnitWithoutPlateIsNotClosed`, `eachClosureLeavesItsRowInTheChangeLog` | ❌ |
-| FLT-R113 | Una placa cedida a otro fondo, o cuya cesión nueva se cruzaría con otra, falla y no cambia nada de esa unidad; un cierre que no queda posterior al inicio no se hace y se informa. El fondo y la fecha de la lista quedan en el informe | §12.2, D-133, D-209 | Dominio: `GuaranteeListPolicy`. Base: `vehicle_fund_assignments_no_overlap_excl` | `GuaranteeListPolicyTests.aPlateOfAnotherFundFails`, `aClosureNotAfterTheStartIsReported` | ❌ |
-| FLT-R114 | Si la carga cerraría cesiones, exige la confirmación; sin ella responde los efectos y no escribe nada | Especificación de facturas, §4.4 (avisos que se confirman); D-30 | Servicio: `422 VEHICLEFUNDASSIGNMENT_IMPORT_UNCONFIRMED`. Frontend: `guarantee-import-dialog` | `GuaranteeImportIntegrationTests.closuresWaitForTheirConfirmationAndNothingIsWritten` | ❌ |
-| FLT-R115 | El fondo es de la empresa, activo y se lee en modo compartido, como toda escritura de cesiones; la fecha de la lista no es futura en la zona de la empresa | §12.1, `contextos/fleet.md` 6 f, §2.6 | Servicio: `FundRepository.findByPublicIdForShare` | `GuaranteeImportIntegrationTests.anInactiveFundIsRefused`, `aListOfTomorrowInLimaIsRefused`, `theFundCodeIsNotCorrectedWhileALoadUsesIt` | ❌ |
-| FLT-R116 | Cargar la garantía exige `fondos.cargar_archivo_garantia`, `fondos.ver` y `habilitacion.ver_cargas` en toda la empresa y en todas sus marcas | §5.6, D-134 | Servicio | `GuaranteeImportIntegrationTests.accountingLoadsAndOperationsDoesNot` | ❌ |
-| FLT-R117 | Las unidades se bloquean en orden de `id` antes de decidir: una cesión a mano en paralelo espera y ve lo que la carga escribió | Patrones de persistencia | Persistencia: un `SELECT … ORDER BY id FOR NO KEY UPDATE` | `GuaranteeImportConcurrencyTests.aManualAssignmentWaitsForTheLoad` | ❌ |
-| FLT-R118 | Una cesión nombra la carga que la abrió, con una llave compuesta con su empresa; la de una cesión a mano queda vacía | §12.2, D-133 | Base: V(n+2). Recurso: `importId` | `FileLoadsMigrationTests.anAssignmentCannotNameALoadOfAnotherCompany`; `VehicleFundAssignmentQueryIntegrationTests.anAssignmentNamesItsLoad` | ❌ |
-| FLT-R120 | Los caminos «Migración inicial», hacia En habilitación, Disponible y Activo, llevan un código reservado: no cuentan para el camino de alta único ni para el estado inicial, no nombran permiso, y la API no deja usar ni cambiar su código | §8.3, D-202, D-110 (el mismo criterio) | Base: V(n+3). Dominio: `StatusChangeReason.INITIAL_MIGRATION_CODE`. Servicio: `422 STATUSCHANGEREASON_CODE_RESERVED` | `StatusChangeReasonIntegrationTests.theMigrationCodeIsReserved`; `VehicleRegistrationIntegrationTests.theRegistrationStillTakesThePurchasePath` | ❌ |
-| FLT-R121 | `matchMigratedUnits` dice de cada VIN si es nuevo, ya migrado, registrado fuera de la migración o de otra empresa, sin revelar nada de la otra | D-153, D-201 | Fachada: una elevación por llamada | `FleetContextFacadeTests.theMatchTellsMigratedFromRegisteredAndHidesOtherCompanies` | ❌ |
-| FLT-R122 | `registerMigratedUnits` valida todas las unidades de la factura antes de escribir y escribe todas o ninguna, con su número del Excel y las reglas del alta (modelo, marca, tipo y color activos) | D-202, D-108, D-18 | Fachada: `MigratedUnitRegistrations`, `MANDATORY` | `MigratedUnitRegistrationsIntegrationTests.aFailureInTheLastLineLeavesNoUnit`, `anInactiveModelIsRefused` | ❌ |
-| FLT-R123 | La unidad migrada entra a Activo si se entregó, con la fecha de entrega como momento; si no, a Disponible si no le falta nada; si no, a En habilitación. Después de escribir, el estado de habilitación leído coincide con el decidido | D-202, D-183, §11.9 | Dominio: `MigrationTargetPolicy`, `EnablementPolicy` | `MigrationTargetPolicyTests.deliveredIsActiveCompleteIsAvailableElseEnabling`; `MigratedUnitRegistrationsIntegrationTests.theReadEnablementMatchesTheDecidedStatus`, `theDeliveryMomentIsTheStartOfItsDayInTheCompanyZone` | ❌ |
-| FLT-R124 | Los datos de la habilitación migrados cumplen las reglas de la fase 3 —título, placa con título y TIVE, placas físicas con placa, ingreso con ubicación, instalaciones no anteriores al ingreso, fechas no futuras, pantalla solo si el modelo la exige—, salvo dos excepciones de la carga inicial: la TIVE y el SOAT sin archivo, y el GPS sin serial | §11.1, §11.3, §11.4, D-186, D-188, D-206 | Fachada: `MigratedUnitRegistrations` | `MigratedUnitRegistrationsIntegrationTests.aPlateWithoutTitleIsRefused`, `aGpsBeforeTheArrivalIsRefused`, `aFactoryScreenOnAModelThatNeedsOneIsRefused` | ❌ |
-| FLT-R125 | El número del Excel es un entero positivo, único entre las unidades migradas de la empresa y la marca **(propuesta)** | D-18 | Fachada: `MigratedUnitRegistrations` | `MigratedUnitRegistrationsIntegrationTests.aLegacyNumberTakenInTheBrandIsRefusedAndAnotherBrandMayRepeatIt` | ❌ |
-| FLT-R126 | Una unidad migrada tiene una sola fila en el historial y no deja filas en la bitácora: es un alta | §8.4, §13.1 | Fachada | `MigratedUnitRegistrationsIntegrationTests.aMigratedUnitHasOneHistoryRowAndNoChangeLog` | ❌ |
-| FLT-R127 | El serial de un GPS migrado sin él se completa una sola vez, con `habilitacion.gestionar_equipos` donde está la unidad y su fila en la bitácora; uno que ya tiene serial no se cambia así | D-206, §11.4 | Dominio: `VehicleEquipment.completeSerial`. Servicio: `422 VEHICLEEQUIPMENT_SERIAL_ALREADY_SET`. Recurso: `completeSerial` | `VehicleEquipmentTests.aSerialIsCompletedOnlyOnce`; `VehicleEquipmentIntegrationTests.aMigratedGpsGetsItsSerialAndLeavesItsRow` | ❌ |
+| FLT-R100 | El archivo del SAT solo actualiza unidades de la empresa que ya existen, cruzadas por su placa normalizada; nunca crea una. Una placa sin unidad va al informe | §11.7, §11.8 | Servicio: `TaxDeclarationImportCommandServiceImpl` | `TaxDeclarationImportIntegrationTests.aPlateWithoutUnitGoesToTheReportAndNothingIsCreated`, `aPlateWrittenWithHyphensFindsItsUnit` | ✅ |
+| FLT-R101 | La declaración solo aplica a autos: el tipo del modelo es `AUTO` | §11.7; guía, columna 31 | Dominio: `TaxDeclarationRowPolicy` | `TaxDeclarationRowPolicyTests.aMotorcycleIsNotDeclared` | ✅ |
+| FLT-R102 | Una unidad sin la TIVE vigente no tiene declaración | §11.7 | Dominio: `TaxDeclarationRowPolicy`. Servicio: la TIVE leída en lote | `TaxDeclarationImportIntegrationTests.aCarWithoutTiveIsReportedAndNotDeclared` | ✅ |
+| FLT-R103 | Ninguna carga escribe sobre una unidad anulada | D-104, D-182 (fase 2, su FLT-R49) | Dominio: las dos políticas de las cargas | `TaxDeclarationImportIntegrationTests.anAnnulledUnitIsReported`; `GuaranteeImportIntegrationTests.anAnnulledUnitIsReported` | ✅ |
+| FLT-R104 | Una declaración guarda el estado del archivo, recortado y en mayúsculas, y la fecha si viene, no futura; se escribe solo si difiere de la última de la unidad; una por unidad y carga; no se edita | §11.7, D-186 | Base: `vehicle_tax_declarations_status_ck`, `_vehicle_batch_uq`, privilegios. Dominio: `VehicleTaxDeclaration` | `TaxDeclarationImportIntegrationTests.anUnchangedDeclarationIsNotWrittenAgain`, `aChangedStatusAddsADeclarationAndKeepsThePrevious` | ✅ |
+| FLT-R105 | Una placa repetida en el archivo del SAT o de la garantía hace fallar todas sus filas | Guía, columna 31 («no se espera duplicidad») | Dominio: las dos políticas | `TaxDeclarationRowPolicyTests.aRepeatedPlateFailsEveryRow`; `GuaranteeListPolicyTests.aRepeatedPlateFailsEveryRow` | ✅ |
+| FLT-R106 | El estado SAT de una unidad se calcula: `NO_CORRESPONDE`, `SIN_TIVE`, `PENDIENTE` o `DECLARADA` con el estado y la fecha de su última declaración; no se guarda | §11.7, §2.2; guía, columnas 31 y 32 | Dominio: `VehicleTaxStatusPolicy`. Servicio: `GET /vehicles/{id}/tax-declarations` | `VehicleTaxStatusPolicyTests.theFourCodesInTheirOrder`; `VehicleTaxDeclarationQueryIntegrationTests.theLatestDeclarationIsTheStatus` | ✅ |
+| FLT-R107 | Las declaraciones llevan la empresa de su unidad, con llaves compuestas hacia la unidad y hacia la carga, Row Level Security, y solo se insertan | §11.7, D-165, §2.5 | Base: V(n+2) | `FleetRowLevelSecurityTests.aCompanyScopeSeesOnlyItsDeclarations`, `aDeclarationOfAnotherCompanyThanItsUnitOrLoadIsRefused` | ✅ |
+| FLT-R108 | Cargar el SAT exige `habilitacion.cargar_archivo_sat` y `habilitacion.ver_cargas` en toda la empresa y en todas sus marcas, y la empresa activa | §5.6, D-134, D-84 | Servicio: `actsOnWholeCompanyEveryBrand` | `TaxDeclarationImportIntegrationTests.aBranchOrBrandAssignmentIsDenied`, `anInactiveCompanyIsRefused` | ✅ |
+| FLT-R109 | La declaración de una unidad dice de qué carga salió | §11.7 | Servicio: `ImportBatchQueryService.fetchReferencesByIds` | `VehicleTaxDeclarationQueryIntegrationTests.eachDeclarationNamesItsLoad` | ✅ |
+| FLT-R110 | La lista de garantía es la de un fondo a una fecha; solo actualiza unidades existentes y nunca crea una | §12.2, §11.8; guía, §8.2 | Servicio: `FundAssignmentImportCommandServiceImpl` | `GuaranteeImportIntegrationTests.aPlateWithoutUnitGoesToTheReportAndNothingIsCreated` | ✅ |
+| FLT-R111 | Una placa sin cesión abierta abre una al fondo desde la fecha de la lista, con su carga; con la cesión abierta a ese fondo, queda sin cambios | §12.2, D-30 | Dominio: `GuaranteeListPolicy`, `VehicleFundAssignment` (alta por carga) | `GuaranteeListPolicyTests.aNewPlateOpensAndAnAssignedOneIsUnchanged`; `GuaranteeImportIntegrationTests.theNewAssignmentNamesItsLoad` | ✅ |
+| FLT-R112 | Una cesión abierta al fondo cuya unidad tiene placa y no figura en la lista se cierra en la fecha de la lista, con su fila en la bitácora; la historia se conserva. Vale también para las cesiones registradas a mano. La de una unidad sin placa no se cierra y se informa | §12.2, D-30, D-209, §13.1 | Dominio: `GuaranteeListPolicy`. Servicio: `ChangeLogCommandService.recordChanges` | `GuaranteeImportIntegrationTests.aPlateThatLeavesTheListClosesItsAssignmentAndKeepsIt`, `aUnitWithoutPlateIsNotClosed`, `eachClosureLeavesItsRowInTheChangeLog` | ✅ |
+| FLT-R113 | Una placa cedida a otro fondo, o cuya cesión nueva se cruzaría con otra, falla y no cambia nada de esa unidad; un cierre que no queda posterior al inicio no se hace y se informa. El fondo y la fecha de la lista quedan en el informe | §12.2, D-133, D-209 | Dominio: `GuaranteeListPolicy`. Base: `vehicle_fund_assignments_no_overlap_excl` | `GuaranteeListPolicyTests.aPlateOfAnotherFundFails`, `aClosureNotAfterTheStartIsReported` | ✅ |
+| FLT-R114 | Si la carga cerraría cesiones, exige la confirmación; sin ella responde los efectos y no escribe nada | Especificación de facturas, §4.4 (avisos que se confirman); D-30 | Servicio: `422 VEHICLEFUNDASSIGNMENT_IMPORT_UNCONFIRMED`. Frontend: `guarantee-import-dialog` | `GuaranteeImportIntegrationTests.closuresWaitForTheirConfirmationAndNothingIsWritten` | ✅ |
+| FLT-R115 | El fondo es de la empresa, activo y se lee en modo compartido, como toda escritura de cesiones; la fecha de la lista no es futura en la zona de la empresa | §12.1, `contextos/fleet.md` 6 f, §2.6 | Servicio: `FundRepository.findByPublicIdForShare` | `GuaranteeImportIntegrationTests.anInactiveFundIsRefused`, `aListOfTomorrowInLimaIsRefused`, `theFundCodeIsNotCorrectedWhileALoadUsesIt` | ✅ |
+| FLT-R116 | Cargar la garantía exige `fondos.cargar_archivo_garantia`, `fondos.ver` y `habilitacion.ver_cargas` en toda la empresa y en todas sus marcas | §5.6, D-134 | Servicio | `GuaranteeImportIntegrationTests.accountingLoadsAndOperationsDoesNot` | ✅ |
+| FLT-R117 | Las unidades se bloquean en orden de `id` antes de decidir: una cesión a mano en paralelo espera y ve lo que la carga escribió | Patrones de persistencia | Persistencia: un `SELECT … ORDER BY id FOR NO KEY UPDATE` | `GuaranteeImportConcurrencyTests.aManualAssignmentWaitsForTheLoad` | ✅ |
+| FLT-R118 | Una cesión nombra la carga que la abrió, con una llave compuesta con su empresa; la de una cesión a mano queda vacía | §12.2, D-133 | Base: V(n+2). Recurso: `importId` | `FileLoadsMigrationTests.anAssignmentCannotNameALoadOfAnotherCompany`; `VehicleFundAssignmentQueryIntegrationTests.anAssignmentNamesItsLoad` | ✅ |
+| FLT-R120 | Los caminos «Migración inicial», hacia En habilitación, Disponible y Activo, llevan un código reservado: no cuentan para el camino de alta único ni para el estado inicial, no nombran permiso, y la API no deja usar ni cambiar su código | §8.3, D-202, D-110 (el mismo criterio) | Base: V(n+3). Dominio: `StatusChangeReason.INITIAL_MIGRATION_CODE`. Servicio: `422 STATUSCHANGEREASON_CODE_RESERVED` | `StatusChangeReasonIntegrationTests.theMigrationCodeIsReserved`; `VehicleRegistrationIntegrationTests.theRegistrationStillTakesThePurchasePath` | ✅ |
+| FLT-R121 | `matchMigratedUnits` dice de cada VIN si es nuevo, ya migrado, registrado fuera de la migración o de otra empresa, sin revelar nada de la otra | D-153, D-201 | Fachada: una elevación por llamada | `FleetContextFacadeTests.theMatchTellsMigratedFromRegisteredAndHidesOtherCompanies` | ✅ |
+| FLT-R122 | `registerMigratedUnits` valida todas las unidades de la factura antes de escribir y escribe todas o ninguna, con su número del Excel y las reglas del alta (modelo, marca, tipo y color activos) | D-202, D-108, D-18 | Fachada: `MigratedUnitRegistrations`, `MANDATORY` | `MigratedUnitRegistrationsIntegrationTests.aFailureInTheLastLineLeavesNoUnit`, `anInactiveModelIsRefused` | ✅ |
+| FLT-R123 | La unidad migrada entra a Activo si se entregó, con la fecha de entrega como momento; si no, a Disponible si no le falta nada; si no, a En habilitación. Después de escribir, el estado de habilitación leído coincide con el decidido | D-202, D-183, §11.9 | Dominio: `MigrationTargetPolicy`, `EnablementPolicy` | `MigrationTargetPolicyTests.deliveredIsActiveCompleteIsAvailableElseEnabling`; `MigratedUnitRegistrationsIntegrationTests.theReadEnablementMatchesTheDecidedStatus`, `theDeliveryMomentIsTheStartOfItsDayInTheCompanyZone` | ✅ |
+| FLT-R124 | Los datos de la habilitación migrados cumplen las reglas de la fase 3 —título, placa con título y TIVE, placas físicas con placa, ingreso con ubicación, instalaciones no anteriores al ingreso, fechas no futuras, pantalla solo si el modelo la exige—, salvo dos excepciones de la carga inicial: la TIVE y el SOAT sin archivo, y el GPS sin serial | §11.1, §11.3, §11.4, D-186, D-188, D-206 | Fachada: `MigratedUnitRegistrations` | `MigratedUnitRegistrationsIntegrationTests.aPlateWithoutTitleIsRefused`, `aGpsBeforeTheArrivalIsRefused`, `aFactoryScreenOnAModelThatNeedsOneIsRefused` | ✅ |
+| FLT-R125 | El número del Excel es un entero positivo, único entre las unidades migradas de la empresa y la marca | D-18, D-229 | Fachada: `MigratedUnitRegistrations` | `MigratedUnitRegistrationsIntegrationTests.aLegacyNumberTakenInTheBrandIsRefusedAndAnotherBrandMayRepeatIt` | ✅ |
+| FLT-R126 | Una unidad migrada tiene una sola fila en el historial, y dos si otro es su propietario (FLT-R139), y no deja filas en la bitácora: es un alta | §8.4, §13.1 | Fachada | `MigratedUnitRegistrationsIntegrationTests.aMigratedUnitHasOneHistoryRowAndNoChangeLog` | ✅ |
+| FLT-R139 | Una unidad con otro propietario entra en Activo con su entrega y pasa a Inactivo por «Contrato completado» en la misma carga, con el nombre en la nota de la fila; los campos del traspaso quedan vacíos, y sin entrega la fila falla | D-225, D-223 | Fachada: `MigratedUnitRegistrations` | `InitialMigrationIntegrationTests.eachUnitEntersItsStatusWithItsEnablementAndTheSameFileTwiceChangesNothing` | ✅ |
+| FLT-R127 | El serial de un GPS migrado sin él se completa una sola vez, con `habilitacion.gestionar_equipos` donde está la unidad y su fila en la bitácora; uno que ya tiene serial no se cambia así | D-206, §11.4 | Dominio: `VehicleEquipment.completeSerial`. Servicio: `422 VEHICLEEQUIPMENT_SERIAL_ALREADY_SET`. Recurso: `completeSerial` | `VehicleEquipmentTests.aSerialIsCompletedOnlyOnce`; `VehicleEquipmentIntegrationTests.aMigratedGpsGetsItsSerialAndLeavesItsRow` | ✅ |
 
 ### 6.3 `procurement`
 
 | ID | Regla | Fuente | Dónde se aplica | Pruebas | Estado |
 |---|---|---|---|---|---|
-| PRC-R140 | El archivo de la carga inicial trae los 52 encabezados de la guía, en orden; las columnas que no se importan solo se leen para devolverlas en el informe | D-201; guía §5 | Servicio: `StockRowMapper` con `ImportSheetSpec` | `StockRowMapperTests.eachOfTheFiftyTwoColumnsGoesWhereSection54Says`, `theComputedColumnsAreNeverRead` | ❌ |
-| PRC-R141 | Las filas se agrupan por proveedor y número de factura; cada factura entra en su transacción con sus líneas, sus unidades y su habilitación, o falla entera y todas sus filas van al informe | D-201, D-168 | Servicio: `StockRowGroups`, `MigratedInvoiceWriter` | `InitialMigrationIntegrationTests.aFailingRowLeavesNothingOfItsInvoiceAndTheOtherInvoicesEnter` | ❌ |
-| PRC-R142 | Idempotente por VIN: una factura ya migrada con las mismas unidades queda sin cambios; un VIN registrado fuera de la migración, de otra empresa o repetido en el archivo hace fallar su factura; una factura ya registrada con otras unidades falla | D-201, D-153, D-160 | Servicio: con `matchMigratedUnits` | `InitialMigrationIntegrationTests.uploadingTheSameFileTwiceChangesNothing`, `aVinRegisteredByAnInvoiceFailsItsGroup`, `aRepeatedVinFailsBothGroups` | ❌ |
-| PRC-R143 | La tasa es la de la fila, una por factura, y su día es la fecha de la factura; en la moneda funcional, 1. No se aplican los 20 días ni se pide `compras.registrar_factura` | D-177, D-169, D-202 | Servicio: `MigratedInvoiceWriter` | `InitialMigrationIntegrationTests.theRateOfTheRowIsKept`, `aSolesInvoiceWithAnotherRateFails`, `anInvoiceOfLastYearEnters` | ❌ |
-| PRC-R144 | El proveedor se encuentra por razón social o nombre comercial, uno solo y activo; el modelo, dentro de su marca; el color, por nombre. Lo que no está o está inactivo hace fallar la factura | D-177, D-108; guía, columnas 7 a 11 | Servicio: `InitialMigrationCatalogs` | `InitialMigrationCatalogsTests.aSupplierMatchingTwoIsAmbiguous`; `InitialMigrationIntegrationTests.anUnknownModelFailsItsInvoice` | ❌ |
-| PRC-R145 | Valen las reglas de la factura de la fase 2: número normalizado con el formato de Perú, único entre las no anuladas; fecha no futura; de 1 a 100 líneas; montos mayores que cero con su escala; total igual a la suma; tipo factura, sin ISC ni orden | D-160, D-179 | Dominio: `PurchaseInvoice`, `InvoiceNumber`. Base: los únicos de la fase 2 | `InitialMigrationIntegrationTests.aWrongNumberFormatFailsItsInvoice`, `anInvoiceOfMoreThanAHundredRowsFails` | ❌ |
-| PRC-R146 | Las filas de una factura coinciden en fecha, moneda y TC; si no, falla | Guía, columna 47; D-177 | Dominio: `StockRowGroups` | `StockRowGroupsTests.rowsOfOneInvoiceWithTwoRatesFail` | ❌ |
-| PRC-R147 | Una nota de débito va al informe y nunca se registra; la unidad entra sin ella | D-23, D-177 | Servicio: `MigratedCreditNoteWriter` | `InitialMigrationIntegrationTests.aDebitNoteIsReportedAndItsUnitEnters` | ❌ |
-| PRC-R148 | Las notas de crédito se agrupan por proveedor y código, después de las facturas, cada una en su transacción; cada línea copia la tasa de su factura; misma moneda; fecha no futura ni anterior a sus facturas; hasta 100 líneas; el motivo, `DESCUENTO_CAMPANA`; una nota que dejaría una línea en cero falla; una ya registrada con las mismas líneas queda sin cambios | D-177, D-190 a D-193, D-204, D-205 | Servicio: `MigratedCreditNoteWriter` con el agregado de la fase 4 | `InitialMigrationIntegrationTests.aNoteAcrossTwoInvoicesCopiesEachRate`, `aNoteThatZeroesALineIsLeftForTheHand`, `aNoteWhoseInvoiceFailedIsReported` | ❌ |
-| PRC-R149 | La carga inicial exige `stock.cargar_migracion_inicial` en toda la empresa y en la marca elegida, y `habilitacion.ver_cargas`; la marca y la ubicación son de la empresa y activas | D-202, D-101, D-102, D-84 | Servicio: `InitialMigrationImportCommandServiceImpl` | `InitialMigrationIntegrationTests.aBrandAssignmentLoadsOnlyItsBrand`, `aLocationOfAnotherCompanyIsRefused` | ❌ |
-| PRC-R150 | Los conteos: entró lo que escribió algo ahora, sin cambios lo que ya estaba, fallido lo que está en el informe. El lote se registra al final, también si todo falló | §11.8, D-201 | Servicio | `InitialMigrationIntegrationTests.theCountsFollowSection24`, `aLoadWhereEverythingFailsStillHasItsReport` | ❌ |
-| PRC-R151 | La carga es síncrona, y un archivo de la carga inicial trae a lo sumo el tope de filas que fija su línea base; uno más grande se parte | D-208, D-201; D-147 (Cloudflare) | Servicio: `IMPORTBATCH_TOO_MANY_ROWS` | `InitialMigrationIntegrationTests.moreRowsThanTheCapAreRefused` | ❌ |
-| PRC-R152 | Cada factura, cada nota y cada pago corren en su transacción, y un interbloqueo se repite una vez desde el orquestador, que no es transaccional | D-128 | Servicio: `TransactionTemplate`, `DeadlockRetry.isDeadlock` | `InitialMigrationDeadlockTests.aDeadlockedInvoiceIsRetriedOnce` | ❌ |
-| PRC-R153 | Cada bloque de pago —proveedor y operación— es un pago de la fase 5, después de las notas, en su transacción: sus filas coinciden en fecha, monto y moneda; se aplica a sus facturas en proporción al valor de sus unidades, nunca más de lo que se debe; su `requestId` sale de la empresa, el proveedor y la operación, así que volver a subirlo no lo repite. Va por transferencia, con su tasa (1, la del catálogo o la del Excel) y, en el canal de dealers, una imputación saldada por unidad | D-190, D-194 a D-199, D-207; guía, columnas 42 a 45 y §7.3; P11 de la fase 5 | Servicio: `MigratedPaymentWriter` con el agregado de la fase 5 | `InitialMigrationIntegrationTests.aSegmentedBlockIsOnePayment`, `aBlockAcrossTwoInvoicesIsSplitByValue`, `aBlockWithTwoAmountsFails`, `aBlockUploadedTwiceIsOnePayment` | ❌ |
-| PRC-R154 | Lo que el Excel no trae se deduce de la misma fila: el ingreso, de la fecha más temprana entre el GPS, la pantalla, la primera entrega y la declaración de stock, o de la factura; las placas físicas, de la primera entrega o la declaración de stock, o del título; la etiqueta de la llave, del código de la marca comercial y el `N°`. El propietario no se lee | D-206; guía, columnas 13, 17, 2, 12 y 50 | Aplicación: `StockRowMapper`, sin base de datos | `StockRowMapperTests.theArrivalIsTheEarliestDateOfTheRowOrTheInvoice`, `thePlatesAreTheDeliveryOrTheStockDeclarationOrTheTitle`, `theKeyTagIsTheBrandCodeAndTheNumber` | ❌ |
+| PRC-R158 | El archivo de la carga inicial trae los 52 encabezados de la guía, en orden; las columnas que no se importan solo se leen para devolverlas en el informe | D-201; guía §5 | Servicio: `StockRowMapper` con `ImportSheetSpec` | `StockRowMapperTests.eachOfTheFiftyTwoColumnsGoesWhereSection54Says`, `theComputedColumnsAreNeverRead` | ✅ |
+| PRC-R159 | Las filas se agrupan por proveedor y número de factura; cada factura entra en su transacción con sus líneas, sus unidades y su habilitación, o falla entera y todas sus filas van al informe | D-201, D-168 | Servicio: `StockRowGroups`, `MigratedInvoiceWriter` | `InitialMigrationIntegrationTests.aFailingRowLeavesNothingOfItsInvoiceAndTheOtherInvoicesEnter` | ✅ |
+| PRC-R142 | Idempotente por VIN: una factura ya migrada con las mismas unidades queda sin cambios; un VIN registrado fuera de la migración, de otra empresa o repetido en el archivo hace fallar su factura; una factura ya registrada con otras unidades falla | D-201, D-153, D-160 | Servicio: con `matchMigratedUnits` | `InitialMigrationIntegrationTests.uploadingTheSameFileTwiceChangesNothing`, `aVinRegisteredByAnInvoiceFailsItsGroup`, `aRepeatedVinFailsBothGroups` | ✅ |
+| PRC-R143 | La tasa es la de la fila, una por factura, y su día es la fecha de la factura; en la moneda funcional, 1. No se aplican los 20 días ni se pide `compras.registrar_factura` | D-177, D-169, D-202 | Servicio: `MigratedInvoiceWriter` | `InitialMigrationIntegrationTests.theRateOfTheRowIsKept`, `aSolesInvoiceWithAnotherRateFails`, `anInvoiceOfLastYearEnters` | ✅ |
+| PRC-R144 | El proveedor se encuentra por razón social o nombre comercial, uno solo y activo; el modelo, dentro de su marca; el color, por nombre. Lo que no está o está inactivo hace fallar la factura | D-177, D-108; guía, columnas 7 a 11 | Servicio: `InitialMigrationCatalogs` | `InitialMigrationCatalogsTests.aSupplierMatchingTwoIsAmbiguous`; `InitialMigrationIntegrationTests.anUnknownModelFailsItsInvoice` | ✅ |
+| PRC-R145 | Valen las reglas de la factura de la fase 2: número normalizado con el formato de Perú, único entre las no anuladas; fecha no futura; de 1 a 100 líneas; montos mayores que cero con su escala; total igual a la suma; tipo factura, sin ISC ni orden | D-160, D-179 | Dominio: `PurchaseInvoice`, `InvoiceNumber`. Base: los únicos de la fase 2 | `InitialMigrationIntegrationTests.aWrongNumberFormatFailsItsInvoice`, `anInvoiceOfMoreThanAHundredRowsFails` | ✅ |
+| PRC-R146 | Las filas de una factura coinciden en fecha, moneda y TC; si no, falla | Guía, columna 47; D-177 | Dominio: `StockRowGroups` | `StockRowGroupsTests.rowsOfOneInvoiceWithTwoRatesFail` | ✅ |
+| PRC-R147 | Una nota de débito va al informe y nunca se registra; la unidad entra sin ella | D-23, D-177 | Servicio: `MigratedCreditNoteWriter` | `InitialMigrationIntegrationTests.aDebitNoteIsReportedAndItsUnitEnters` | ✅ |
+| PRC-R148 | Las notas de crédito se agrupan por proveedor y código, después de las facturas, cada una en su transacción; cada línea copia la tasa de su factura; misma moneda; fecha no futura ni anterior a sus facturas; hasta 100 líneas; el motivo, `DESCUENTO_CAMPANA`; una nota que dejaría una línea en cero falla; una ya registrada con las mismas líneas queda sin cambios | D-177, D-190 a D-193, D-204, D-205 | Servicio: `MigratedCreditNoteWriter` con el agregado de la fase 4 | `InitialMigrationIntegrationTests.aNoteAcrossTwoInvoicesCopiesEachRate`, `aNoteThatZeroesALineIsLeftForTheHand`, `aNoteWhoseInvoiceFailedIsReported` | ✅ |
+| PRC-R149 | La carga inicial exige `stock.cargar_migracion_inicial` en toda la empresa y en la marca elegida, y `habilitacion.ver_cargas`; la marca y la ubicación son de la empresa y activas | D-202, D-101, D-102, D-84 | Servicio: `InitialMigrationImportCommandServiceImpl` | `InitialMigrationIntegrationTests.aBrandAssignmentLoadsOnlyItsBrand`, `aLocationOfAnotherCompanyIsRefused` | ✅ |
+| PRC-R150 | Los conteos: entró lo que escribió algo ahora, sin cambios lo que ya estaba, fallido lo que está en el informe. El lote se registra al final, también si todo falló | §11.8, D-201 | Servicio | `InitialMigrationIntegrationTests.theCountsFollowSection24`, `aLoadWhereEverythingFailsStillHasItsReport` | ✅ |
+| PRC-R151 | La carga es síncrona, y un archivo de la carga inicial trae a lo sumo el tope de filas que fija su línea base; uno más grande se parte | D-208, D-201; D-147 (Cloudflare) | Servicio: `IMPORTBATCH_TOO_MANY_ROWS` | `InitialMigrationIntegrationTests.moreRowsThanTheCapAreRefused` | ✅ |
+| PRC-R152 | Cada factura, cada nota y cada pago corren en su transacción, y un interbloqueo se repite una vez desde el orquestador, que no es transaccional | D-128 | Servicio: `TransactionTemplate`, `DeadlockRetry.isDeadlock` | `InitialMigrationDeadlockTests.aDeadlockedInvoiceIsRetriedOnce` | ✅ |
+| PRC-R153 | Cada bloque de pago —proveedor y operación— es un pago de la fase 5, después de las notas, en su transacción: sus filas coinciden en fecha, monto y moneda; se aplica a sus facturas en proporción al valor de sus unidades, nunca más de lo que se debe; su `requestId` sale de la empresa, el proveedor y la operación, así que volver a subirlo no lo repite. Va por transferencia, con su tasa (1, la del catálogo o la del Excel) y, en el canal de dealers, una imputación saldada por unidad | D-190, D-194 a D-199, D-207; guía, columnas 42 a 45 y §7.3; P11 de la fase 5 | Servicio: `MigratedPaymentWriter` con el agregado de la fase 5 | `InitialMigrationIntegrationTests.aSegmentedBlockIsOnePayment`, `aBlockAcrossTwoInvoicesIsSplitByValue`, `aBlockWithTwoAmountsFails`, `aBlockUploadedTwiceIsOnePayment` | ✅ |
+| PRC-R160 | `PROPIETARIO` se lee sin mayúsculas, tildes, espacios ni puntuación, y también por una parte del nombre: «MILLENNIUM» y «Millennium Mobility S.A.C.» son la empresa; quien no lo es queda como se escribió | D-225, D-228 | Aplicación: `StockRowMapper` | `StockRowMapperTests.theCompanyIsNotAnotherOwnerHoweverItIsWritten` | ✅ |
+| PRC-R161 | La lista de precarga corre los mismos pasos con cada factura en una transacción que se revierte: no escribe nada, no registra lote y dice las unidades por estado, cuántas dicen `ENTREGADO=SI`, los traspasos por registrar y las filas que fallarían | D-226 | Servicio: `InitialMigrationImportCommandServiceImpl.preview`, `MigrationTransactions` | `InitialMigrationIntegrationTests.theListBeforeTheLoadTellsEverythingAndWritesNothing` | ✅ |
+| PRC-R154 | Lo que el Excel no trae se deduce de la misma fila: el ingreso, de la fecha más temprana entre el GPS, la pantalla, la primera entrega y la declaración de stock, o de la factura; las placas físicas, de la primera entrega o la declaración de stock, o del título; la etiqueta de la llave, del código de la marca comercial y el `N°` | D-206; guía, columnas 13, 17, 2, 12 y 50 | Aplicación: `StockRowMapper`, sin base de datos | `StockRowMapperTests.theArrivalIsTheEarliestDateOfTheRowOrTheInvoice`, `thePlatesAreTheDeliveryOrTheStockDeclarationOrTheTitle`, `theKeyTagIsTheBrandCodeAndTheNumber` | ✅ |
 
 ---
 
@@ -1058,9 +1079,12 @@ Capas y estados según el [README de los contextos](contextos/README.md). Las pr
 | `/imports` | `ImportsView` | `anyOf: [habilitacion.ver_cargas]` | El del módulo, `modules.imports` (ya existe en `public/i18n/es.json:73`) |
 | `/imports/{importId}` | `ImportBatchView` | `anyOf: [habilitacion.ver_cargas]` | El tipo y el archivo, con `overridePageHeading` |
 
+La revisión 57 de `DESIGN.md` pone «Cargar archivo» en las acciones de `mm-data-manager` y las fechas en su período, como pide la revisión 46.
+
 - **Menú:** en `app-navigation.ts`, la opción `/imports` (línea 179) pierde `pending: true` y declara `access: anyOf(PermissionCodes.Enablement.VIEW_IMPORTS)`. Se queda en la sección de flota, debajo de Habilitación.
 - **Rutas:** `app.routes.ts` carga `imports/presentation/imports.routes` bajo demanda, como `change-log`.
 - **Permisos:** `PermissionCodes` del frontend suma `Enablement.LOAD_SAT_FILE`, `Enablement.VIEW_IMPORTS` y `Funds.LOAD_GUARANTEE_FILE`. `Stock.LOAD_INITIAL_MIGRATION` ya existe (`permission-codes.ts:97`).
+- **Matriz de permisos:** los cuatro permisos de las cargas, sea cual sea su módulo, van en Logística › Flota › Cargas de archivos (`placePermission`).
 
 **La carpeta.** `src/app/imports` es de la plataforma, como `src/app/change-log` (D-200, D-129): espejo de `shared/importbatches`, con sus cuatro capas. Los diálogos de carga son de sus dueños: los dos de `fleet` y el de `procurement`. `imports` los abre por sus fachadas (frontend-rules 1.3, «Puede abrir un flujo de su propio contexto»).
 
@@ -1126,6 +1150,7 @@ Los tres comparten la forma:
 - **Avisos:**
   - «Cada factura entra completa o no entra. Volver a subir el archivo corregido no repite lo que ya entró»;
   - «Use la plantilla de 52 columnas», con un enlace que la descarga desde los recursos estáticos del frontend (`public/templates/stock-millennium-2026.xlsx`, una copia de la plantilla del cliente, solo con sus encabezados).
+- **Dos pasos (D-226):** «Revisar» pide la lista de precarga, que reemplaza al formulario sin escribir nada: las cifras, las unidades por estado, cuántas dicen `ENTREGADO=SI`, las notas y los pagos del archivo, los traspasos por registrar y las filas que fallarían. «Cargar» hace la carga, y «Volver al formulario» conserva el archivo y los campos.
 
 ### 7.5 La unidad: impuesto vehicular y origen de la cesión
 
@@ -1181,64 +1206,52 @@ La revisión 38 de `DESIGN.md`, escrita el 03/11/2026, decide lo visual y manda 
 
 | Criterio | Prueba |
 |---|---|
-| Ningún archivo auxiliar crea una unidad | `TaxDeclarationImportIntegrationTests.aPlateWithoutUnitGoesToTheReportAndNothingIsCreated`; ídem en la garantía |
-| Una placa que desaparece de la lista cierra su cesión y la historia queda | `GuaranteeImportIntegrationTests.aPlateThatLeavesTheListClosesItsAssignmentAndKeepsIt` |
+| Ningún archivo auxiliar crea una unidad | `FleetImportsIntegrationTests.theSatFileDeclaresWhatItCanAndReportsTheRest`, `TaxDeclarationRowPolicyTests.aRowFailsForWhatItsUnitIsNot`, `GuaranteeListPolicyTests` |
+| Una placa que desaparece de la lista cierra su cesión y la historia queda | `FleetImportsIntegrationTests.aPlateThatLeavesTheListClosesItsAssignmentOnceConfirmedAndKeepsIt` |
 | Las filas de una factura entran o fallan juntas | `InitialMigrationIntegrationTests.aFailingRowLeavesNothingOfItsInvoiceAndTheOtherInvoicesEnter` |
-| Volver a subir el archivo corregido es seguro | `InitialMigrationIntegrationTests.uploadingTheSameFileTwiceChangesNothing`, `theCorrectedReportEntersOnlyWhatWasMissing` |
-| Cada unidad migrada queda en su estado | `MigratedUnitRegistrationsIntegrationTests.theReadEnablementMatchesTheDecidedStatus` |
-| El informe se corrige y se vuelve a subir | `ImportReportWriterTests.aReportReadsBackThroughTheReader` |
-| La frontera entre empresas | `ImportBatchRowLevelSecurityTests`, `FleetRowLevelSecurityTests` (declaraciones) |
-| Arquitectura | `ModularityTests` (sin ciclo entre `shared` y `documents`), `ForeignAclStaysInTranslationLayerTests`, `NoDeleteEndpointsTests`, `PermissionCatalogConsistencyTests` |
+| Volver a subir el archivo corregido es seguro | `InitialMigrationIntegrationTests.eachUnitEntersItsStatusWithItsEnablementAndTheSameFileTwiceChangesNothing`, `theCorrectedReportEntersOnlyWhatWasMissing` |
+| Cada unidad migrada queda en su estado | `InitialMigrationIntegrationTests.eachUnitEntersItsStatusWithItsEnablementAndTheSameFileTwiceChangesNothing`, `MigrationTargetPolicyTests` |
+| El informe se corrige y se vuelve a subir | `InitialMigrationIntegrationTests.theCorrectedReportEntersOnlyWhatWasMissing`, `ImportReportWriterTests.theFailedRowsGoBackUnderTheSameHeaders` |
+| La frontera entre empresas | `RowLevelSecurityMigrationTests`, que lista `import_batches` y `vehicle_tax_declarations`; `FileLoadsMigrationTests.aBatchHasThePoliciesToReadAndWriteButNoneToChangeIt`; `InitialMigrationIntegrationTests.aLoaderWithoutTheReadingIsDeniedAndALocationOfAnotherCompanyIsRefused` |
+| Arquitectura | `ModularityTests` (sin ciclo entre `shared` y `documents`), `LayerDependencyTests`, `ForeignAclStaysInTranslationLayerTests`, `NoDeleteEndpointsTests`, `PermissionCatalogConsistencyTests` |
 
 ### 8.2 Backend, por pieza
 
 | Pieza | Pruebas sin contexto de Spring | Pruebas de integración (PostgreSQL de verificación) |
 |---|---|---|
-| Lector y escritor | `ImportWorkbookReaderTests`, `ImportCellTests`, `ImportReportWriterTests`, `XlsxContainerCheckTests` | — |
-| `ImportBatch` | `ImportBatchTests` | `ImportBatchRegistrationIntegrationTests`, `ImportBatchQueryIntegrationTests`, `ImportBatchFilesIntegrationTests`, `ImportBatchConcurrencyTests`, `ImportBatchRowLevelSecurityTests` |
-| SAT | `TaxDeclarationRowPolicyTests`, `VehicleTaxStatusPolicyTests`, `VehicleTaxDeclarationTests` | `TaxDeclarationImportIntegrationTests`, `VehicleTaxDeclarationQueryIntegrationTests` |
-| Garantía | `GuaranteeListPolicyTests` | `GuaranteeImportIntegrationTests`, `GuaranteeImportConcurrencyTests`, `VehicleFundAssignmentQueryIntegrationTests` |
-| Fachada de `fleet` | `MigrationTargetPolicyTests` | `FleetContextFacadeTests`, `MigratedUnitRegistrationsIntegrationTests`, `StatusChangeReasonIntegrationTests` |
-| Carga inicial | `StockRowMapperTests`, `StockRowGroupsTests`, `InitialMigrationCatalogsTests` | `InitialMigrationIntegrationTests`, `InitialMigrationDeadlockTests` |
-| Esquema | — | `FileLoadsMigrationTests`, `FileLoadPermissionsMigrationTests`, `ImportTablesAreInsertOnlyTests`, `HandOverDatabaseScriptTests` |
+| Lector y escritor | `ImportWorkbookReaderTests` (también el contenedor: PDF renombrado, libro con macros, bomba de inflado, `DOCTYPE` y archivo truncado), `ImportCellTests`, `ImportReportWriterTests` | — |
+| SAT | `TaxDeclarationRowPolicyTests` | `FleetImportsIntegrationTests` |
+| Garantía | `GuaranteeListPolicyTests` | `FleetImportsIntegrationTests` |
+| Fachada de `fleet` | `MigrationTargetPolicyTests` | `InitialMigrationIntegrationTests`, que la recorre de punta a punta |
+| Carga inicial | `StockRowMapperTests`, `StockRowGroupsTests`, `InitialMigrationCatalogsTests` | `InitialMigrationIntegrationTests` |
+| Esquema | — | `FileLoadsMigrationTests`, `RowLevelSecurityMigrationTests`, `PermissionsMigrationTests`, `HandOverDatabaseScriptTests` |
 
-Las pruebas de integración corren sobre `erp_mm_db_verify` y se conectan con la cuenta de la aplicación, que no se salta Row Level Security.
+Las pruebas de integración corren sobre `erp_mm_db_verify`. La cuenta de la aplicación no se salta Row Level Security; `postgres`, sí: las pruebas de RLS solo muerden con la primera.
 
 ### 8.3 Archivos de prueba
 
-**Ninguno lleva datos reales.** Casi todos los arma en memoria un ayudante de prueba, `XlsxFixtures` (`src/test/java/.../shared/importbatches`), con el escritor de fastexcel: encabezados, filas y tipos de celda. Así un caso se lee junto a su prueba. Los que no se pueden armar así se guardan en `src/test/resources/imports/`.
+**Ninguno lleva datos reales.** Los arma en memoria un ayudante de prueba, `XlsxFixtures` (`src/test/java/.../shared/importbatches`): un caso se lee en la prueba, sin abrir un archivo binario.
 
 | Archivo o constructor | Para qué |
 |---|---|
-| `XlsxFixtures.stock(rows…)` | Un libro con los 52 encabezados de la plantilla y las filas dadas |
-| `XlsxFixtures.sat(rows…)`, `XlsxFixtures.guarantee(rows…)` | Los dos archivos externos, con sus encabezados provisionales y una columna ajena que se ignora |
-| `XlsxFixtures.withHeaders(…)` | Encabezados con `Nº`, dobles espacios, espacio duro, una columna de más o fuera de orden |
-| `XlsxFixtures.withDates1904(…)` | El sistema de fechas de 1904 |
+| `XlsxFixtures.stock(rows…)`, `StockWorkbook` | La plantilla real del cliente con las filas escritas en sus celdas: su hoja, sus estilos y sus 52 encabezados |
+| `XlsxFixtures.sheet(…)`, `XlsxFixtures.workbook(…)` | Los dos archivos externos y los libros de varias hojas, con el escritor de fastexcel |
+| `XlsxFixtures.corrected(…)` | El informe con un texto cambiado, como quien corrige una celda en Excel |
 | `stock-template-headers.xlsx` | Una copia de la plantilla del cliente, solo con sus encabezados: prueba que se lee tal cual llega |
-| `macro-enabled.xlsm` | Un libro con `vbaProject.bin` |
-| `pdf-renamed.xlsx` | Un PDF con extensión .xlsx |
-| `inflation-bomb.xlsx` | Una entrada de 1 MB que se infla a más de 100 MB |
-| `doctype.xlsx` | Un `sharedStrings.xml` con `DOCTYPE` y una entidad externa |
-| `corrupt.xlsx` | Un ZIP truncado |
-| `two-sheets-second-matches.xlsx` | La hoja con los encabezados no es la primera |
-| `report-roundtrip.xlsx` | Generado por la prueba del escritor y vuelto a leer por el lector |
+| Las construcciones de `ImportWorkbookReaderTests` | Un libro con macros, un PDF con extensión .xlsx, una bomba de inflado, un `DOCTYPE`, un ZIP truncado, encabezados con espacios y con `Nº`, y una hoja buena que no es la primera |
 
-**Los escenarios de la carga inicial**, armados con `XlsxFixtures.stock`:
-- una factura de un auto, entregado;
-- una factura de 80 motos, unas ingresadas y otras no;
-- una factura en dólares y otra en soles;
-- una nota que cruza dos facturas;
-- una nota de débito;
-- una nota que deja una unidad en cero;
-- un VIN repetido entre dos facturas;
-- un proveedor y un modelo desconocidos;
-- una factura de 101 filas;
-- un pago segmentado (`PAGO1/PAGO2`) que cubre dos facturas, y un bloque con dos montos distintos;
-- un archivo subido dos veces, y su informe corregido.
+**Los escenarios de la carga inicial**, armados sobre la plantilla real:
+- una factura con una unidad entregada, una disponible, una en habilitación y una de otro propietario, subida dos veces;
+- la lista antes de cargar, que no escribe nada;
+- una fila que falla, que deja fuera su factura mientras las demás entran;
+- un VIN repetido, una celda ilegible, un número con formato equivocado, un modelo desconocido y un N° ya tomado en la marca;
+- una factura en soles con otro tipo de cambio, y el tipo de cambio de la fila que se conserva;
+- una nota que cruza dos facturas, una que deja una unidad en cero, una de débito y una cuya factura falló;
+- un pago segmentado que cubre dos facturas, un bloque con dos montos y un concesionario con diferencia por inicial;
+- el informe tal como baja, y corregido;
+- más filas que el tope.
 
-**Para el frontend:**
-- `e2e/fixtures/imports/` guarda tres libros chicos generados por `XlsxFixtures`, para las pruebas con el backend simulado, donde el contenido no importa;
-- `e2e-live/fixtures/imports/` guarda los que la sonda sube al backend real, también generados y sin datos reales.
+**Para el frontend:** `e2e/imports.spec.ts` sube bytes mínimos, porque con el backend simulado el contenido no importa; `e2e-live/imports.live.spec.ts` arma sus libros en la misma sonda, sin datos reales.
 
 ### 8.4 Rendimiento
 
@@ -1251,21 +1264,20 @@ Primero se mide la línea base, como pide el plan para las facturas (plan, halla
 | Carga inicial | 1 000 filas de autos (1 000 facturas) | Menos de 60 s |
 | Carga inicial | 1 000 filas de motos (13 facturas de 80) | Menos de 30 s |
 
+**Medido el 06/11/2026** sobre `erp_mm_db_verify`, en un portátil ocupado, con facturas de 10 filas, cada fila con TIVE, SOAT, GPS y llave: 500 filas en frío: revisar 75 s y cargar 62 s; 1 000 filas en caliente: 83 s y 79 s; volver a subir lo ya cargado: 6 a 7 s, con la máquina ocupada. El tope es de 400 filas (`imports.max-rows.migracion-inicial`, D-231). Falta medir con los archivos reales (§8.7).
+
 El número de sentencias por factura se fija con las estadísticas de Hibernate, como el registro de 100 líneas de la fase 2. **El tope de PRC-R151** sale de esta medición: el mayor número de filas que termina en menos de 60 s, para quedar lejos del corte de Cloudflare.
 
 ### 8.5 Frontend y extremo a extremo
 
-- **Unitarias:**
-  - `imports.store.spec`, `import-batch-assembler.spec`;
-  - cada diálogo: «does not close while it uploads», «shows the four counts and opens the load», «lists the missing headers»;
-  - el de la garantía: «asks before closing and resends with the confirmation»;
-  - `procurement.facade.spec` y `fleet.facade.spec`: «a load opened from imports leaves no error on the owner's screens».
+- **Unitarias:** `imports.store.spec`, `fleet-imports.store.spec`, `initial-migration.store.spec`, `import-refusal.spec` y `fleet.facade.spec`, que fija los miembros de la fachada. Los diálogos se prueban de punta a punta: su lógica vive en los stores.
 - **Extremo a extremo** (`e2e/imports.spec.ts`, con los mocks divididos por contexto de la fase 2):
   - la lista con sus filtros;
   - la ficha y sus dos descargas;
   - las tres cargas;
   - la confirmación de la garantía;
   - el menú, que ofrece solo lo que la sesión puede;
+  - lo que una carga deja en la unidad: su impuesto, un documento sin archivo y un GPS sin serial;
   - axe y tres anchos: 375, 768 y 1280 px.
 
 ### 8.6 Sondas en vivo
@@ -1459,5 +1471,5 @@ No queda ninguna. Las nueve preguntas de la versión 1 (03/11/2026) quedaron dec
 | P5 | ¿Qué método, tasa y detalle lleva un pago migrado, que el Excel no trae? | **D-207.** Uno por bloque de la columna 42, por transferencia y con ese código como número de operación; tasa 1 en la moneda funcional y, en otra, la de venta del catálogo para el día del pago o, si falta, la del Excel; en el canal de dealers, cada unidad imputada por su valor menos la columna 45 y saldada. Basta el permiso de la carga | §2.8 paso 8, PRC-R153 |
 | P6 | ¿La carga inicial se construye después de la fase 4, y no después de la 3? | **D-208.** Tres entregas: el registro, el SAT y la garantía después de la fase 3; la carga inicial después de la fase 4; sus pagos después de la fase 5. En producción, la carga inicial corre una sola vez, después de la fase 5 | §1.4, §9 |
 | P7 | ¿La lista de garantía cierra también las cesiones registradas a mano? | **D-209.** Sí, si la unidad tiene placa y no figura; la de una unidad sin placa no se cierra y se informa; una placa de otro fondo falla sin tocar nada; el fondo y la fecha de la lista quedan en el informe | §2.6, FLT-R112, FLT-R113 |
-| P8 | ¿Qué se hace con una unidad cuyo propietario no es la empresa (columna 50)? | **D-206.** Entra como de la empresa, y su traspaso se registra después (D-20) | §2.7, §5.4 |
+| P8 | ¿Qué se hace con una unidad cuyo propietario no es la empresa (columna 50)? | **D-225, que reemplaza a D-206 en esto.** Entra en Activo con su entrega y pasa a Inactivo por «Contrato completado»; el traspaso queda por registrar, porque el Excel no trae su fecha | §2.7.1, §5.4 |
 | P9 | ¿Basta un tope de filas por archivo para no pasar el límite de Cloudflare? | **D-208.** Sí: la carga es síncrona, con un tope medido en su línea base, y un archivo más grande se parte | §2.3, §8.4, PRC-R151 |
