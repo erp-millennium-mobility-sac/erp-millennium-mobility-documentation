@@ -440,6 +440,8 @@ El pago OP-3001 sigue siendo uno solo, de 34 500,00, con tres aplicaciones. Su f
 
 ### 2.7 Orden de los candados
 
+**Desde el 05/11/2026 (contrato C11):** la cuenta de origen se toma `FOR SHARE` después de la moneda, porque la llave foránea no espera a un `FOR NO KEY UPDATE` y, sin esto, un registro podría cruzarse con la desactivación de la cuenta o con el cambio de su número.
+
 Es la secuencia de la fase 4 (su §2.4), que extiende la de la fase 2, con los números de la fase 4. Esta fase solo suma el `requestId` y pone el pago donde está la nota:
 
 | # | Qué | Modo | Quién lo toma |
@@ -1023,6 +1025,8 @@ La zona de los momentos es la del país de la empresa por la que filtra la expor
 
 #### 4.2.4 `POST /supplier-payments`
 
+**Desde el 05/11/2026 (contrato C11; backend `e1396c51`):** la ruta es `multipart/form-data`, con la parte `payment` —lo de abajo más `bankAccountId`— y la parte `file`. Un paso nuevo va después del número de operación y antes de los documentos: cuenta exigida o no admitida por el método, cuenta de otra empresa o inexistente, inactiva, de otra moneda; voucher exigido o no admitido; tipo y peso del archivo. El archivo se guarda al final, porque su llave lleva el id público del pago. La repetición de un `requestId` compara también la cuenta y el archivo, contra el voucher vigente o el que tenía al registrarse.
+
 ```json
 {
   "requestId": "019b2c6e-…",
@@ -1525,10 +1529,12 @@ Una página con sus paneles, como los dibuja la revisión 37 de `DESIGN.md`, que
 | Fecha | Calendario hasta hoy en la zona de la empresa (D-212) |
 | Método | Transferencia, Cheque, Efectivo, Saldo a favor. Saldo a favor solo se ofrece si el proveedor tiene saldo en alguna moneda; desde el 04/11/2026 se retiene, con su razón, a quien registra pagos solo por una marca (C8) |
 | N.° de operación | Obligatorio en transferencia y cheque, opcional en efectivo, oculto con saldo (D-212). Muestra debajo cómo se guardará (`Se guarda como OP99213`) |
-| Moneda | Empieza en la funcional. Con saldo a favor, solo las monedas con saldo, y debajo «Saldo disponible: USD 600,00» |
+| Cuenta de origen | En transferencia y cheque, obligatoria: las cuentas activas de la empresa, con su nombre y sus últimos dígitos. Se propone solo si hay una activa; nunca se recuerda la última (D-214). No se muestra en efectivo ni con saldo |
+| Moneda | En transferencia y cheque la fija la cuenta, y se lee como un dato. Si no, empieza en la funcional y, en efectivo, se propone la de lo que se debe cuando es una sola y la persona no eligió otra. Con saldo a favor, solo las monedas con saldo, y debajo «Saldo disponible: USD 600,00» |
 | Tipo de cambio | El campo de la fase 2: «1 · moneda de la empresa» en la funcional; en otra, la tasa con su día y su fuente, el aviso de la tasa anterior y «Registrar tasa» en modo fijado |
 | Monto | Con los decimales de la moneda |
 | Notas | Texto libre, opcional |
+| Voucher | PDF o imagen de hasta 5 MB, obligatorio en transferencia y cheque y opcional en efectivo (D-215). Se abre al lado de los datos, como en la factura. Con saldo a favor no se muestra |
 
 **Panel «Aplicar a»:**
 - **Qué lista:** lo que se debe al proveedor (§4.2.7), las facturas primero y después las órdenes, de lo más antiguo a lo más nuevo. Con saldo a favor, solo las facturas de su moneda.
@@ -1603,6 +1609,13 @@ Lo prueban, entre otras, `supplier-payment-form-view.spec` ("searches the suppli
   - **Notas:** las notas a lo ancho.
 
   No cambian la validación, el comportamiento ni el orden de tabulación. Prueba: `supplier-payment-form-view.spec` ("groups its data by what it says, every label floated and the rate read as data after the amount (revision 41)"); las imágenes de `supplier-payment-form` en las tres anchuras (`abb8a556`).
+
+**Como se cambió (05/11/2026): la cuenta de origen y el voucher** (contrato C11, decisiones D-214 y D-215; backend `e1396c51`, frontend `90b50ff6`; revisión 53 de `DESIGN.md`; plan §2.21). Las cuentas son una pestaña de la ficha de la empresa, como las sedes y las marcas.
+- **El formulario:** con cuenta, Proveedor, Fecha, Método y N.° de operación; Cuenta de origen, Moneda, Monto y Tipo de cambio; el voucher y Notas. Si la tasa tiene algo que decir, toma su propia fila y los campos de la suya ocupan el espacio que deja. Pasar a saldo a favor quita el voucher; pasar a efectivo o a saldo quita la cuenta.
+- **«Anular y copiar»:** la copia lleva la cuenta si sigue activa y lee el voucher del pago anulado, que la persona puede cambiar. Una copia nunca propone otra cuenta, porque cambiaría la moneda de lo copiado.
+- **La ficha:** muestra la cuenta, y ofrece «Cambiar voucher», o «Adjuntar voucher» en un pago anterior que no lo tiene, y «Descargar voucher». Cambiarlo pide `pagos.registrar_pago` y el alcance del pago, solo en uno vigente, y deja su fila en la bitácora. La cuenta no cambia nunca.
+- **La lista y el Excel:** filtro y columna «Cuenta», con el nombre y los últimos dígitos, nunca el número.
+- **Primero las cuentas:** sin cuentas activas en la empresa, una transferencia o un cheque no se puede registrar, y el formulario lo dice.
 
 ### 6.4 Ficha del pago
 

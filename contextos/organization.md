@@ -14,6 +14,7 @@ Este documento junta lo que hace falta para entender `organization` sin recorrer
 |---|---|---|---|
 | `companies` | La razón social constituida en un país: compra, factura y es dueña de los vehículos | §6.2 | 2 |
 | `commercial_brands` | Los nombres bajo los que la empresa vende: Lizzo, Lima Bikes | §6.3 | 2 |
+| `company_bank_accounts` | Las cuentas desde las que la empresa paga a sus proveedores | §6.2.1 | 8 |
 | `branches` | Los locales donde trabaja personal y desde donde se emiten comprobantes | §6.4 | 2 |
 | `locations` | Los lugares donde puede haber vehículos, propios o de terceros | §6.5 | 2 |
 | `employees` | Las personas que trabajan para la empresa, usen o no el sistema | §5.3 | 3 |

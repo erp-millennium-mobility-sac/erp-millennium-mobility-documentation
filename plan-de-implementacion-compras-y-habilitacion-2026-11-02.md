@@ -547,6 +547,20 @@ Dos ajustes salieron al construir la etapa 1. El monto del pago no se calcula so
 
 Pruebas de la etapa 1: 3377 unitarias y 1914 de extremo a extremo en los tres anchos (304 omitidas por su proyecto); cuatro fallas fueron imágenes de referencia, revisadas y actualizadas, y una prueba de Habilitación, inestable bajo carga, pasó tres de tres sola. Faltan Android, iPad y las pruebas en vivo.
 
+### 2.21 La cuenta de origen y el voucher del pago (05/11/2026)
+
+La etapa 2 de §2.20 (contrato C11, D-214 y D-215; backend `e1396c51`, frontend `90b50ff6`, migraciones V108 a V110, revisión 53 de `DESIGN.md`). Queda en la especificación de pagos, §6.3 y §4.2.4, y en el diccionario, §6.2.1 y §10.1 (v1.41).
+
+Lo que cambió al construirla:
+- **Las cuentas son una pestaña de la ficha de la empresa,** y no una lista aparte como la dibujó el lienzo: las sedes y las marcas tampoco tienen pantalla propia.
+- **El número completo solo llega a quien gestiona las cuentas.** Verlas pide `configuracion.ver_estructura`, que tienen los siete roles del sistema, así que se restringió en el servidor: los demás reciben los últimos dígitos, y no buscan ni ordenan por el número, que lo delataría cifra por cifra.
+- **`organization` no lee compras:** saber si una cuenta tiene pagos pasa por un puerto que `organization` declara y `procurement` implementa, como `UnitPurchases`.
+- **Un pago anulado conserva «Descargar voucher»,** porque «Anular y copiar» lo lee.
+
+Una revisión independiente comparó los dos lados leyendo el código y no halló defectos altos ni medios; sus cuatro hallazgos menores se corrigieron. Pruebas: backend, 3692, con las fallas de correr como superusuario y una más del mismo motivo; frontend, 3461 unitarias, y 2028 de extremo a extremo antes de los últimos ajustes, tras los que se repitieron las afectadas.
+
+Nunca corrieron los dos lados juntos: el extremo a extremo usa un simulador. Faltan `e2e-live`, Android, iPad, la carrera sobre el candado de la cuenta y el almacenamiento real de archivos.
+
 ---
 
 ## 3. Decisiones
