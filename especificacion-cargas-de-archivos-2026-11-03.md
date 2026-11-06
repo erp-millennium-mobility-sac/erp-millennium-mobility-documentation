@@ -394,6 +394,10 @@ D-202 y §8.3 del diccionario lo agregan: `(alta) → En habilitación, Disponib
 - su nombre se corrige y el camino se cierra o se reabre en Catálogos › Estados y motivos, como cualquier camino (D-19). Cerrado, la carga inicial responde `422 STATUSCHANGEREASON_INITIAL_MIGRATION_MISSING`;
 - no nombra permiso: un camino de alta no lo hace (V48), y la carga inicial pide `stock.cargar_migracion_inicial` en su ruta.
 
+> **(propuesta, 05/11/2026)** D-202 da de alta como Activo toda unidad entregada, y eso cuenta como activas unidades que ya no lo están. Propuesta para aprobar antes de construir la carga:
+> - **Contrato terminado:** una unidad con `PROPIETARIO` (50) distinto de Millennium entra en Inactivo por «Contrato completado», no en Activo; su fecha de traspaso se registra después (D-20).
+> - **Unidad recuperada:** el Excel de stock no la distingue de una entregada, así que entra en Activo y se corrige por sus caminos, que ya existen (Activo → Custodia → Puesta a punto → Disponible). La revisión previa dice cuántas unidades tienen `ENTREGADO=SI`, para contrastarlas con el registro de clientes antes de cargar.
+
 **El momento de la fila del historial:**
 - **Activo:** la fecha de primera entrega, a las 00:00 en la zona de la empresa (D-202). Es la entrega que leen el estado Entregado y la brecha de días (§11.9).
 - **Disponible:** la declaración de stock (columna 51), a las 00:00 en la zona de la empresa, si viene; si no, el momento de la carga. La recomendación de P2 lo proponía y D-206 la aceptó, aunque su texto no lo nombra: D9 propone sumarlo a §11.8 del diccionario.

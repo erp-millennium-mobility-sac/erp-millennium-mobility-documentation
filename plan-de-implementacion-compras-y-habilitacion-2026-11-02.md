@@ -570,6 +570,18 @@ El responsable explicó el negocio: Millennium coloca sus unidades en leasing, u
 
 Siguen abiertos con el responsable: el nombre de Vendido, los caminos del flujograma que faltan cargar (procesos, pregunta 2), si de Inactivo se vuelve, a dónde va Choque, y cómo trata la carga inicial a las unidades recuperadas o de contrato terminado (D-202).
 
+### 2.23 El ciclo del leasing (05/11/2026)
+
+El responsable pidió aplicar las recomendaciones (D-218 a D-222; backend `ad38e5fc` y `ba7e6a2d`, frontend `0131b883`, migración V112, revisión 55 de `DESIGN.md`). Sus reglas del registro de clientes separan el estado del contrato, el del vehículo y el motivo, y ya definen ROBADO y PÉRDIDA TOTAL: la regla fue que un estado existe si tiene salidas distintas o se cuenta distinto.
+
+- **Vendido se lee Contrato firmado,** con los códigos intactos.
+- **Robado y Pérdida total son estados,** e Inactivo queda final.
+- **Los caminos del flujograma están cargados,** con Choque en Siniestro y su camino anterior cerrado.
+- **Inventario filtra por Motivo y por Pasó por.**
+- **Se aplicaron R23, R24 y R25,** y D-184 queda como está: ninguna unidad se coloca incompleta.
+
+**Abierto:** «En traspaso» espera saber cuánto tarda la notaría. La fecha de traspaso no tiene cómo escribirse: `transfer_date` solo se lee, así que una unidad que llega a Inactivo por «Contrato completado» sigue diciendo que es de la empresa. La propuesta para la carga inicial espera aprobación. Las tolerancias de los caminos nuevos están vacías hasta que el negocio las fije.
+
 ---
 
 ## 3. Decisiones

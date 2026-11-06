@@ -191,41 +191,42 @@ La pantalla y el GPS son los equipos que hoy bloquean; otro equipo o documento m
 
 Todo cambio de estado registra fecha, hora, usuario y motivo, y solo existen los caminos cargados en `status_change_reasons` (§8.3). El estado actual y su historial se escriben en la misma operación (§8.4).
 
-Caminos que el diccionario carga como ejemplo (§8.3):
+Los caminos cargados (§8.3, D-221). Millennium coloca sus unidades en leasing, así que una unidad vuelve y se entrega a otra persona:
 
 ```mermaid
 stateDiagram-v2
   [*] --> Habilitacion : Registro de compra
   Habilitacion --> Disponible : Habilitación completa
   Disponible --> Habilitacion : Pierde un requisito
-  Disponible --> Vendido : Venta (48 h)
-  Vendido --> Disponible : vence a las 48 h
-  Vendido --> Activo : Entrega al cliente
-  Activo --> Mecanica : Mantenimiento preventivo (72 h) · Choque (480 h)
-  Activo --> Custodia : Morosidad (720 h)
+  Disponible --> ContratoFirmado : Firma de contrato (48 h)
+  Disponible --> Inactivo : Venta directa
+  ContratoFirmado --> Disponible : vence a las 48 h
+  ContratoFirmado --> Activo : Entrega al cliente
+  Activo --> Mecanica : Mantenimiento, falla
+  Mecanica --> Activo : Mantenimiento finalizado
+  Mecanica --> PAP : No asumida
+  Activo --> Siniestro : Choque, accidente
+  Siniestro --> Activo : Reparación finalizada
+  Siniestro --> PAP : No asumida
+  Siniestro --> PerdidaTotal : Pérdida total
+  Activo --> Custodia : Morosidad, incautación, comisaría
+  Custodia --> Activo : Cliente regulariza
   Custodia --> PAP : Resolución de contrato
+  Activo --> Robado : Robo, autorrobo, fraude
+  Custodia --> Robado : Robo, autorrobo, fraude
+  Robado --> PAP : Recuperado
+  Robado --> Inactivo : Baja definitiva
+  PerdidaTotal --> PAP : Recupera valor
+  PerdidaTotal --> Inactivo : Baja definitiva
+  Activo --> Inactivo : Contrato completado, venta directa
   PAP --> Disponible : Reacondicionada
 ```
 
 - La única transición automática es la que tiene configurado un estado de destino al vencer su tolerancia: Vendido vuelve a Disponible a las 48 horas (§8.3).
-- Inactivo es de categoría terminal en el ejemplo de §8.2. Con los caminos de ejemplo de §8.3 no tiene salida, porque no hay ninguna fila con ese origen; los caminos son datos (D-19).
+- Inactivo es final: no hay ninguna fila con ese origen. Lo que todavía puede volver queda en Robado o en Pérdida total (D-219, D-220); los caminos son datos (D-19).
 - La fecha de entrega es el momento en que la unidad pasó a Activo; no hay un campo aparte (§11.9).
 - Una unidad se recoloca: Puesta a punto cierra su entrega (D-216) y se sale de ahí con la revisión física de quien la mueve, que queda en el historial (D-217). No vuelve a En habilitación.
 - Las unidades que superan la tolerancia de su motivo aparecen en una lista de vencidas (§8.3).
-
-El diagrama de la v1.8 traía más caminos. Son datos, no reglas: se cargan como filas de `status_change_reasons` si el negocio los confirma (pregunta abierta 2).
-
-| Desde | Hacia | Motivo en la v1.8 | Observación |
-|---|---|---|---|
-| Activo | Siniestro | — | |
-| Mecánica | Activo | — | |
-| Siniestro | Activo | — | |
-| Siniestro | Puesta a punto | — | |
-| Custodia | Activo | Regulariza | |
-| Mecánica | Puesta a punto | No asumida | |
-| Activo | Inactivo | Pérdida total | |
-| Custodia | Inactivo | Robo | |
-| Inactivo | Puesta a punto | Recuperado | Hoy no tiene salida porque no hay fila con origen Inactivo (§8.3). Habilitarlo es cargar una fila y revisar la categoría terminal del estado (§8.2) |
 
 | Pantallas | Logística › Inventario (ficha de la unidad) · Catálogos › Estados y motivos |
 |---|---|
@@ -409,7 +410,7 @@ Las direcciones no tienen pantalla ni opción de menú: se llenan dentro del for
 Son preguntas de negocio que el diccionario no resuelve. Hasta que se respondan, las pantallas afectadas no se diseñan en detalle.
 
 1. ~~**¿Dónde nace la unidad?**~~ Resuelto el 01/11/2026 por D-153: al registrar la factura, que le pide a `fleet` darla de alta con el motivo "Registro de compra" (§8.3) o, si ya está en Inventario, la vincula por su VIN y no la duplica. El VIN se escribe una sola vez (mapa, decisión 5).
-2. **¿Qué caminos de estado se cargan además de los del ejemplo?** Los nueve estados existen, pero el diccionario solo trae como ejemplo los caminos de §8.3. La tabla de P7 lista los que traía la v1.8.
+2. ~~**¿Qué caminos de estado se cargan además de los del ejemplo?**~~ Resuelto el 05/11/2026 por D-221: los del flujograma, salvo Puesta a punto → Activo e Inactivo → Puesta a punto.
 3. ~~**¿Cómo se cargan las ochenta líneas de una factura?**~~ Resuelto el 01/11/2026 por D-154, desde el XML del comprobante, y cambiado el 02/11/2026 por D-157: primero a mano, pegando las columnas de VIN, motor y color de un lote de motos; el lector de XML vuelve a candidato (§9.3, §9.8).
 4. **¿Quién mueve la unidad de Vendido a Activo?** El asesor de ventas o el área que hace la entrega física. La matriz lo deja como el permiso `stock.entregar` (§5.6, D-95): hasta que el negocio decida, la semilla se lo da al administrador de la empresa, y la decisión solo cambia una marca de la matriz en una migración de `iam`, antes del paso 5 o con él.
 5. ~~**¿Qué permisos tiene cada rol del sistema?**~~ Resuelto el 19/10/2026: la matriz está en §5.6 (D-95), cargada por las migraciones paso a paso (V45 para los pasos 1 a 4), y el apartado 1 la sigue; los roles propios los crea solo el superadministrador (D-98). Queda de ella la pregunta 4.
