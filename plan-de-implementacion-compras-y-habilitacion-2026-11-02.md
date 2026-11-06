@@ -538,7 +538,7 @@ El responsable pidió evaluar cómo mejorar el registro de pago y aprobó las de
 
 1. **Lo que el formulario ya sabe** (frontend `d9c732e9`, revisión 52): solo frontend. Queda en la especificación de pagos, §6.3.
 2. **La cuenta de origen y el voucher:** juntos, porque comparten la migración y la tarjeta del formulario. La cuenta fija la moneda.
-3. **La vista «Por pagar»:** por antigüedad de la factura, porque las facturas no tienen fecha de vencimiento.
+3. **La vista «Por pagar»:** por antigüedad de la factura, porque las facturas no tienen fecha de vencimiento. Construida (§2.24).
 4. **Pagar por unidades:** solo con evidencia. Después de un mes de uso se mira cuántos pagos imputan unidades en varias facturas.
 
 Quedan fuera reasignar sin anular (D-211) y la retención automática, que depende del contador (D-196).
@@ -581,6 +581,15 @@ El responsable pidió aplicar las recomendaciones (D-218 a D-222; backend `ad38e
 - **Se aplicaron R23, R24 y R25,** y D-184 queda como está: ninguna unidad se coloca incompleta.
 
 **Abierto:** «En traspaso» espera saber cuánto tarda la notaría. La fecha de traspaso no tiene cómo escribirse: `transfer_date` solo se lee, así que una unidad que llega a Inactivo por «Contrato completado» sigue diciendo que es de la empresa. La propuesta para la carga inicial espera aprobación. Las tolerancias de los caminos nuevos están vacías hasta que el negocio las fije.
+
+### 2.24 El traspaso de una unidad y Por pagar (06/11/2026)
+
+El responsable pidió construir lo que falta de Logística: registro del traspaso, Por pagar, cargas de archivos y reportes. Esta es la primera etapa (D-223, D-224; backend `d39bcf37` y `b51c413a`, frontend `70d2899b` y `a60715db`, migración V113, revisión 56 de `DESIGN.md`).
+
+- **El traspaso:** `transfer_date` y `transfer_reason` solo se leían, así que un contrato completado seguía diciendo que la unidad era de la empresa. Ahora la ficha de una unidad en Inactivo registra el día, el motivo y a quién, y lo corrige con justificación. La nueva propietaria es un texto hasta que existan los clientes.
+- **Por pagar:** una opción de Compras con las facturas que todavía se pueden pagar, de la más antigua a la más nueva, con su resumen por moneda y tramo. Reutiliza las reglas de la ficha de la factura y del formulario del pago.
+
+Un traspaso registrado se corrige, pero no se deshace: a una unidad equivocada solo se le corrigen los datos, como Inactivo tampoco tiene vuelta.
 
 ---
 

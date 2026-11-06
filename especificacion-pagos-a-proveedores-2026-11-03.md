@@ -1444,6 +1444,8 @@ Cada regla pasa a ✅ cuando su prueba existe y pasa: todas, desde el 03/11/2026
 | PRC-R137 | Un pago en una moneda, de cualquier estado, fija sus decimales | §4.1, D-138 | `SupplierPaymentCurrencyUsageAdapter`. Commits: backend `ecc963ec` | `CurrencyDecimalPlacesLockTests.aPaymentFixesTheDecimalPlacesOfItsCurrency` | ✅ |
 | PRC-R138 | La exportación lleva una fila por aplicación con las 26 columnas de §4.2.2, la diferencia de cambio rotulada «(calculada)», y tiene el alcance de `pagos.ver` | D-106, D-194 | `SupplierPaymentsController`, `SupplierPaymentSpreadsheetColumns`, `SupplierPaymentViewFactory.toExportRows`, `ProcurementDocumentKinds`. Frontend: «Exportar» de la lista. Commits: backend `b0330d09`; frontend `4c33bc63` | `SupplierPaymentsExportIntegrationTests.thePaymentsAreExportedOneRowPerApplication`, `aWriterWithoutVerInBDoesNotGetBInTheExport`; e2e ("the list filters by company, supplier, method, status and period, and exports with the filters of the screen") | ✅ |
 | PRC-R139 | `allowedActions` del pago sale en el orden `annul`, `annulAndCopy`; la factura y el proveedor suman `registerPayment`, y la orden con pagos deja de ofrecer `annul` y `fulfill` | D-115 | `SupplierPaymentAllowedActions`, `PurchaseInvoiceAllowedActions`, `SupplierViewFactory`, `PurchaseOrderAllowedActions`. Commits: backend `b0330d09`, `3a4b7a33`, `56f992c8`, `94add284`; frontend `4c33bc63`, `13526ee1`, `0f96e2a1` | `SupplierPaymentAllowedActionsTests.theActionsComeInTheOrderOfTheSpecification`, `anAnnulmentThatWouldLeaveANegativeBalanceIsNotOffered`, `anAnnulledPaymentOffersNothing`; `SupplierBalancesIntegrationTests.theRecordOfTheSupplierOffersRegisterPaymentOnTheWholeCompany`; `SupplierPaymentsIntegrationTests.theRecordOfAnInvoiceTellsThePaymentOfItsUnitsAndOffersToPayIt`; desde la segunda revisión, `SupplierBalancesIntegrationTests.aDealerInvoiceThatOwesOnlyTheInitialsOfItsSettledUnitsIsNotPayable` (sin `registerPayment`) y `aDealerInvoiceWithAUnitStillToPayIsPayableAndOffersThePayment` (`5c6f5134`); `PurchaseOrdersIntegrationTests.anOrderWithAPaymentIsNotAnnulled`; `supplier-profile-view.spec` ("offers Registrar pago before Editar when its allowedActions says so, with the supplier and its company") | ✅ |
+| PRC-R140 | Por pagar lista las facturas vigentes cuyo por pagar supera cero, de la más antigua a la más nueva, con `pagos.ver`, por las reglas de D-190, D-197 y D-199 | D-224 | `PayableQueryServiceImpl`, `InvoiceAgePolicy`, `PayablesController`. Frontend: `PayablesView` | `PayablesIntegrationTests`, `InvoiceAgePolicyTests`, `payables.store.spec.ts`, `supplier-payments.spec.ts` | Construida |
+| PRC-R141 | La fila ofrece registrar el pago solo donde `pagos.registrar_pago` actúa sobre la empresa y las marcas de la factura | D-212, D-224 | `PayableQueryServiceImpl` | `PayablesIntegrationTests` | Construida |
 
 ### 5.2 `fleet`
 
@@ -1719,6 +1721,20 @@ Esta especificación no edita `DESIGN.md`. La revisión 36 es de la fase 4. La *
 **Revisiones 40 y 41 (04/11/2026, segunda revisión).** Las escribió el frontend con los pedidos del responsable; aquí se citan, no se repiten. La 40 (`89f9f6c5`, `bebbab4f`) da a la lista su barra de dos filas (§6.2). La 41 (`f6510432`) agrupa la tarjeta «Datos del pago» en Pago, Importe y Notas, con la tasa leída como un dato después del monto (§6.3), y enmienda así la revisión 37.
 
 ---
+
+### 6.12 Por pagar (D-224)
+
+**Lo que se construyó** (backend `b51c413a`, frontend `a60715db`). La etapa 3 de la mejora del registro de pago. Compras › Por pagar, en `/procurement/payables`, con `pagos.ver`.
+
+| Ruta | Qué responde |
+|---|---|
+| `GET /payables` | Las facturas que la empresa todavía puede pagar, una página o todas las filas. Filtros: `companyId`, `supplierId`, `currency`, `ageBucket`, `q`. Ordena por `invoiceDate`, que es lo predeterminado, `ageDays`, `documentNumber` y `supplierLegalName` |
+| `GET /payables/summary` | Por moneda: cuántas facturas, cuánto, y sus cuatro tramos, con los mismos filtros |
+| `GET /payables` con `Accept` de Excel | El mismo listado como documento generado (D-106), una fila por factura |
+
+**Cómo se calcula.** La base solo descarta las facturas que sus pagos ya cubren. `PayablePositions` resta las notas, y `AmountOwedPolicy.payable` las iniciales de un dealer, con `UnitCoveragePolicy`. Una factura cuyo «por pagar» no supera cero no aparece. Las páginas se cortan en el servicio, sobre las facturas abiertas.
+
+**La pantalla.** Resumen por moneda y tramo, y debajo la lista con antigüedad, documento, proveedor, fecha, total, pagado y por pagar. La fila ofrece «Registrar pago», donde `allowedActions` trae `registerPayment`, que abre el formulario con `?factura=`, y «Ver detalles», que abre la factura.
 
 ## 7. Pruebas
 
