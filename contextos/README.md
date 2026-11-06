@@ -36,7 +36,7 @@ Copiar cualquiera de las tres garantiza que este documento y la fuente terminen 
 
 ## Las reglas y sus identificadores
 
-Cada regla lleva un identificador estable con el prefijo del contexto (`LOC-`, `IAM-`, `ORG-`, `VCT-`, `FLT-`, `PRC-`, `NTF-`, y `SHR-` para `shared`) y un número que no se reutiliza. Así una prueba, un commit o una revisión pueden citarla sin repetirla. Una regla que se retira queda en la tabla marcada como retirada.
+Cada regla lleva un identificador estable con el prefijo del contexto (`LOC-`, `IAM-`, `ORG-`, `VCT-`, `FLT-`, `PRC-`, `RPT-`, `NTF-`, y `SHR-` para `shared`) y un número que no se reutiliza. Así una prueba, un commit o una revisión pueden citarla sin repetirla. Una regla que se retira queda en la tabla marcada como retirada.
 
 La columna **Dónde se aplica** dice qué capa la impone, porque de eso depende qué tan protegida está:
 
