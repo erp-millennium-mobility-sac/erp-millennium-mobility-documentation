@@ -443,6 +443,12 @@ El 09/11/2026 una auditoría de punta a punta leyó `develop` (backend `d7c9b007
 
 Las pruebas que cada rama suma o cambia están en la sección 6 de su contexto: [fleet.md](contextos/fleet.md), [organization.md](contextos/organization.md), [iam.md](contextos/iam.md), [notifications.md](contextos/notifications.md), [procurement.md](contextos/procurement.md) y [reporting.md](contextos/reporting.md). Las ramas paralelas tocaron los mismos dos archivos, y la integración resolvió a mano sus conflictos: `DESIGN.md` del frontend, con las revisiones 59, 60 y 61, y `scripts/database/hand-over-database.sql` del backend, con las tablas de solo inserción de V124 y V125 y el `DELETE` de `password_reset_tokens`.
 
+**Verificación final:** 09/11/2026, sobre las cabezas integradas, backend `e14111d9` y frontend `e0d451ba`.
+- **Backend.** La suite completa corrió conectada como `erp_mm_app` sobre una base local recién creada, migrada por `erp_mm_owner` de V1 a V126: 3 945 pruebas, 0 fallos, 0 errores y 2 omitidas.
+- **Frontend.** `ng build` terminó sin avisos, porque los cuatro presupuestos de SCSS quedaron bajo su tope. Las unitarias dieron 3 536 sin fallos, en 295 archivos, y `lint:styles` no dejó observaciones.
+- **Suite e2e completa.** Corrió con la máquina libre: 2 157 pruebas, de las que 1 971 pasaron y 375 se omitieron por proyecto. Las 186 restantes vencieron su tiempo porque el servidor de desarrollo no llegó a cargar bajo la concurrencia por omisión, y las 186 pasaron al repetirlas con 3 procesos. Ninguna falla de verdad.
+- **Sondas.** La sonda contra el backend real no corrió, y las de los pasos 7 a 10 siguen sin correr (pendientes transversales).
+
 **Antes de integrar `integration/audit-2026-11-09` en `develop`:** fijar en App Platform `APP_PUBLIC_URL`, `NOTIFICATIONS_EMAIL_PROVIDER` y `NOTIFICATIONS_EMAIL_FROM`, sin las cuales el backend no arranca fuera del perfil `dev`, y, con `sendgrid`, `SENDGRID_API_KEY` (pendientes transversales).
 
 **Lo que queda abierto** está en los pendientes transversales: las tolerancias de los caminos (D-240); SendGrid, el dominio, el remitente y las variables (D-242, D-243); `termination_reason`; el contador del inicio de sesión después de un restablecimiento; el registro público con perfil; las sondas en vivo que nunca corrieron y la de los reportes, que no existe; el ensayo de las cargas con los archivos reales; los modelos reales conciliados; la factura desde su XML; la serie de un GPS escrita una sola vez, defendida solo por el servicio; y `EmployeeCommandServiceImpl`, de 582 líneas.
