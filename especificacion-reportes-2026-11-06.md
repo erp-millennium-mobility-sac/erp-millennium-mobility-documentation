@@ -1,6 +1,6 @@
 # Especificación: Reportes (paso 11)
 
-**Versión 1 · 06/11/2026.** Decisiones delegadas por el responsable: D-232 a D-237 del diccionario. Lee de §10.5, §11.9, P11 de procesos, la guía funcional y la plantilla `STOCK_MILLENNIUM_2026_EXPORTABLE FINAL.xlsx`.
+**Versión 2 · 09/11/2026** (En traspaso, D-239: un estado más de la familia terminal, en §4 y en la columna 50; la moneda de grupo, en §1; y la sonda en vivo que falta, en §9). Versión 1 · 06/11/2026. Decisiones delegadas por el responsable: D-232 a D-237 del diccionario. Lee de §10.5, §11.9, P11 de procesos, la guía funcional y la plantilla `STOCK_MILLENNIUM_2026_EXPORTABLE FINAL.xlsx`.
 
 ## 1. Alcance
 
@@ -16,6 +16,7 @@
 - **Validación de la inicial contra el contrato:** cruza compras con ventas, y el bloque 12 no existe (§10.5).
 - **Pólizas (columnas 28 a 30):** son candidato (§11.6). Las columnas salen vacías para conservar la plantilla.
 - **Excel de la brecha y de la diferencia:** el exportable de stock ya las trae, columnas 24 y 45.
+- **Moneda de grupo** (09/11/2026): D-46 y §4.8 la mandaban con este paso. Un reporte es de una empresa y se lee en su moneda funcional, y dos monedas no se suman (D-233), así que ningún reporte la usa. Queda decidida fuera del alcance de los reportes, y pendiente para cuando haya dos monedas funcionales que reunir en un reporte.
 
 ## 2. Dónde vive (D-232)
 
@@ -51,7 +52,7 @@ Un reporte es de **una empresa**: `companyId` es obligatorio, porque de ella sal
 | **Próximas a resolución** | Unidades en Custodia con tolerancia vencida o por vencer dentro de 72 horas. Custodia es el único estado que lleva a «Resolución de contrato» |
 | **En riesgo de pérdida** | Unidades en Custodia por Incautación, Comisaría o Depósito: una autoridad las tiene y Millennium no decide cuándo vuelven |
 
-**Robado, Pérdida total e Inactivo no son paralizadas:** son de familia `terminal`, y no entran en el porcentaje (D-219, D-220). Sí se cuentan en Unidades por estado.
+**Robado, Pérdida total, En traspaso e Inactivo no son paralizadas:** son de familia `terminal`, y no entran en el porcentaje (D-219, D-220, D-239). Sí se cuentan en Unidades por estado. En traspaso existe desde V123 (09/11/2026, backend `9f9bd093`), y `ReportsIntegrationTests.theRateCountsTheActiveOverTheActiveAndTheStopped` lo cuenta así.
 
 ## 5. Brecha de días
 
@@ -100,7 +101,7 @@ Solo unidades saldadas del canal de dealers cuya diferencia es `INICIAL_DEL_CLIE
 | 45 | DIFERENCIA POR INICIAL | Solo si es `INICIAL_DEL_CLIENTE` (monto) |
 | 46, 47 | MONEDA, TC | La factura |
 | 48, 49 | PRECIO DE COMPRA PEN, VALOR CONTABLE PEN | En la moneda funcional de la empresa (D-159) (monto) |
-| 50 | PROPIETARIO | A quién se traspasó (D-223); sin traspaso, la razón social de la empresa |
+| 50 | PROPIETARIO | A quién se traspasó (D-223); sin traspaso, la razón social de la empresa. Una unidad En traspaso dice la empresa hasta que se registra su traspaso (D-239) |
 | 51 | DECLARACIÓN DE STOCK | Última entrada a Disponible, así una unidad recolocada dice cuándo volvió a estar lista |
 | 52 | TIPO DE VEHÍCULO | El catálogo |
 
@@ -114,4 +115,4 @@ Ruta `/reports`, carpeta `reporting`. Permiso `reportes.ver` en ruta y menú. Fi
 
 ## 9. Cómo se construyó
 
-Backend `e5bcc028`, `c69f097d`, `ff52ea1e`, `486428cd`, `85f23e2e`, `bd37d618`, `4f62a26e` y `d68e3b24`, frontend `90a0a7ee`, `ab142f03`, `2896de23` y `85520b76`, migraciones V120 y V121. Pruebas: `ReportsIntegrationTests` corre cada consulta contra el esquema de Flyway y compara los encabezados con la plantilla real; `e2e/reports.spec.ts` recorre la pantalla en los tres anchos.
+Backend `e5bcc028`, `c69f097d`, `ff52ea1e`, `486428cd`, `85f23e2e`, `bd37d618`, `4f62a26e` y `d68e3b24`, frontend `90a0a7ee`, `ab142f03`, `2896de23` y `85520b76`, migraciones V120 y V121. Pruebas: `ReportsIntegrationTests` corre cada consulta contra el esquema de Flyway y compara los encabezados con la plantilla real; `e2e/reports.spec.ts` recorre la pantalla en los tres anchos. No hay sonda en vivo: `e2e-live/` no tiene `reports.live.spec.ts` (09/11/2026), y queda pendiente con las demás que nunca corrieron (orden de implementación, pendientes transversales).

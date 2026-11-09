@@ -1,0 +1,76 @@
+# Revisión · La auditoría de punta a punta del 09/11/2026 y su cierre: la suite con las dos cuentas, las reglas sin prueba, En traspaso, la historia de los reingresos y el enlace para restablecer la contraseña
+
+**Fecha:** 09/11/2026 · **Código revisado:** backend `d7c9b007` (`develop`, V1 a V121), frontend `b78c618e` (`develop`) y documentación hasta `2035a30` (`master`) · **Cierre:** rama `integration/audit-2026-11-09` de los dos repositorios, backend `c5f9bc36` (V122 a V126) y frontend `13edd6fa`; documentación `a14e730` (diccionario v1.47, D-238 a D-243) y la puesta al día del mismo día (diccionario v1.48) · **Alcance:** los tres repositorios, leídos de punta a punta contra el diccionario, las skills y el código, y el cierre que el responsable aprobó ese día: primero las decisiones, después cinco ramas y por último la documentación.
+
+La auditoría leyó el código y la documentación por frente, y cada hallazgo se comprobó contra el código antes de entrar al plan de cierre. El responsable lo aprobó el mismo día, con su encuadre: seguimos en desarrollo y todo queda en `develop`; la base desplegada tiene V1 a V121; las cargas de archivos no se usan todavía; y la factura no se llena desde su XML (D-157). Las cinco ramas —`fix/suite-under-two-accounts`, `fix/audit-2026-11-09`, `feature/fleet-transfer-and-delivery`, `feature/employee-tenure-history` y `feature/password-reset-link`— se construyeron sobre `develop` y se integraron en `integration/audit-2026-11-09`. Lo que trae cada una está en el [orden de implementación](../orden-de-implementacion-millennium-mobility.md), «Cierre de la auditoría del 09/11/2026».
+
+**Veredicto.** Ningún defecto del producto y ninguna fuga entre empresas. El hallazgo mayor es de las pruebas: la suite se corría como superusuario, y con las dos cuentas, `erp_mm_app` y `erp_mm_owner`, `develop` daba 3 845 pruebas, 13 fallos y 7 errores, todos defectos de prueba que el superusuario ocultaba. Tras `fix/suite-under-two-accounts`, 3 846 pruebas, 0 fallos, 0 errores y 2 omitidas. Además, once reglas estaban aplicadas sin prueba, el frontend tenía cuatro defectos menores, el diccionario dejaba sin decidir seis cosas que el código ya necesitaba, y la documentación iba detrás del código del 05 y del 06/11/2026.
+
+---
+
+## Bien hecho
+
+- **La base aisló a las empresas aunque las pruebas no lo comprobaran.** Las 20 pruebas que fallaban con las dos cuentas eran defectos de la prueba, no del producto, y no hubo ninguna fuga entre empresas, comprobado en `pg_policies`.
+- **Las decisiones antes que el código.** D-238 a D-243 entraron al diccionario v1.47 (`a14e730`) antes de abrir las ramas, con la [especificación de las tolerancias](../especificacion-tolerancias-de-los-caminos-2026-11-09.md) para lo que el negocio todavía no fijó (D-240). Ninguna rama tuvo que decidir por su cuenta.
+- **Cada prueba corregida dice por qué pasaba antes.** Los siete commits de `fix/suite-under-two-accounts` explican qué escondía el superusuario: una lectura sin transacción que contaba cero (`6c3a85a5`), un disparador que solo él alcanzaba (`f53acb1f`), un colaborador de otra empresa que solo él veía (`5de83c4e`).
+- **Las tres barreras de una imputación, probadas una por una.** `PaymentAllocationsOwnerTriggerTests` se conecta como la dueña, comprueba que no se salta Row Level Security, ve que su `UPDATE` no alcanza ninguna fila y levanta `FORCE` solo en su transacción revertida para llegar al disparador.
+- **La regla del traspaso vive en el dominio, no en el catálogo.** `TransferExitPolicy` y `Vehicle.transitionTo` exigen el traspaso registrado para pasar de En traspaso a Inactivo, en el orden fijo de las guardas; V123 lo dice: el catálogo no puede apagarla.
+- **El correo sale de la misma transacción del hecho.** `NotificationService.requestEmail` exige una transacción abierta (`@Transactional(MANDATORY)`), el despachador envía fuera de toda transacción, y los valores sensibles, como el enlace, se borran al enviar, al vencer o al fallar. Con el perfil `prod`, el proveedor que captura no los muestra nunca.
+- **Las filas de las carreras se reutilizan.** La carga inicial ya no gasta un país de prueba por corrida: su cuenta, su rol propio en Perú y la ubicación de Colombia se crean una vez y se vuelven a usar (`65f70de9`).
+
+## Hallazgos
+
+### 1. La suite se corría como superusuario y ocultaba 20 pruebas sin alcance (aprendizaje)
+
+- **Error:** las corridas de los pasos 7 a 9 se hicieron conectadas como `postgres`, y sus informes daban por buenos «los fallos que se esperan con el superusuario» (78 el 04/11/2026). Con las dos cuentas, `d7c9b007` daba 13 fallos y 7 errores. Tres causas: lecturas fuera de toda transacción, sin alcance, que con `erp_mm_app` no ven ninguna fila de empresa y cuentan cero (`EnablementConcurrencyTests`, `FileLoadsMigrationTests`, `InitialMigrationIntegrationTests`, que además pasaba cuatro comprobaciones de «la carga no escribió nada» sin poder ver nada); pruebas que esperaban lo que solo un superusuario alcanza (el mensaje del disparador de `payment_allocations`, `42501` antes; el `422` de un instalador que la cuenta no ve, `404` antes; el `UPDATE (serial)` que V119 concedió a propósito); y filas tomadas por `min(id)` que el disparador de `credit_note_items` rechazaba antes de llegar a la política (`RowLevelSecurityMigrationTests`). El README del backend y los [patrones de persistencia](../patrones-de-persistencia-millennium-mobility.md) ya pedían correr las pruebas como `erp_mm_app`, «así que un camino que olvide fijar el alcance falla en las pruebas»; el pendiente del CI con las dos cuentas seguía abierto desde el 04/11/2026.
+- **Corrección:** `fix/suite-under-two-accounts`: `deceb779` (filas de la escena que los disparadores aceptan), `d57c9621` y `6c3a85a5` (lecturas en una transacción con el alcance `SYSTEM`), `5c1bba7d` (lo que los privilegios todavía guardan desde V119), `5de83c4e` (el `404` y el `422` del instalador), `f53acb1f` (las tres barreras de una imputación) y `65f70de9` (la carga inicial). Tras la rama, 3 846 pruebas, 0 fallos, 0 errores y 2 omitidas.
+- **Próxima vez:** la suite se corre siempre con las dos cuentas, y su línea base es cero fallos: un fallo «esperado» es un defecto que nadie mira. Una prueba sin transacción propia envuelve cada sentencia directa en una (`InvoiceRaces.committed`), porque el alcance se fija al comenzar una transacción; un conteo de cero fuera de transacción no prueba nada. Una prueba de una barrera de la base comprueba primero con qué cuenta corre.
+
+### 2. Once reglas aplicadas sin prueba (aprendizaje)
+
+- **Error:** los documentos de contexto marcaban ⚠️ reglas que el código cumplía sin que ninguna prueba lo exigiera: en `iam`, el cierre de una sesión por inactividad y por duración (IAM-R06), el cierre al salir (IAM-R09), la cookie `Secure` fuera de `dev` (IAM-R10), el token CSRF (IAM-R11), la cuenta `SYSTEM` que no entra ni se bloquea (IAM-R03, IAM-R12) y el primer superadministrador (IAM-R13); en `fleet`, las tres llaves de V47 que atan la marca, la ubicación y el país de una unidad a su empresa (FLT-R06); y en `procurement`, lo que una plantilla deja fijo, sus archivos opcionales y lo que dibuja su hoja (PRC-R03, PRC-R04, PRC-R07).
+- **Corrección:** `fix/audit-2026-11-09`, backend `95707eba`, `1c3ae7d6`, `59d64899`, `3949ef03`, `eabdc346` y `89faf4b3`. IAM-R10 sigue en parte: el cambio del identificador de la sesión al iniciarla no tiene prueba ([contextos/iam.md](../contextos/iam.md)).
+- **Próxima vez:** la columna Estado de los contextos es el inventario de lo que falta probar; una regla nueva entra con su prueba, y una ⚠️ que se toca sale ✅.
+
+### 3. Cuatro defectos menores del frontend (aprendizaje)
+
+- **Error:** `stock.recuperar` figuraba solo como permiso de un camino, sin constante, aunque desde D-223 el traspaso también lo pide y el backend sí la tenía. Empresas, su ficha y Ubicaciones se abrían también con un permiso de escritura o con el de registrar colaboradores, y quien no tenía `configuracion.ver_estructura` llegaba a listas que respondían `403`, lo que D-141 ya había corregido en Catálogos. Los grupos del menú se mostraban por rol (`'any-role'`, `ADMINISTRATORS`, `SUPER_ADMINISTRATORS`), y un módulo pendiente heredaba ese acceso, cuando desde D-117 lo que se ve depende de permisos. Y cuatro hojas de estilo de componentes pasaban el presupuesto de 5 kB.
+- **Corrección:** `fc0983d0` (`PermissionCodes.Stock.RECOVER`, como en el backend), `bd0b60c6` (Empresas, su ficha y Ubicaciones solo con `configuracion.ver_estructura`), `43e0329f` (cada grupo se ve por sus enlaces, y todo enlace declara su propio acceso; se fueron `isRoleList`, `'any-role'`, `RouteAccess.roles` y `hasAnyRole`) y `67a13d23` (lo repetido, a los parciales `_document-form`, `_sheet`, `_components` y `_base`, con el mismo CSS efectivo; DESIGN.md, «Usage in Code»). La regla de la skill `frontend-feature` que dejaba a un módulo pendiente heredar el acceso del grupo se quitó con la documentación del mismo día.
+- **Próxima vez:** un permiso que una escritura nombra tiene su constante en los dos repositorios; una pantalla se abre con el permiso que piden sus listas; lo que una hoja de estilo repite va a un parcial antes de pasar el presupuesto.
+
+### 4. Los topes de las cargas, sin variable (aprendizaje)
+
+- **Error:** los topes de filas de las tres cargas solo existían como valores por omisión de `@Value` en el código: ni `application.yaml`, ni `.env.example`, ni el README los nombraban, aunque la especificación de cargas daba sus variables.
+- **Corrección:** `eb77c0aa`: `imports.max-rows.*` en `application.yaml`, con `IMPORTS_MAX_ROWS_INITIAL_MIGRATION` (400), `IMPORTS_MAX_ROWS_VEHICLE_TAX` (5 000) e `IMPORTS_MAX_ROWS_GUARANTEE` (5 000), en `.env.example` y en el README.
+- **Próxima vez:** un valor que un entorno puede cambiar se declara en `application.yaml` con su variable, y la variable entra a `.env.example` y al README en el mismo commit.
+
+### 5. Seis decisiones que el código necesitaba y el diccionario no tenía (aprendizaje)
+
+- **Error:** quién entrega la unidad al cliente seguía abierto desde el 19/10/2026 (procesos y pantallas, pregunta 4); «En traspaso» esperaba desde el 05/11/2026 (plan §2.23), y una unidad que llegaba a Inactivo por un contrato completado no se distinguía de una que se fue para siempre; la carga inicial de una unidad de otro propietario, la historia de los reingresos, el módulo `notifications` con su primer caso y el enlace para restablecer la contraseña estaban en los pendientes transversales sin diseño cerrado. Además, el recurso de una unidad no nombraba su marca, su modelo ni su color, y la ficha los leía de los catálogos (B14 de la auditoría del 20/10/2026).
+- **Corrección:** D-238 a D-243 en el diccionario v1.47 (`a14e730`), construidas en `feature/fleet-transfer-and-delivery` (V122, V123 y B14), `feature/employee-tenure-history` (V124) y `feature/password-reset-link` (V125, V126). La carga inicial deja la unidad de otro propietario En traspaso, por la enmienda de D-225 que la v1.48 registra.
+- **Próxima vez:** un pendiente transversal que el código va a necesitar se decide en el diccionario antes de abrir su rama, como se hizo aquí.
+
+### 6. La documentación iba detrás del código (aprendizaje)
+
+- **Error:** el orden de implementación daba por pendientes las cargas y la garantía mobiliaria, construidas el 06/11/2026, y contaba el avance del 03/11/2026; §5.6 del diccionario decía 118 permisos y sus totales por categoría sumaban 117, con 121 filas; `contextos/procurement.md` no recogía la cuenta de origen y el voucher del pago (D-214, D-215, V110); las especificaciones de pagos, facturas y notas tenían rutas construidas marcadas «(propuesta)» y tablas §4.1 desfasadas; `contextos/fleet.md` repetía FLT-R139 para dos reglas distintas; R25 seguía pendiente en tres documentos aunque el diccionario la aplicó el 05/11/2026; las convenciones daban por existente `GET /authentication/sign-up/companies`, que no existe; y los README daban una estructura sin `reporting` ni `shared/importbatches` y diez sondas en vivo donde hay trece.
+- **Corrección:** la puesta al día de la documentación del 09/11/2026, con el diccionario v1.48; los README de los dos repositorios, en `integration/audit-2026-11-09` (backend `f3d9916e`, con `PROCUREMENT_CREDIT_NOTES_SINGLE_INVOICE_FROM` en `.env.example`; frontend `87b91e70`); y las skills `backend-module`, `frontend-feature` y `architecture-review`, que no se versionan, iguales en los dos repositorios.
+- **Próxima vez:** la regla de [contextos/README.md](../contextos/README.md), «Cuándo se actualiza», vale para todos los documentos: el cambio que construye algo pone al día, en el mismo día, el orden de implementación, su contexto y las especificaciones que lo daban por propuesta.
+
+### 7. Las ramas paralelas tocan `DESIGN.md` y el script de traspaso de la base (aprendizaje)
+
+- **Error:** tres ramas del frontend sumaron cada una su revisión al final de `DESIGN.md` (59, 60 y 61), y dos del backend sumaron su tabla de solo inserción a `scripts/database/hand-over-database.sql`, el script que entrega la base a sus dos cuentas (V124 en la historia de los reingresos; V125 y el `DELETE` de `password_reset_tokens` en el enlace). Los merges `69925e63` y `13edd6fa` del frontend y `c5f9bc36` del backend chocaron ahí, y el último también en `UserCommandServiceImplTest`, que tocaban `fix/audit-2026-11-09` y el enlace.
+- **Corrección:** los conflictos se resolvieron a mano en esos merges, conservando las tres revisiones en orden y, en el script, las tablas de las dos ramas en la lista de los `REVOKE` y en su comprobación.
+- **Próxima vez:** el plan de cierre reparte los números de revisión de `DESIGN.md` entre las ramas antes de empezar, y dos ramas que suman tablas de solo inserción se integran una detrás de otra, corriendo la prueba del script (`HandOverDatabaseScriptTests`) después de cada merge.
+
+## Lo que queda abierto, con su disparo
+
+Cada punto está en los pendientes transversales del [orden de implementación](../orden-de-implementacion-millennium-mobility.md):
+
+- **Las variables del correo**, antes de integrar `feature/password-reset-link` en `develop`: fuera del perfil `dev` el backend no arranca sin `APP_PUBLIC_URL`, `NOTIFICATIONS_EMAIL_PROVIDER` y `NOTIFICATIONS_EMAIL_FROM`, y con `capturing` en el entorno desplegado un restablecimiento del administrador deja a la persona sin contraseña. SendGrid, el dominio y el remitente los fija el responsable (D-242, D-243).
+- **Las tolerancias de los caminos** (D-240), cuando el negocio entregue su tabla.
+- **`termination_reason`** y **el contador del inicio de sesión después de un restablecimiento**, cuando el responsable los decida.
+- **El registro público con perfil**, antes de encenderlo.
+- **Las sondas en vivo** de facturas, notas, pagos, habilitación y cargas, que nunca corrieron, y la de los reportes, que no existe.
+- **El ensayo de las cargas con los archivos reales**, **los modelos reales conciliados** y **la factura desde su XML**, que espera aclararse con el cliente.
+- **La serie de un GPS escrita una sola vez**, que desde V119 defiende solo el servicio: un disparador `BEFORE UPDATE OF serial`, candidato.
+- **`EmployeeCommandServiceImpl`**, de 582 líneas.
