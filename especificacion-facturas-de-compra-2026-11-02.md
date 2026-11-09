@@ -1229,8 +1229,8 @@ Pruebas: `invoice-payment-summary.spec` ("says the status, the total, the notes,
 
 - **Inventario:** el filtro «Factura vigente» (Todas, Con factura vigente, Sin factura vigente) y, en cada fila sin línea vigente, la insignia «Sin factura vigente» (D-175).
 - **Editar unidad:** el diálogo deja fijo el año de una unidad con `hasCurrentInvoice`, dice por qué y manda el año que tiene (D-160, FLT-R50); el backend lo rechaza igual con `422 VEHICLE_MODEL_YEAR_LOCKED`.
-- **Ficha de la unidad:** «Anular unidad» en la cabecera, con `allowedActions.annul` y `ConfirmationDialog`; no se ofrece mientras la unidad tenga una cesión abierta (D-182), y si el backend responde `VEHICLE_FUND_ASSIGNMENT_OPEN`, la ficha muestra «La unidad tiene una cesión abierta a un fondo: ciérrela antes de anularla.». Una unidad anulada lo dice junto a su insignia: «Anulada el dd/mm/aaaa: ya no se modifica.».
-- **Ficha de la orden:** «Todo facturado» o lo pendiente por modelo y año. Sin `annul` cuando tiene facturas vigentes.
+- **Ficha de la unidad:** «Anular unidad» ~~en la cabecera~~ al final del menú «Más acciones de la unidad», en rojo, desde el 09/11/2026 (revisión 62, §6.8), con `allowedActions.annul` y `ConfirmationDialog`; no se ofrece mientras la unidad tenga una cesión abierta (D-182), y si el backend responde `VEHICLE_FUND_ASSIGNMENT_OPEN`, la ficha muestra «La unidad tiene una cesión abierta a un fondo: ciérrela antes de anularla.». Una unidad anulada lo dice junto a su insignia: «Anulada el dd/mm/aaaa: ya no se modifica.».
+- **Ficha de la orden:** «Todo facturado» o lo pendiente por modelo y año. Sin `annul` cuando tiene facturas vigentes. Desde el 09/11/2026 «Anular» va, con «Descargar PDF», en el menú del pie de su hoja (revisión 62, §6.8).
 
 ### 6.6 A 375 px y accesibilidad
 
