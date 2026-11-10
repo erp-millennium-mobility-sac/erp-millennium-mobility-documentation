@@ -901,7 +901,7 @@ Ninguna tabla lleva `DELETE`. `RowLevelSecurityMigrationTests` suma las tres a `
 | 10 | `GET /supplier-payments/{id}/file` (desde el 05/11/2026, C11) | `pagos.ver` | `200` con los bytes del voucher | §4.2.4, §6.3 |
 | 11 | `GET /supplier-payment-accounts?companyId=` (desde el 05/11/2026, C11) | `pagos.ver` | `200` arreglo | §4.2.4, §6.3 |
 | 12 | `GET /payables` (desde el 06/11/2026, D-224) | `pagos.ver` | `200` página o arreglo | §6.12 |
-| 13 | `GET /payables/summary` (desde el 06/11/2026, D-224) | `pagos.ver` | `200` | §6.12 |
+| 13 | `GET /payables/summary` (desde el 06/11/2026, D-224; desde el 09/11/2026 ninguna pantalla la lee) | `pagos.ver` | `200` | §6.12 |
 | 14 | `GET /payables` con el `Accept` de Excel (desde el 06/11/2026, D-224) | `pagos.ver` | `303` a `/documents/{id}` | §6.12 |
 
 **Como se construyó: las rutas 6 a 8** (backend `3a4b7a33` y `56f992c8`, 03/11/2026). Se construyeron con estos nombres, que la tabla marcaba **(propuesta)** hasta la auditoría del 09/11/2026: sus marcas quedan tachadas. **Las rutas 9 a 14** llegaron después del plan: las 9 a 11 con la cuenta de origen y el voucher (contrato C11, D-214, D-215; backend `e1396c51`), en `SupplierPaymentsController` y en `SupplierPaymentAccountsController`, que llevan `pagos.ver` en la clase; y las 12 a 14 con Por pagar (D-224; backend `b51c413a`), en `PayablesController`, que también lo lleva en la clase. El `PUT` es la única escritura que un pago admite después de registrarse: adjunta o reemplaza su voucher, nunca la cuenta ni lo registrado. Las reglas de la cuenta y del voucher, con sus pruebas, son PRC-R162 a PRC-R166 de [procurement.md](contextos/procurement.md), y las de Por pagar, PRC-R140 y PRC-R141.
@@ -1818,12 +1818,12 @@ Esta especificación no edita `DESIGN.md`. La revisión 36 es de la fase 4. La *
 | Ruta | Qué responde |
 |---|---|
 | `GET /payables` | Las facturas que la empresa todavía puede pagar, una página o todas las filas. Filtros: `companyId`, `supplierId`, `currency`, `ageBucket`, `q`. Ordena por `invoiceDate`, que es lo predeterminado, `ageDays`, `documentNumber` y `supplierLegalName` |
-| `GET /payables/summary` | Por moneda: cuántas facturas, cuánto, y sus cuatro tramos, con los mismos filtros |
+| `GET /payables/summary` | Por moneda: cuántas facturas, cuánto, y sus cuatro tramos, con los mismos filtros. Desde el 09/11/2026 sigue en el backend sin pantalla que la lea (abajo) |
 | `GET /payables` con `Accept` de Excel | El mismo listado como documento generado (D-106), una fila por factura |
 
 **Cómo se calcula.** La base solo descarta las facturas que sus pagos ya cubren. `PayablePositions` resta las notas, y `AmountOwedPolicy.payable` las iniciales de un dealer, con `UnitCoveragePolicy`. Una factura cuyo «por pagar» no supera cero no aparece. Las páginas se cortan en el servicio, sobre las facturas abiertas.
 
-**La pantalla.** Resumen por moneda y tramo, y debajo la lista con antigüedad, documento, proveedor, fecha, total, pagado y por pagar. La fila ofrece «Registrar pago», donde `allowedActions` trae `registerPayment`, que abre el formulario con `?factura=`, y «Ver detalles», que abre la factura.
+**La pantalla.** ~~Resumen por moneda y tramo, y debajo~~ La lista con antigüedad, documento, proveedor, fecha, total, pagado y por pagar. La fila ofrece «Registrar pago», donde `allowedActions` trae `registerPayment`, que abre el formulario con `?factura=`, y «Ver detalles», que abre la factura.
 
 **Como cambió (09/11/2026, D-245): pagar varias facturas** (decisión del responsable; revisión 67 de `DESIGN.md`, que enmienda las revisiones 35 y 56; frontend `197d663b`, `0aadeea6` y `4a7d0d4d`, merge `7ae68c2d`). Empezar un pago con varias facturas es solo del frontend, con el `?facturas=` que lee el formulario (§6.3); el backend no cambia.
 - **Elegir:** quien registra pagos en la empresa de la lista (`pagos.registrar_pago`, `hasPermissionIn`) tiene la columna de casillas de la revisión 35, con una casilla en cada fila cuyo pago ofrece el backend, como la acción de la fila (D-212); sin el permiso no hay columna. `PayablesStore` guarda la selección: sobrevive a otra página, y se limpia con otra búsqueda, otro filtro u otra empresa, y cada vez que se abre la lista, porque lo elegido en otra visita puede estar pagado ya.
@@ -1833,6 +1833,10 @@ Esta especificación no edita `DESIGN.md`. La revisión 36 es de la fase 4. La *
 - **La fila conserva su acción:** «Registrar pago» de su menú sigue abriendo el formulario con esa sola factura (`?factura=`). La columna y los totales dicen «Pendiente» donde decían «Por pagar».
 
 Pruebas: `payables.store.spec` (la selección), `payables-view.spec` (las casillas, la barra y su enlace, otro proveedor, un filtro que la limpia, sin casillas sin el permiso) y las del administrador de datos (la barra antes de la tabla o bajo la lista); `supplier-payments.spec.ts` («Por pagar» elige) se llevó sin correrlo, y la imagen de `payables` sigue mostrando la lista anterior.
+
+**Como cambió (09/11/2026): sin el resumen por moneda** (decisión del responsable; revisión 68 de `DESIGN.md`, que enmienda las revisiones 56 y 67; frontend `ca8a9c94` y `701d4c32`, en la rama `fix/payables-and-date-columns`, todavía sin merge a `develop`). El responsable dijo que el resumen por moneda sobre la lista sobraba: repetía lo que dicen la lista, sus filtros y la barra de lo elegido. La lista abre la pantalla. `GET /payables/summary` sigue en el backend, con sus reglas y sus pruebas, sin pantalla que lo lea; el frontend quitó lo que solo lo alimentaba: los totales de `PayablesStore`, `getPayablesSummary`, `PayablesSummaryResource`, los totales del ensamblador y sus tipos, y las claves `payables.summary.*` y `payables.columns.currency`. Siguen los filtros de moneda y antigüedad, la antigüedad de cada fila y la barra, que suma por moneda lo elegido. La misma revisión centra la fecha de cada fila bajo su encabezado, como toda fecha de una lista.
+
+Pruebas: `payables.store.spec` (solo la página), `payables-view.spec` (la lista primero, sin nada encima, y la fecha centrada); `supplier-payments.spec.ts` (sin el resumen, el filtro de antigüedad leído en `/payables`), `screens.ts` y el mock e2e de los pagos (sin `/payables/summary`) se llevaron sin correrlos, y la imagen de `payables` sigue mostrando el resumen.
 
 ## 7. Pruebas
 
