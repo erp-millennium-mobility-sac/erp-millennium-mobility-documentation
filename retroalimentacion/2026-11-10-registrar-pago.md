@@ -125,5 +125,5 @@ Cada punto está en los pendientes del [orden de implementación](../orden-de-im
 - **Las entradas del resumen de errores:** en los cinco formularios de la revisión 71, el campo y su mensaje, «Proveedor: Este campo es obligatorio.»; en el pago, lo que hay que hacer. Cuál queda, lo decide el responsable.
 - **Los botones del pie en el teléfono,** apilados o uno junto al otro: lo decide el responsable.
 - **Las imágenes de referencia** de toda pantalla tocada ese día, de la revisión 69 a la 73, no se regeneraron, por la regla del responsable: se regeneran juntas.
-- **`GET /payables/summary`** sigue en el backend y ninguna pantalla lo lee.
+- ~~**`GET /payables/summary`** sigue en el backend y ninguna pantalla lo lee.~~ Salió del backend el mismo día, en la limpieza de lo que ya no se usa (backend `ec619a1a`, en la rama `chore/remove-payables-summary`, todavía sin merge a `develop`).
 - **Las e2e de los cinco formularios** de la revisión 71 no corrieron en local; la sonda en vivo de los pagos se llevó al formulario nuevo (`532180aa`) y tampoco corrió.
