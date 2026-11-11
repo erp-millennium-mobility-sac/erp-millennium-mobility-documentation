@@ -1,6 +1,6 @@
 # Especificación: Reportes (paso 11)
 
-**Versión 2 · 09/11/2026** (En traspaso, D-239: un estado más de la familia terminal, en §4 y en la columna 50; la moneda de grupo, en §1; y la sonda en vivo que falta, en §9). Versión 1 · 06/11/2026. Decisiones delegadas por el responsable: D-232 a D-237 del diccionario. Lee de §10.5, §11.9, P11 de procesos, la guía funcional y la plantilla `STOCK_MILLENNIUM_2026_EXPORTABLE FINAL.xlsx`.
+**Versión 3 · 10/11/2026** (la inicial del cliente congelada al saldar, D-248 del diccionario v1.53, decidida ese día y por construir: §6 y la columna 45 de §7). **Versión 2 · 09/11/2026** (En traspaso, D-239: un estado más de la familia terminal, en §4 y en la columna 50; la moneda de grupo, en §1; y la sonda en vivo que falta, en §9). Versión 1 · 06/11/2026. Decisiones delegadas por el responsable: D-232 a D-237 del diccionario. Lee de §10.5, §11.9, P11 de procesos, la guía funcional y la plantilla `STOCK_MILLENNIUM_2026_EXPORTABLE FINAL.xlsx`.
 
 ## 1. Alcance
 
@@ -67,6 +67,8 @@ Unidades con línea vigente. La brecha es la de D-199: de la fecha base a la pri
 
 Solo unidades saldadas del canal de dealers cuya diferencia es `INICIAL_DEL_CLIENTE` (D-197), de mayor a menor. Exige `stock.ver_costos` en la empresa: si no, `403 ACCESS_DENIED`. Las unidades de una marca que el permiso no lee no aparecen. Los totales van por moneda.
 
+**Como cambia (10/11/2026, D-248)** (decidida en el diccionario v1.53; se construye en el backend con `feature/unit-level-balance`, con V127). Hasta ahora la inicial era lo que le faltaba a la unidad saldada, así que una nota posterior la achicaba: con un auto de 50 000,00 saldado con 42 000,00 de Millennium y 8 000,00 de inicial, una nota de 10 000,00 la dejaba en 0,00 y la unidad salía del reporte. Desde D-248 la inicial se congela al saldar, en la imputación que salda (`payment_allocations.customer_initial`), y una nota posterior no la cambia: lo que la nota baja pasa a saldo a favor del proveedor. El reporte lista las unidades saldadas cuya inicial congelada es mayor que cero, con esa inicial (`ReportQueryServiceImpl`), y sus totales suman esas iniciales. Las imputaciones que ya saldaban la toman de V127, que la rellena con el valor de hoy; en `dev`, si hubo una nota después de saldar, la inicial rellenada ya viene reducida. Lo prueba `ReportsIntegrationTests`, con un saldado y una nota posterior que conserva su inicial.
+
 ## 7. Exportable de stock (D-234)
 
 `GET /api/v1/reports/stock?companyId=&commercialBrandId=` con `Accept` de Excel: un documento generado (D-106), reutilizado si es idéntico. Encabezados y orden exactos de la plantilla, hoja `STOCK`. El día de la empresa entra en el pedido, porque la brecha cambia de un día a otro sin que nada más cambie, y el alcance incluye `stock.ver_costos`: quien no ve montos nunca recibe el archivo de quien sí.
@@ -98,7 +100,7 @@ Solo unidades saldadas del canal de dealers cuya diferencia es `INICIAL_DEL_CLIE
 | 41 | VALOR DEL VEHÍCULO | §9.6 (monto) |
 | 42, 43 | OPERACIÓN DE PAGO, FECHA DE PAGO | Pagos vigentes que alcanzan la unidad: unidos por `/`, y la fecha del primero (guía) |
 | 44 | MONTO DE PAGO | Suma de esos pagos completos, repetida en las filas del bloque (guía) (monto) |
-| 45 | DIFERENCIA POR INICIAL | Solo si es `INICIAL_DEL_CLIENTE` (monto) |
+| 45 | DIFERENCIA POR INICIAL | Solo si es `INICIAL_DEL_CLIENTE` (monto). Desde D-248 (decidida el 10/11/2026; se construye con V127), la inicial congelada al saldar, que una nota posterior no achica (§6); el exportable sube a la versión 2 de su diseño (`STOCK_LAYOUT`), para que no se sirva un archivo generado con la regla anterior |
 | 46, 47 | MONEDA, TC | La factura |
 | 48, 49 | PRECIO DE COMPRA PEN, VALOR CONTABLE PEN | En la moneda funcional de la empresa (D-159) (monto) |
 | 50 | PROPIETARIO | A quién se traspasó (D-223); sin traspaso, la razón social de la empresa. Una unidad En traspaso dice la empresa hasta que se registra su traspaso (D-239) |
