@@ -45,6 +45,19 @@ Quedaron en el diccionario v1.53 antes de abrir la construcción: D-247, la pant
 - **Por pagar del proveedor** (`/payables`) trae `balanceSources` arriba, filtradas por la moneda pedida; el saldo (`/balance`), `sources` en cada moneda.
 - **La tabla de vehículos de la factura** junta VIN y placa; marca y modelo con año, color y marca comercial; los montos; y estado y pago, para que «Pendiente» entre a 1440 px.
 
+## Después, el mismo día: la revisión 77
+
+El último pedido del responsable, con capturas de `dev` en una pantalla ancha (frontend `cfd96827`, `27fcb725`, `7368994f`, `015d9c25`, `a87e7907` y `c166c27b`, merge `3e53ee53`):
+
+- **«Cómo se paga» en una fila** desde que la tarjeta mide 80rem: el método (3), la cuenta (5), la fecha (2) y la operación (2), y debajo la constancia (6) y el tipo de cambio (6); entre 56rem y 80rem siguen las dos filas de la revisión 75.
+- **La caja de la cuenta, más corta:** «BCP Soles PEN ···0045»; la lista conserva el banco.
+- **La retención** con sus campos y su desglose en una fila, el desglose a la derecha.
+- **Cada monto de un desglose** en la línea de su etiqueta, con un estilo compartido por toda la aplicación.
+- **«Quitar la nota»,** que la vacía y devuelve el foco a «Agregar una nota».
+- **El saldo nombra su nota** como «la nota NC01-50», y no «NC NC01-50» (frontend `376580dc`, merge `36206d93`).
+
+Se verificó con las unitarias de lo tocado, las e2e a 1920, 1440 y 1024 px, la retención sin violaciones de accesibilidad y las imágenes que el desglose movió, regeneradas y miradas una por una. Al día siguiente, la revisión 78 (merge `0f6d55db`) y la tasa de la factura en cada aplicación (D-213; merges `aaff72d1` y `b22bbb79`) siguieron sobre el mismo formulario y la ficha del pago ([contextos/procurement.md](../contextos/procurement.md), sección 6).
+
 ## Cómo se verificó
 
 - **Backend:** la suite completa en una base local nueva, con las dos cuentas: 3 996 pruebas en la fase 3 y 4 021 en la fase 4, 0 fallos y 2 omitidas, con `ModularityTests` en verde. El OpenAPI publica cada campo nuevo con el nombre que lee el frontend.
@@ -94,7 +107,7 @@ Quedaron en el diccionario v1.53 antes de abrir la construcción: D-247, la pant
 
 Cada punto está en los pendientes del [orden de implementación](../orden-de-implementacion-millennium-mobility.md) o de [contextos/procurement.md](../contextos/procurement.md):
 
-- **En curso: el último pedido del responsable del 10/11/2026,** la fila de la retención con su desglose a la derecha, «Cómo se paga» en una fila de cuatro en una tarjeta ancha (desde 80rem) con un activador de la cuenta más corto, y «Quitar» para la nota (revisión 77 de `DESIGN.md`, rama `fix/payment-how-wide`). No está construido.
+- ~~**En curso: el último pedido del responsable del 10/11/2026,** la fila de la retención con su desglose a la derecha, «Cómo se paga» en una fila de cuatro en una tarjeta ancha (desde 80rem) con un activador de la cuenta más corto, y «Quitar» para la nota (revisión 77 de `DESIGN.md`, rama `fix/payment-how-wide`). No está construido.~~ Construido el mismo día (merge `3e53ee53`; abajo).
 - **La sonda en vivo** (`e2e-live`) está desactualizada más allá de este trabajo: su fuente de tipos de cambio, `Sonda …`, se rechaza y tiene que ser SBS, BCRP u otra admitida; `procurement.live` espera «Desactivar» como botón, que está en el menú ⋮; y el paso 1 de `supplier-payments.live` lee el pedido `multipart` del formulario anterior a D-246. Se pone al día como una tarea propia.
 - **Las imágenes de referencia** de la ficha del pago, de Por pagar y de la lista de pagos ya estaban desactualizadas en `develop` antes de este trabajo: se regeneran juntas.
 - **La tabla de unidades de la ficha de la nota** todavía se desplaza de lado a 1440 px.
