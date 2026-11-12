@@ -56,7 +56,7 @@ El último pedido del responsable, con capturas de `dev` en una pantalla ancha (
 - **«Quitar la nota»,** que la vacía y devuelve el foco a «Agregar una nota».
 - **El saldo nombra su nota** como «la nota NC01-50», y no «NC NC01-50» (frontend `376580dc`, merge `36206d93`).
 
-Se verificó con las unitarias de lo tocado, las e2e a 1920, 1440 y 1024 px, la retención sin violaciones de accesibilidad y las imágenes que el desglose movió, regeneradas y miradas una por una. Al día siguiente, la revisión 78 (merge `0f6d55db`) y la tasa de la factura en cada aplicación (D-213; merges `aaff72d1` y `b22bbb79`) siguieron sobre el mismo formulario y la ficha del pago ([contextos/procurement.md](../contextos/procurement.md), sección 6).
+Se verificó con las unitarias de lo tocado, las e2e a 1920, 1440 y 1024 px, la retención sin violaciones de accesibilidad y las imágenes que el desglose movió, regeneradas y miradas una por una. Al día siguiente, la revisión 78 (merge `0f6d55db`) y la tasa de la factura en cada aplicación (D-213; merges `aaff72d1` y `b22bbb79`) siguieron sobre el mismo formulario y la ficha del pago, y después las revisiones 79 a 85 y la ayuda de la retención (merges `31b51341` a `28da7f89`) ([contextos/procurement.md](../contextos/procurement.md), sección 6). La tasa dejó a Por pagar respondiendo 500 en `dev` hasta el backend `80a4fb23` ([Por pagar respondió 500](2026-11-11-por-pagar.md)).
 
 ## Cómo se verificó
 
@@ -109,9 +109,9 @@ Cada punto está en los pendientes del [orden de implementación](../orden-de-im
 
 - ~~**En curso: el último pedido del responsable del 10/11/2026,** la fila de la retención con su desglose a la derecha, «Cómo se paga» en una fila de cuatro en una tarjeta ancha (desde 80rem) con un activador de la cuenta más corto, y «Quitar» para la nota (revisión 77 de `DESIGN.md`, rama `fix/payment-how-wide`). No está construido.~~ Construido el mismo día (merge `3e53ee53`; abajo).
 - **La sonda en vivo** (`e2e-live`) está desactualizada más allá de este trabajo: su fuente de tipos de cambio, `Sonda …`, se rechaza y tiene que ser SBS, BCRP u otra admitida; `procurement.live` espera «Desactivar» como botón, que está en el menú ⋮; y el paso 1 de `supplier-payments.live` lee el pedido `multipart` del formulario anterior a D-246. Se pone al día como una tarea propia.
-- **Las imágenes de referencia** de la ficha del pago, de Por pagar y de la lista de pagos ya estaban desactualizadas en `develop` antes de este trabajo: se regeneran juntas.
+- **Las imágenes de referencia** de la ficha del pago, de Por pagar y de la lista de pagos ya estaban desactualizadas en `develop` antes de este trabajo: se regeneran juntas. Las de Por pagar se regeneraron el 11/11/2026 con la revisión 84.
 - **La tabla de unidades de la ficha de la nota** todavía se desplaza de lado a 1440 px.
-- **Por pagar a 1024 px** se desplaza de lado y corta «Acciones».
+- ~~**Por pagar a 1024 px** se desplaza de lado y corta «Acciones».~~ Resuelto el 11/11/2026 por la revisión 84 (merge `0326ccb1`): la fecha va bajo la antigüedad y las celdas son compactas.
 - **La ficha del proveedor a 375 px:** «Pagar lo pendiente» y «Ver pagos» no ocupan el ancho.
 - **Dos clases pasan de 300 líneas:** `SupplierPaymentViewFactory` (356) y `SupplierPaymentQueryServiceImpl` (366).
 - **El registro de un pago con saldo** no tiene una prueba propia de sus sentencias.
