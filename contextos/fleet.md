@@ -762,10 +762,22 @@ Del análisis crítico de la logística de punta a punta que pidió el responsab
 
 **Lo que queda:** integrar las dos ramas; la pregunta de la unidad entregada que vuelve al proveedor (sección 7); y la sonda en vivo, que no recorre la anulación de una unidad entregada.
 
+### q) El inventario de equipamiento (D-254, 14/11/2026)
+
+Lo construyó un integrante del equipo en las ramas `feature/022-equipment-models`, sin una decisión previa; se revisó, se corrigió y se integró en `develop` el 14/11/2026 (merges backend `dc8dcd3e` y frontend `ef9727a5`), con V131 a V134. `fleet` posee una tabla más, `fleet_equipments` (diccionario §11.4): cada equipo físico en el almacén de una empresa, con Row Level Security, en Logística › Inventario de equipamiento (`/fleet/equipments`). Lee el tipo y el modelo de `vehiclecatalog` y el proveedor de `procurement` por sus fachadas (`EquipmentSuppliers`, implementada en `procurement`).
+
+- **Permisos.** `stock.crear_equipamiento`, `stock.editar_equipamiento` y `stock.cambiar_estado_equipamiento` (V133) sobre toda la empresa; leer es `stock.ver`, y solo en las empresas donde la cuenta lo tiene: un equipo de otra empresa responde `404 EQUIPMENT_NOT_FOUND` aunque la cuenta tenga ahí otro rol (D-99).
+- **Lo que corrigió la revisión.** Sin `DELETE` (§2.5); los rechazos propios responden `422` sin el sufijo `_BAD_REQUEST` que había cambiado el ensamblador compartido; el proveedor es de la empresa del equipo (`EQUIPMENT_SUPPLIER_OTHER_COMPANY` y la llave foránea compuesta de V132); registrar un equipo no fija el código de su tipo (D-185); un duplicado que paran los índices únicos revierte la transacción; editar un tipo sin `requiresTelematics` conserva el guardado. En el frontend, la edición va por `PATCH`, la única que el backend mapea, y las pantallas de `fleet` leen los tipos, los modelos y los proveedores por las fachadas de `vehiclecatalog` y `procurement`.
+- **Pruebas.** Backend: `EquipmentsIntegrationTests` (el alcance de `stock.ver`, el proveedor de la misma empresa, el permiso de registrar y un serial tomado), `EquipmentQueryServiceImplTests`, `EquipmentCommandServiceImplTests`, `EquipmentsControllerTests`, y `fleet_equipments` en `RowLevelSecurityMigrationTests` y sus tres permisos en `PermissionsMigrationTests`.
+
+**Lo que queda:** los dos puntos abiertos de la sección 7.
+
 ## 7. Preguntas abiertas
 
 | Pregunta | Dónde se lleva |
 |---|---|
+| ¿Cómo se enlaza el inventario de equipamiento con «Instalar equipo» de la habilitación? Hoy la instalación guarda un serial escrito a mano y ningún camino pasa un equipo del inventario a Instalado ni escribe su `current_vehicle_id` | El responsable, antes de que la habilitación use el inventario (diccionario §14, D-254) |
+| ¿El serial, el IMEI y el ICCID de un equipo son únicos en todo el sistema, como hoy, o en cada empresa? Hoy un serial de otra empresa se rechaza con `409` aunque la cuenta no vea ese equipo | El responsable (diccionario §14, D-254) |
 | ¿Cómo sale del Inventario una unidad que se entregó a un cliente, volvió (Puesta a punto) y después el proveedor se la llevó? Desde D-250 no se anula, porque tuvo un contrato, y queda «Devuelta al proveedor» en Puesta a punto, sin un camino que la saque de la flota. Hoy es un caso que nadie reportó | El responsable, si aparece: un camino de salida a Inactivo por devolución al proveedor, o la anulación de una unidad sin contrato vigente cuando exista ventas (13/11/2026) |
 | ~~¿Dónde nace la unidad: en Inventario antes de la factura, o al registrar la factura?~~ | Resuelto el 01/11/2026 por D-153 y construido el 03/11/2026: al registrar la factura, que la vincula si ya estaba en Inventario ([mapa](../mapa-de-contextos-millennium-mobility.md), decisión 5; sección 5) |
 | ~~¿Qué caminos se cargan además de los del ejemplo? Hoy ninguno lleva a Siniestro ni a Inactivo~~ | Resuelta por D-221 (V112, 05/11/2026): los caminos del flujograma están cargados, con Choque hacia Siniestro y las salidas de recuperación hacia Inactivo; y desde V123 (D-239) la salida de la flota pasa por En traspaso. Faltan sus tolerancias (D-240; sección 6 c) |
