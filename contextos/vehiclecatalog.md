@@ -20,6 +20,7 @@
 | `colors` | Los colores | §7.4 |
 | `equipment_types` | Lo que se instala en una unidad: `GPS`, `PANTALLA` | §7.5 |
 | `equipment_type_vehicle_types` | A qué tipos de vehículo aplica cada equipamiento | §7.5, D-73 |
+| `equipment_models` | El modelo comercial de cada tipo de equipamiento —«Fleet 790» del GPS—, con nombre único en su tipo. Desde V131, 14/11/2026 | §7.5, D-254 |
 
 Las columnas están en el diccionario y no se repiten aquí.
 
@@ -30,7 +31,7 @@ Las columnas están en el diccionario y no se repiten aquí.
 | La marca comercial: Lizzo, Lima Bikes | `organization` (§6.3) | Es bajo qué nombre coloca Millennium la unidad, no quién la fabrica. Una moto TVS King vendida bajo Lima Bikes usa las dos tablas |
 | Las unidades de un modelo | `fleet` (§8.1) | `vehiclecatalog` solo sabe si un modelo tiene alguna (`has_units`), porque `fleet` se lo avisa (D-107). Nunca lee las tablas de `fleet` |
 | Los estados del vehículo, los motivos y los tipos de documento | `fleet` (mapa §6.4) | Son de los bloques 6 y 9, no del 4 |
-| El equipamiento instalado en una unidad | `fleet`, en el paso 9 (§11.4) | Aquí está solo el tipo de equipamiento |
+| El equipamiento instalado en una unidad, y el equipo físico en el almacén de una empresa | `fleet` (§11.4, D-254) | Aquí están solo el tipo y el modelo de equipamiento; `fleet` los lee por la fachada |
 | Si una unidad requiere instalar pantalla | La regla combina dos datos de aquí (§7.5) | La responderá un miembro de la fachada, con el paso 9 (mapa §5.1) |
 | La placa | `fleet` (§7.6) | No tiene tabla: es una columna de la unidad |
 | Las tarifas por kilómetro de un modelo | Ventas, fuera del alcance (§7.3) | Le apuntarán al modelo cuando lleguen |
