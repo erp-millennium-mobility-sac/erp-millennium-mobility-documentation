@@ -1,6 +1,6 @@
 # Despliegue del backend en un Droplet de DigitalOcean
 
-**Actualizado:** 20/10/2026 · **Evidencias al:** 20/10/2026 (auditoría de solo lectura en el Droplet) · **Estado:** alternativa a App Platform (decisión del 20/10/2026); servidor preparado, sin ningún despliegue · **Fuente:** el manual técnico v5.0 del 18/10/2026 (capturas y salidas de terminal del operador) contrastado con el código de `develop` del backend (`6d73031`). Si este documento y el código no coinciden, manda el código; si el README del backend y este documento no coinciden en cómo se despliega, ver la [§1](#1-qué-se-está-montando-y-qué-ya-existe).
+**Actualizado:** 15/11/2026 (los inventarios de antes de V39 a V43, que se quitaron del backend ese día, en «Algunas migraciones se detienen a propósito») · 20/10/2026 · **Evidencias al:** 20/10/2026 (auditoría de solo lectura en el Droplet) · **Estado:** alternativa a App Platform (decisión del 20/10/2026); servidor preparado, sin ningún despliegue · **Fuente:** el manual técnico v5.0 del 18/10/2026 (capturas y salidas de terminal del operador) contrastado con el código de `develop` del backend (`6d73031`). Si este documento y el código no coinciden, manda el código; si el README del backend y este documento no coinciden en cómo se despliega, ver la [§1](#1-qué-se-está-montando-y-qué-ya-existe).
 
 Este documento junta tres cosas: cómo quedó configurado el Droplet, lo que hay que saber para configurarlo (o repetirlo en otro servidor) y las lecciones de la configuración. Los comandos en orden, fase por fase y con su comprobación, están en [droplet-paso-a-paso.md](droplet-paso-a-paso.md). No dice que algo funcione si no se vio funcionar: cada estado lleva su evidencia.
 
@@ -368,7 +368,7 @@ exit 1
 
 **El JAR se revierte, la base no.** Volver a la versión anterior no deshace una migración de Flyway. Si una migración no es compatible hacia atrás, el JAR anterior puede no arrancar (`ddl-auto: validate` compara las entidades con el esquema). Antes de un despliegue con migraciones: respaldo comprobado, y cambios en dos tiempos (*expand and contract*).
 
-**Algunas migraciones se detienen a propósito.** V39, V40, V41 y V43 paran si una fila guardada rompe su regla; el README del backend trae los inventarios de solo lectura que se corren antes. Una migración nueva de ese tipo se trata igual.
+**Algunas migraciones se detienen a propósito.** V39, V40, V41 y V43 paran si una fila guardada rompe su regla; el README del backend ~~trae~~ traía los inventarios de solo lectura que se corren antes, hasta que se quitaron el 15/11/2026, porque toda base ya pasó esas migraciones (backend `0ca3b952` y `a5d2479b`, merge `43542240`); una base nueva migra desde cero sin filas que las detengan. Una migración nueva de ese tipo se trata igual: trae su inventario mientras haya bases que no la pasaron.
 
 **El primer arranque es lento.** Flyway corre todas las migraciones, el ubigeo de Perú incluido, antes de que el servidor escuche. Una sonda de salud que espera 30 s da un falso fallo.
 
