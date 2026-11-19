@@ -1,6 +1,6 @@
 # Mapa de contextos objetivo — ERP Millennium Mobility
 
-**Estado:** propuesta para validar por el responsable (18/11/2026). Hasta que se apruebe, rige el [mapa de contextos](mapa-de-contextos-millennium-mobility.md) vigente; cuando una fase del [plan de migración](plan-de-migracion-a-los-contextos-objetivo-2026-11-18.md) se integra, su parte pasa al mapa vigente y deja de ser propuesta aquí.
+**Estado:** propuesta para validar por el responsable (18/11/2026; revisada el 19/11/2026 con la auditoría del plan). Hasta que se apruebe, rige el [mapa de contextos](mapa-de-contextos-millennium-mobility.md) vigente; cuando una fase del [plan de migración](plan-de-migracion-a-los-contextos-objetivo-2026-11-18.md) se integra, su parte pasa al mapa vigente y aquí se queda, con la marca «Integrada en la fase n (fecha)».
 
 **Fuente:** el código de `develop` (backend `ed5adc12` y frontend), el diccionario de datos v1.62, el mapa de contextos vigente y *Domain-Driven Design* de Eric Evans (el «libro azul»). Las referencias «cap. n» son capítulos de ese libro.
 
@@ -58,16 +58,16 @@ En un monolito modular ninguna frontera exige otra base de datos ni otro desplie
 - **Lenguaje.** Unidad, camino, motivo, tolerancia, puerta, habilitación, hito, Fuera de tienda, Listo para entrega.
 - **Agregados y tablas.** `Vehicle` con su historial y sus lecturas (`vehicles`, `vehicle_status_history`, `vehicle_mileage_readings`), `VehicleStatus` y `StatusChangeReason`, `VehicleDocumentType` y `VehicleDocument`, `VehicleEquipment` (la instalación en la unidad), `VehicleKey`, `VehicleTaxDeclaration` y la configuración de qué equipo es requisito de la unidad (D-260, por construir).
 - **No es suyo.** El inventario de dispositivos (→ `equipment`), los fondos y las cesiones (→ `financing`), el costo y el pago de la unidad (→ `procurement`), la traducción del libro de stock (→ `legacyimport`) y el contrato (→ `leasing`).
-- **Ofrece.** `FleetContextFacade`: el alta y el vínculo de las unidades de una factura, las unidades por id, el bloqueo de unidades, la anulación de las devueltas, la unidad que la sesión ve (`fetchSeenUnit`, para el costo que sirve `procurement`), las unidades que pide `financing` —por id, por identificador público y por placas, con y sin candado— y las transiciones comerciales que llamará `leasing`.
+- **Ofrece.** `FleetContextFacade`: el alta y el vínculo de las unidades de una factura, las unidades por id, el bloqueo de unidades, la anulación de las devueltas, la unidad que la sesión ve (`fetchSeenUnit`, para el costo que sirve `procurement`), las unidades que pide `financing` —por id, por identificador público y por placas, con y sin candado—, `fetchReportFacts` (lo que las reglas de `fleet` dicen de las unidades, para `reporting`) y las transiciones comerciales que llamará `leasing`.
 - **Declara puertos.** `UnitPurchases` reducido (valor cero, línea vigente, unidad devuelta, y el estado de pago con su fecha base, sin montos, para la brecha de días), `UnitContracts` (lo implementa `leasing`), `UnitFundAssignments` (la cesión abierta y, con la opción A de la fase 4, si la sesión puede ceder la unidad; lo implementa `financing`) y `UnitTitleTransfers` (lo implementará `titletransfer`).
-- **Implementa puertos.** `EquipmentUnits` de `equipment` (la placa de la unidad donde está un dispositivo) y, desde la fase 8 del plan, `VehicleModelUsage` de `vehiclecatalog` y `EquipmentTypeUsage` de `equipment`.
+- **Implementa puertos.** `EquipmentUnits` de `equipment` (la placa de la unidad donde está un dispositivo), `CurrencyUsage` de `reference` (el costo de las instalaciones), `ConfidentialChangeLogFieldsPort` de `audit` y, desde la fase 8 del plan, `VehicleModelUsage` de `vehiclecatalog` y `EquipmentTypeUsage` de `equipment`.
 - **Por qué.** La habilitación es una invariante del estado: Disponible exige la habilitación completa, y perder un requisito saca a la unidad de Disponible en la misma operación (D-164, D-260); eso se cumple en una transacción, así que vive en el mismo contexto que el estado (cap. 6). Por lo mismo, qué equipo es requisito es política de la habilitación y es de `fleet`, no del catálogo de equipos (D-260). Los caminos y sus permisos como datos (D-19, D-100) son un *Knowledge Level* (cap. 16).
 
 ### 3.2 `leasing` — Contratos de leasing (bloque 12)
 
 - **Responsabilidad.** El contrato con sus condiciones (precio, plazo, inicial, cuota, tasa y frecuencia), la firma, la asignación de la unidad, la entrega, el **cronograma**, la asesora (§5.11 del diccionario), la resolución por incumplimiento y el término.
 - **Lenguaje.** Contrato Vigente, Completado o Resuelto (D-253), cuota, cronograma, asesora, resolución. Nunca «venta» al firmar (D-218, D-251): por eso el paquete se llama `leasing` y no `sales`.
-- **Agregados previstos.** `Contract` con su cronograma versionado (un refinanciamiento crea una versión nueva sin pisar la anterior) y `AdvisorAssignment` (§5.11).
+- **Agregados previstos.** `Contract` con su cronograma versionado (un refinanciamiento crea una versión nueva sin pisar la anterior) y `AdvisorAssignment` (§5.11). El dueño de `advisor_assignments` está por decidir (§7, punto 8): el diccionario la pone en el bloque 3b, de `organization` e `iam`, aunque se construya con el bloque 12 (§3, ajuste 2). Hasta esa decisión manda el diccionario.
 - **Por qué.** Es el *Core Domain* de un negocio de leasing: el compromiso de donde salen el ingreso y el riesgo (cap. 15). El cronograma es lo que el cliente se comprometió a pagar, así que vive con el contrato; lo que efectivamente pagó es de la cobranza. «El vehículo dura; los contratos pasan» (§5.11): son dos líneas de tiempo, y por eso el contrato no se modela dentro de `fleet`.
 
 ### 3.3 `customers` — Clientes (bloque 12)
@@ -89,20 +89,20 @@ En un monolito modular ninguna frontera exige otra base de datos ni otro desplie
 
 ### 3.6 `procurement` — Compras y cuentas por pagar
 
-- **Responsabilidad.** Dos módulos (cap. 5) dentro de un contexto:
+- **Responsabilidad.** Dos lenguajes dentro de un contexto, que hoy comparten paquetes; separarlos en dos *Modules* (cap. 5) no es parte del plan de migración:
   - **Compras:** proveedores con sus contactos, tipos de orden, plantillas con sus documentos y órdenes de compra con su PDF.
   - **Cuentas por pagar:** facturas, notas de crédito, pagos con sus aplicaciones, imputaciones y usos del saldo, y Por pagar.
-- **Ofrece.** Una fachada nueva, `procurement::acl`, con el costo de compra de cada unidad por lote, para `reporting` y, más adelante, la conciliación de la inicial contra el contrato (D-31); y la ruta `GET /vehicles/{id}/purchase-cost` para la ficha de la unidad. Es su *Open Host Service* con *Published Language* (cap. 14), pequeño: sin el detalle de los usos del saldo.
-- **Implementa puertos.** `UnitPurchases` de `fleet`, `CurrencyUsage` de `reference`, `BankAccountUsage` de `organization` y `EquipmentSuppliers` de `equipment`.
+- **Ofrece.** Una fachada nueva, `procurement::acl`, con el costo de compra de cada unidad por lote, para `reporting` y, más adelante, la conciliación de la inicial contra el contrato (D-31); y la ruta `GET /vehicles/{id}/purchase-cost` para la ficha de la unidad. Es su *Open Host Service* con *Published Language* (cap. 14), pequeño: sin el detalle de los usos del saldo. Mientras viva la carga inicial, `procurement::acl` lleva además los miembros de migración que llama `legacyimport` (fase 3 del plan).
+- **Implementa puertos.** `UnitPurchases` de `fleet`, `CurrencyUsage` de `reference`, `BankAccountUsage` de `organization`, `EquipmentSuppliers` de `equipment` y `ConfidentialChangeLogFieldsPort` de `audit`.
 - **Por qué un contexto y no dos.** La factura se compara con la orden y el anticipo pagado a una orden pasa a su factura (D-198): son invariantes compartidas (cap. 6). Partirlo en dos contextos agregaría traducción sin dar autonomía a un solo equipo; dos *Modules* hacen explícito el lenguaje de cada parte.
 
 ### 3.7 `equipment` — Equipamiento
 
 - **Responsabilidad.** Los dispositivos —GPS y pantalla— con su serie, IMEI, ICCID, sus estados (`AVAILABLE`, `INSTALLED`, `MAINTENANCE`, `DISCARDED`), sus tipos y modelos, su proveedor y, después, el monitoreo del GPS desde su compra hasta su instalación.
-- **Agregados y tablas.** `Equipment` (`fleet_equipments`, hoy en `fleet`), `EquipmentType` (`equipment_types`, `equipment_type_vehicle_types`) y `EquipmentModel` (`equipment_models`), hoy en `vehiclecatalog`.
-- **Depende de.** `organization` (la empresa y la ubicación de cada dispositivo) y `vehiclecatalog` (los tipos de vehículo y lo que la habilitación necesita de cada modelo).
-- **Ofrece.** Los tipos de equipo, a qué tipo de vehículo aplica cada uno y si un modelo ya lo trae de fábrica, que lee la habilitación —qué equipo se exige lo decide `fleet` (D-260)— y, cuando llegue el monitoreo, la instalación y el retiro de un dispositivo que pide `fleet`, con la regla de la fase 2 §2.6 del plan: la instalación de `fleet` es la fuente de verdad, y solo `fleet` instala y retira.
-- **Declara puertos.** `EquipmentSuppliers` (lo implementa `procurement`) y `EquipmentUnits` (lo implementa `fleet`), así `equipment` no depende de `fleet`.
+- **Agregados y tablas.** `Equipment` (`fleet_equipments`, hoy en `fleet`), `EquipmentType` (`equipment_types`, `equipment_type_vehicle_types`), `EquipmentBrand` (`equipment_brands`) y `EquipmentModel` (`equipment_models`), hoy en `vehiclecatalog`. Las marcas de equipo llegan con la rama `refactor/remove-equipment-type-flags` (V139), que se integra con D-260 antes de la fase 2; `EquipmentModel` las lee por su repositorio, así que pasan juntas.
+- **Depende de.** `organization` (la empresa y la ubicación de cada dispositivo), `vehiclecatalog` (los tipos de vehículo y lo que la habilitación necesita de cada modelo) y `documents` (las exportaciones del inventario y de los catálogos).
+- **Ofrece.** Los tipos de equipo, a qué tipo de vehículo aplica cada uno y si un modelo ya lo trae de fábrica, que lee la habilitación —qué equipo se exige lo decide `fleet` (D-260)— y, cuando llegue el monitoreo, la instalación y el retiro de un dispositivo que pide `fleet`, con la regla que fija la decisión del diccionario que registra la fase 2 del plan: la instalación de `fleet` es la fuente de verdad, y solo `fleet` instala, reemplaza y retira.
+- **Declara puertos.** `EquipmentSuppliers` (lo implementa `procurement`), `EquipmentUnits` y, desde la fase 8 del plan, `EquipmentTypeUsage` (los dos los implementa `fleet`), así `equipment` no depende de `fleet`.
 - **Por qué.** Lenguaje y actores propios (taller, monitoreo). Hoy el inventario todavía no está unido a la instalación (`Equipment#installOnVehicle` no tiene quién lo llame): separarlo antes de construir el monitoreo cuesta mucho menos que después.
 
 ### 3.8 `financing` — Financiamiento
@@ -110,29 +110,32 @@ En un monolito modular ninguna frontera exige otra base de datos ni otro desplie
 - **Responsabilidad.** Los fondos, las cesiones de unidades en garantía y la carga de la lista de garantía mobiliaria.
 - **Agregados y tablas.** `Fund` (`funds`) y `VehicleFundAssignment` (`vehicle_fund_assignments`), hoy en `fleet`.
 - **Implementa.** El puerto `UnitFundAssignments` de `fleet`, con el que la anulación de una unidad sabe si tiene una cesión abierta (D-182) y, con la opción A de la fase 4, la ficha sabe si la sesión puede cederla.
-- **Depende de.** `fleet` (las unidades y su candado al ceder y al cerrar, en la misma transacción), `organization`, `iam` (quién registró una cesión), `audit` (el cierre y la carga escriben la bitácora) e `imports` (el lote de la carga de garantía).
+- **Depende de.** `fleet` (las unidades y su candado al ceder y al cerrar, en la misma transacción), `organization`, `iam` (quién registró una cesión), `audit` (el cierre y la carga escriben la bitácora), `imports` (el lote de la carga de garantía) y `documents` (la exportación de los fondos).
 - **Por qué.** Otro lenguaje (fondo, cesión, fideicomiso, garantía), otro actor (Contabilidad) y una sola invariante que cruza, resuelta por un puerto. Más adelante puede recibir de la cobranza los flujos que se ceden a un fondo.
 
 ### 3.9 `organization` — Organización
 
 - **Responsabilidad.** Empresas, marcas comerciales, sedes, ubicaciones, las cuentas bancarias de la empresa y los colaboradores con su historial de ingresos, **incluidas su salida y su regreso**, que hoy ordena `iam`.
 - **Declara puertos.** `EmployeeAccountConsequences`, que implementa `iam`: bloquear la cuenta, la guardia del último superadministrador y las consecuencias de la salida y el regreso sobre la cuenta. Las negativas de la operación son de `organization`. Y `BankAccountUsage`, que implementan `procurement` y, después, `collections`: si una cuenta está en uso, para que no cambie su número ni su moneda (ORG-R65).
+- **Implementa puertos.** `AuditCompanyLookupPort` de `audit`: la empresa y su zona, para la bitácora y las cargas.
 - **Por qué.** El caso de uso pertenece al contexto dueño del término (cap. 4 y 14), y el cambio entra por la raíz `Employee` (cap. 6). Las cuentas bancarias se quedan: son de lo que la empresa tiene, y las van a usar los pagos y los cobros, dos contextos hermanos y opuestos; cada uno responde por un puerto, como `CurrencyUsage` (cap. 14 y 16).
 
 ### 3.10 `iam` — Identidad y acceso
 
 - **Responsabilidad.** Las cuentas de los colaboradores, sus credenciales y sesiones, el freno del inicio de sesión, la activación, los roles, los permisos, las asignaciones y los bloqueos.
-- **Por qué.** Es un *Generic Subdomain* (cap. 15): se aísla y se congela su alcance. No se estira para los clientes, porque su modelo exige que toda cuenta pertenezca a un colaborador (D-38). Comparte con todos un *Shared Kernel* pequeño: `AccessScope` y `PermissionCodes`.
+- **Implementa puertos.** `EmployeeAccountConsequences` de `organization` (fase 7 del plan), `AuditActorLookupPort` de `audit` (el nombre de una cuenta) y los puertos del alcance de `shared`: `CurrentAccessScope`, `ProtectedAccounts` y `PendingAccountActivations`.
+- **Por qué.** Es un *Generic Subdomain* (cap. 15): se aísla y se congela su alcance. No se estira para los clientes, porque su modelo exige que toda cuenta pertenezca a un colaborador (D-38). Su vocabulario del alcance, `AccessScope` y `PermissionCodes`, vive en `shared`, el *Shared Kernel* de todos.
 
 ### 3.11 `reference` — Datos de referencia (hoy `location`)
 
 - **Responsabilidad.** Países con su estructura territorial, divisiones, direcciones dentro de su dueño, monedas, tasas de cambio y tipos de documento tributario.
+- **Declara puertos.** `CurrencyUsage`, que implementan `procurement` y `fleet` y, con el bloque 12, `leasing` y `collections`: si algún monto usa una moneda, antes de cambiar sus decimales (LOC-R05).
 - **Por qué.** Su *Published Language* son los códigos ISO del país y de la moneda (D-13). El nombre `location` no describe monedas ni tasas y choca con `Location` de `organization`; renombrarlo mejora el lenguaje, pero cambia muchos archivos, así que es opcional.
 
 ### 3.12 `vehiclecatalog` — Catálogo de vehículos
 
 - **Responsabilidad.** Tipos de vehículo, marcas, modelos y colores.
-- **Cambia.** Entrega los tipos y modelos de equipo a `equipment`, y pregunta por un puerto si un modelo ya tiene unidades, como hace `CurrencyUsage`, en vez de guardar la bandera que hoy le escribe `fleet`.
+- **Cambia.** Entrega los tipos, las marcas y los modelos de equipo a `equipment`, y pregunta por un puerto si un modelo ya tiene unidades, como hace `CurrencyUsage`, en vez de guardar la bandera que hoy le escribe `fleet`.
 
 ### 3.13 Plataforma: `documents`, `notifications`, `audit` e `imports`
 
@@ -149,15 +152,16 @@ En un monolito modular ninguna frontera exige otra base de datos ni otro desplie
 ### 3.15 `legacyimport` — Migración inicial (temporal)
 
 - **Responsabilidad.** La traducción del libro de stock de 52 columnas: leerlo, agruparlo y llamar a los servicios de `fleet` y de `procurement`.
+- **Depende de.** `fleet` y `procurement` (sus servicios), `organization`, `reference` y `vehiclecatalog` (la empresa, la marca, la sede, la moneda, el modelo y el color, que resuelve por nombre) e `imports` (el lote y el libro).
 - **Por qué.** Es la *Anticorruption Layer* que el libro describe para un sistema heredado (cap. 14): el modelo heredado no contamina el nuevo. Las reglas que sí son de cada contexto —la factura migrada sin la regla de los 20 días (D-177), la unidad registrada en su estado (D-202)— se quedan en el contexto dueño y se exponen por su fachada. El módulo se borra después de la puesta en marcha; quedan los datos y los caminos `MIGRACION_INICIAL`.
 
 ### 3.16 `shared` — Núcleo compartido
 
-`Result` y `ApplicationError`, `PageQuery` y `PageResult`, `AccessScope` y `PermissionCodes`, las bases de persistencia, `SingleInstanceRun`, `DeadlockRetry` y `SpreadsheetExporter`. Un *Shared Kernel* tiene que ser pequeño, estable y acordado (cap. 14): por eso salen la bitácora y las cargas.
+`Result` y `ApplicationError`, `PageQuery`, `PageResult` y `TextIdentifier`, `AccessScope` con sus alcances y `PermissionCodes`, los puertos del alcance (`CurrentAccessScope`, `ProtectedAccounts` y `PendingAccountActivations`, que implementa `iam`, y `SystemAccessScope`, que implementa el propio `shared`), `@PermissionRequired`, las bases de persistencia, `JdbcDataVersions`, `SingleInstanceRun`, `DeadlockRetry` y `SpreadsheetExporter`. `ProtectedAccounts` y `PendingAccountActivations` son vocabulario de `iam`: se quedan mientras `organization` calcule las acciones de cuenta de cada fila de Colaboradores. Un *Shared Kernel* tiene que ser pequeño, estable y acordado (cap. 14): por eso salen la bitácora y las cargas.
 
 ### 3.17 `customerportal` — Portal del cliente (bloque 12)
 
-La aplicación del cliente: su cronograma, sus pagos, los documentos de su unidad marcados como visibles (`is_visible_to_customer`) y sus trámites. No tiene modelo propio: consume lo que publican los demás contextos, y lleva su propia identidad de cliente, separada de `iam`.
+La aplicación del cliente: su cronograma, sus pagos, los documentos de su unidad marcados como visibles (`is_visible_to_customer`) y sus trámites. No tiene modelo propio: consume lo que publican los demás contextos. La identidad de acceso del cliente —credenciales, sesiones y activación— va separada de `iam`, pero es un modelo con tablas y no cabe aquí: su dueño, `customers` o un contexto genérico nuevo, se decide con el bloque 12 (§7, punto 8), y entonces se suma a §2, §3 y §4.
 
 ---
 
@@ -166,16 +170,22 @@ La aplicación del cliente: su cronograma, sus pagos, los documentos de su unida
 | Proveedor | Cliente | Patrón (cap. 14) | Qué fluye |
 |---|---|---|---|
 | `reference` | Todos los de negocio | *Open Host Service* + *Published Language* | País y moneda por su código ISO, tasas, divisiones, tipos de documento y direcciones |
-| `organization` | `fleet`, `procurement`, `financing`, `equipment`, `iam`, `leasing` | *Customer/Supplier* | Empresa, sede, marca, ubicación, cuenta bancaria y colaborador (la asesora es un colaborador) |
-| `iam` | Todos | *Shared Kernel* | `AccessScope` y `PermissionCodes` |
-| `iam` | `financing` | *Customer/Supplier* | El nombre de quien registró una cesión |
+| `organization` | `fleet`, `procurement`, `financing`, `equipment`, `iam`, `leasing`, `customers`, `collections` | *Customer/Supplier* | Empresa, sede, marca, ubicación, cuenta bancaria y colaborador (la asesora es un colaborador) |
+| `shared` | Todos | *Shared Kernel* | `AccessScope` y `PermissionCodes`, vocabulario de `iam` que vive en `shared` (regla 6.1) |
+| `iam` | `fleet`, `financing` | *Customer/Supplier* | El nombre de quien creó o cambió una unidad o registró una cesión; para `fleet`, además, la cuenta `SYSTEM` del regreso automático y el permiso de cada camino (D-42, D-100). Es la opción B de la decisión 6 del mapa vigente |
 | `iam` → `organization` | — | Puerto `EmployeeAccountConsequences` de `organization` | Bloquear la cuenta, la guardia del último superadministrador y las consecuencias de la salida y el regreso |
 | `procurement` → `organization` | — | Puerto `BankAccountUsage` de `organization` | Si una cuenta tiene pagos |
 | `collections` → `organization` | — | Puerto `BankAccountUsage` (futuro) | Si una cuenta tiene cobros |
-| `audit` | `imports` y los contextos que escriben la bitácora | *Cohesive Mechanism* | La bitácora y los nombres de quien actuó y de la empresa |
+| `fleet`, `procurement` → `reference` | — | Puerto `CurrencyUsage` de `reference` | Si algún monto usa una moneda, antes de cambiar sus decimales (LOC-R05) |
+| `audit` | `imports` y los contextos que escriben la bitácora | *Generic Subdomain*, contrato de plataforma | La bitácora y los nombres de quien actuó y de la empresa |
+| `iam`, `organization` → `audit` | — | Puertos `AuditActorLookupPort` y `AuditCompanyLookupPort` de `audit` | El nombre de una cuenta; la empresa y su zona |
+| `fleet`, `procurement` → `audit` | — | Puerto `ConfidentialChangeLogFieldsPort` de `audit` | Los campos de la bitácora que solo ve quien tiene su permiso |
 | `vehiclecatalog` | `fleet`, `procurement`, `equipment` | *Customer/Supplier* | Modelos, colores y tipos de vehículo |
 | `equipment` | `fleet` | *Customer/Supplier* | Tipos de equipo, su aplicabilidad y la pantalla de fábrica, que lee la habilitación; más adelante, instalar y retirar un dispositivo |
+| `fleet` → `vehiclecatalog` | — | Puerto `VehicleModelUsage` de `vehiclecatalog` (fase 8 del plan) | Si un modelo tiene unidades |
 | `fleet` → `equipment` | — | Puerto `EquipmentUnits` de `equipment` | La placa de la unidad donde está un dispositivo |
+| `fleet` → `equipment` | — | Puerto `EquipmentTypeUsage` de `equipment` (fase 8 del plan) | Si un tipo de equipo tiene instalaciones |
+| `procurement` → `equipment` | — | Puerto `EquipmentSuppliers` de `equipment` | El proveedor de un dispositivo |
 | `fleet` | `procurement` | *Customer/Supplier* | El alta y el vínculo de las unidades de una factura (D-153); la unidad que la sesión ve, para el costo |
 | `procurement` → `fleet` | — | Puerto `UnitPurchases` de `fleet` | Valor cero, línea vigente, unidad devuelta, y el estado de pago con su fecha base, sin montos |
 | `procurement` | `reporting`, la ficha de la unidad | *Open Host Service* + *Published Language* | El costo de compra de cada unidad |
@@ -183,15 +193,16 @@ La aplicación del cliente: su cronograma, sus pagos, los documentos de su unida
 | `financing` → `fleet` | — | Puerto `UnitFundAssignments` | Si la unidad tiene una cesión abierta y, con la opción A de la fase 4, si la sesión puede cederla |
 | `customers` | `leasing` | *Customer/Supplier* | Solo un cliente aprobado firma |
 | `fleet` | `leasing` | *Customer/Supplier* + *Open Host Service* | Reservar, firmar, entregar, resolver y completar: los caminos comerciales |
-| `leasing` → `fleet` | — | Puerto `UnitContracts` | Si la unidad tiene contrato, en vez de deducirlo del historial (D-250) |
+| `leasing` → `fleet` | — | Puerto `UnitContracts` | Si la unidad tiene contrato, que se suma a lo que dice su historial (D-250) |
 | `leasing` | `collections` | *Customer/Supplier* + *Published Language* | El cronograma firmado |
 | `collections` → `leasing` | — | Puerto de `leasing` | La mora, para decidir una resolución |
 | `leasing` | `titletransfer` | *Customer/Supplier* | Un contrato completado, o una venta directa, abre el trámite |
 | `titletransfer` → `fleet` | — | Puerto `UnitTitleTransfers` + *Open Host Service* de `fleet` | En traspaso → Inactivo con el traspaso inscrito |
 | `collections` | `financing` | *Customer/Supplier* (futuro) | Los flujos cedidos a un fondo |
-| `fleet`, `procurement` | `legacyimport` | *Anticorruption Layer* | Los servicios que llama la traducción del libro heredado |
+| `fleet`, `procurement`, `organization`, `reference`, `vehiclecatalog`, `imports` | `legacyimport` | *Anticorruption Layer* | Los servicios y los catálogos que usa la traducción del libro heredado |
 | Todos | `reporting` | *Conformist* | Lo que cada contexto publica |
-| `documents`, `notifications`, `audit`, `imports` | Quien los use | *Cohesive Mechanisms* | Documentos, avisos, bitácora y registro de cargas |
+| `documents`, `notifications` | Quien los use | *Cohesive Mechanisms* | Documentos y avisos |
+| `audit`, `imports` | Quien los use | *Generic Subdomains*, contratos de plataforma | Bitácora y registro de cargas |
 
 Ninguna relación cierra un ciclo: cuando un contexto de una capa inferior necesita saber algo de uno superior, lo pide por un puerto que declara él y que implementa el otro, el patrón que ya usan `UnitPurchases`, `CurrencyUsage` y `BankAccountPayments`, que pasa a llamarse `BankAccountUsage`. La consistencia sincrónica entre agregados de dos contextos —la cesión y la anulación, la salida y la cuenta, el dispositivo y su instalación— es una excepción deliberada al consejo del cap. 6: la justifica una invariante que no admite una ventana, y la permite una sola base con un orden fijo de candados.
 
@@ -201,15 +212,14 @@ Ninguna relación cierra un ciclo: cuando un contexto de una capa inferior neces
 
 ```
 Soporte a decisiones   reporting
-Política               iam
-Compromiso             leasing · financing
-Operación              fleet · procurement · collections · titletransfer
-Potencial              customers · organization · reference · vehiclecatalog · equipment
+Compromiso             leasing · collections · titletransfer · financing
+Operación              fleet · procurement
+Potencial              customers · organization · iam · reference · vehiclecatalog · equipment
 Plataforma             documents · notifications · audit · imports · shared
 Aplicación aparte      customerportal          Temporal: legacyimport
 ```
 
-Una capa depende de las de abajo (cap. 16): los compromisos se toman sobre lo que se opera, y lo que se opera se apoya en lo que la empresa tiene. Reportes lee de todas.
+Un contexto depende de los de su capa o de las de abajo (cap. 16, criterio 6): los compromisos se toman sobre lo que se opera, y lo que se opera se apoya en lo que la empresa tiene. Reportes lee de todas. `iam` va en la capa de potencial: la operación y el compromiso lo leen (el nombre de una cuenta, la cuenta `SYSTEM`, el permiso de cada camino), así que no puede estar encima de ellos. `collections` y `titletransfer` van con `leasing`, porque dependen del contrato: el cronograma firmado, la mora y el contrato completado (§4).
 
 ---
 
@@ -234,11 +244,15 @@ Una capa depende de las de abajo (cap. 16): los compromisos se toman sobre lo qu
 4. **Renombrar `location` a `reference`:** sí o no.
 5. **Los requisitos de la habilitación:** cerrada (D-260). Qué equipo es requisito pasa a una configuración de `fleet`, como `vehicle_document_types`, con dos marcas: si se exige para pasar a Disponible y si es un equipo de seguridad, que una unidad con un cliente no pierde. La aplicabilidad y la pantalla de fábrica se quedan con el catálogo de equipos, en `equipment`. Se construye antes de la fase 2 del plan.
 6. **Las opciones de las fases 4 y 5 del plan:** quién calcula si la sesión puede ceder una unidad (A, por el puerto; B, un subrecurso), quién dibuja la pestaña de cesiones de la ficha (A1, `fleet` con `FinancingFacade`; A2, una pieza prestada) y quién es dueño de la brecha de días (A, `fleet`; B, `procurement`). Las recomendadas, A, A1 y A, no cambian el recurso de la unidad.
-7. **El destino de un dispositivo al retirarlo de una unidad,** para cuando el monitoreo una el inventario a la instalación: la propuesta es `falla` a mantenimiento, `robo` a baja y `reemplazo` a disponible.
+7. **El destino de un dispositivo al retirarlo de una unidad,** para cuando el monitoreo una el inventario a la instalación: la propuesta es `falla` a mantenimiento, `robo` a baja y `reemplazo` a disponible. Junto con él, qué pasa con un dispositivo instalado cuando la unidad se anula o pasa a Inactivo.
 8. **El bloque 12**, antes de modelarlo:
    - el tipo de contrato: arrendamiento financiero u operativo, o venta a plazos con reserva de dominio (cambia el titular durante el contrato, el IGV y la opción de compra);
    - la evaluación del cliente: propia o de una central de riesgo, y si hay garante;
    - el cronograma: el sistema de cuotas, la mora, los refinanciamientos y los adelantos;
    - quién emite los comprobantes de cada cuota y con qué proveedor de facturación electrónica;
    - cuándo procede la resolución y qué pasa con la deuda y con la unidad;
-   - si el regreso automático a Disponible a las 48 horas de la firma es una regla del contrato (la oferta vence) o de la unidad (la reserva vence).
+   - si el regreso automático a Disponible a las 48 horas de la firma es una regla del contrato (la oferta vence) o de la unidad (la reserva vence);
+   - el GPS al terminar el contrato: si al traspasar la unidad se retira y vuelve al inventario, o se va con ella (D-260, abierta en el diccionario §14);
+   - el dueño de `advisor_assignments`: o una decisión la pasa al bloque 12 y a `leasing`, o este mapa la devuelve a `organization` (§3.2);
+   - el dueño de la identidad de acceso del cliente: `customers` o un contexto genérico nuevo (§3.17).
+9. **La carga inicial:** si se ejecuta antes de la fase 3 del plan, la fase 3 se reemplaza por borrar su código después de la puesta en marcha.
