@@ -122,7 +122,6 @@ flowchart BT
   proc --> catalog
   proc --> org
   proc --> location
-  proc --> iam
   proc --> docs
   reporting --> fleet
   reporting --> docs
