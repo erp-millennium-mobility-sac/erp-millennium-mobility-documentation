@@ -14,7 +14,7 @@
 
 | Tabla | Qué guarda | Diccionario |
 |---|---|---|
-| `vehicle_statuses` | Los doce estados del ciclo de vida, cada uno con su familia, si genera ingresos, si es el inicial y si exige la habilitación completa para entrar | §8.2 |
+| `vehicle_statuses` | Los doce estados del ciclo de vida, cada uno con su familia, si genera ingresos, si es el inicial, si exige la habilitación completa para entrar, si exige los equipos de seguridad y si congela el equipamiento | §8.2 |
 | `status_change_reasons` | Los caminos permitidos entre estados, cada uno con su motivo, su tolerancia, qué pasa al vencerse y el permiso que exige | §8.3, §8.6, D-100 |
 | `vehicles` | Las unidades: empresa, marca comercial, modelo, color, VIN, número de motor, placa, año, ubicación y estado actual; los hitos de la habilitación; el número del Excel de la carga inicial; la anulación y el traspaso | §8.1, §11.1 |
 | `vehicle_status_history` | Cada cambio de estado de cada unidad: de dónde, a dónde, por qué camino, quién, cuándo, hasta cuándo se tolera y si se confirmó la revisión física | §8.4 |
@@ -23,6 +23,7 @@
 | `vehicle_documents` | Los documentos de cada unidad: el vigente de cada tipo y los anteriores | §11.3 |
 | `vehicle_equipments` | Las instalaciones de equipamiento de cada unidad, con su período, quién instaló y su costo | §11.4 |
 | `fleet_equipments` | El inventario de equipamiento: cada equipo físico en el almacén de una empresa (sección 2) | §11.4 |
+| `vehicle_equipment_requirements` | Qué equipo exige la habilitación y cuál es de seguridad, por tipo de equipo (FLT-R148) | §11.4 |
 | `vehicle_keys` | Las llaves de cada unidad | §11.5 |
 | `vehicle_tax_declarations` | Las declaraciones del impuesto vehicular que trae el archivo del SAT | §11.7 |
 | `funds` | Los fondos de cada empresa | §12.1 |
@@ -45,6 +46,8 @@
 | `EN_TRASPASO` | En traspaso | terminal | No | No |
 | `INACTIVO` | Inactivo | terminal | No | No |
 
+La semilla marca además Contrato firmado y Activo con `requires_security_equipment`, y Robado con `blocks_equipment_changes` (D-260; FLT-R150, FLT-R151).
+
 Las reglas leen algunos estados por su código: `ACTIVO` es la entrega (§11.9), `PAP` cierra la entrega (D-216), `CONTRATO_FIRMADO` es el único que regresa solo a un estado con puerta (FLT-R57), y `EN_TRASPASO` e `INACTIVO` son la salida de la flota (FLT-R142, FLT-R143).
 
 **Lo que parece suyo y no lo es**
@@ -59,7 +62,8 @@ Las reglas leen algunos estados por su código: `ACTIVO` es la entrega (§11.9),
 | El registro de las cargas de archivos y la pantalla Logística › Cargas de archivos | `imports` (D-200, D-262) | Cada carga de `fleet` registra su lote por `imports::acl`; la carga inicial la orquesta `procurement` (F13 a F15) |
 | El número que la unidad tenía en el Excel | `fleet`, solo por la carga inicial (D-18) | La API no lo recibe ni lo genera (FLT-R11, FLT-R125) |
 | Los indicadores de la flota y el Excel de stock | `reporting` (D-232) | Los arma la capa de lectura con lo que `fleet` le responde por su fachada, sin reescribir sus reglas (sección 5) |
-| La marca del vehículo (Chevrolet, TVS), el modelo, el color, el tipo de equipamiento y su modelo | `vehiclecatalog` (§7) | La unidad y el equipo apuntan a ellos; no los modifican |
+| La marca del vehículo (Chevrolet, TVS), el modelo, el color, el tipo de equipamiento, su marca y su modelo | `vehiclecatalog` (§7) | La unidad y el equipo apuntan a ellos; no los modifican |
+| Si un equipo aplica a una unidad y si su modelo lo trae de fábrica | `vehiclecatalog` (VCT-R28) | `fleet` decide, con su configuración, qué de eso se exige y qué es de seguridad (FLT-R148) |
 | La empresa, la marca comercial (Lizzo, Lima Bikes), la ubicación y el colaborador que instaló un equipo | `organization` (§6) | Ídem |
 | El país de un tipo de documento y la moneda del costo de un equipo | `location` | Ídem |
 | El nombre de quien cambió un estado, registró una lectura o cargó un documento | `iam` y `organization` | `iam` entrega el identificador público de la cuenta y el nombre de su colaborador (mapa, decisión 6) |
@@ -87,6 +91,8 @@ Las reglas leen algunos estados por su código: `ACTIVO` es la entrega (§11.9),
 | Ingreso | El hito de la llegada física de la unidad a una ubicación de la empresa, que fija esa ubicación (§11.1, D-165). Antes de él la unidad está «Fuera de tienda» | El alta, que la registra antes de que llegue |
 | Estado de habilitación | Lo que le falta a una unidad para entregarse, calculado en cada lectura en seis filas (§11.9; F8 a F12). Nunca se guarda | El estado del ciclo de vida |
 | Puerta | La exigencia de la habilitación completa para entrar a un estado que la exige: Disponible y, en la semilla, Contrato firmado (D-164, D-170) | El permiso del camino, que se revisa antes |
+| Equipo exigido | El que la unidad tiene que tener instalado para pasar a Disponible: aplica a su tipo de vehículo, la configuración de `fleet` lo exige y su modelo no lo trae de fábrica. Hoy, el GPS y la pantalla (FLT-R148) | Un equipo que solo aplica, que se instala sin que se exija |
+| Equipo de seguridad | El que permite vigilar la unidad, cortarle el motor y recuperarla, que la configuración marca como tal. Hoy, el GPS. Entrar a mano a Contrato firmado o a Activo lo exige instalado (FLT-R150) | Un equipo exigido, que dice si la unidad se puede ofrecer |
 | Camino retenido | Un camino que la sesión podría recorrer y que espera algo de la unidad: la habilitación completa o el traspaso registrado. Se ofrece deshabilitado, con lo que falta | Un camino que la sesión no puede recorrer, que no se ofrece |
 | Placas físicas | Las placas recibidas e instaladas, que exigen la placa registrada (FLT-R66) | La placa, el número registrado |
 | En traspaso | El tiempo en que la notaría inscribe el traspaso de una unidad que salió de la flota (D-239). Sigue siendo de la empresa hasta que se registra su traspaso | Inactivo, que dice que ya no es de la empresa |
@@ -112,11 +118,11 @@ Nada de `fleet` se borra: ni las unidades, ni los estados, ni los caminos, ni el
 
 | Momento | Qué pasa |
 |---|---|
-| Alta | Lo crea el superadministrador, con `catalogos.crear_estados` (FLT-R27). La semilla trae los doce de la sección 1. Un estado nuevo nace sin exigir la habilitación; se marca al editarlo (FLT-R55) |
-| Qué cambia | Con `catalogos.editar_estados`: el nombre, la familia, si genera ingresos, si es el inicial (FLT-R13) y si exige la habilitación (FLT-R55) |
+| Alta | Lo crea el superadministrador, con `catalogos.crear_estados` (FLT-R27). La semilla trae los doce de la sección 1. Un estado nuevo nace sin exigir la habilitación ni los equipos de seguridad y sin congelar el equipamiento; las tres marcas se ponen al editarlo (FLT-R55, FLT-R150, FLT-R151) |
+| Qué cambia | Con `catalogos.editar_estados`: el nombre, la familia, si genera ingresos, si es el inicial (FLT-R13), si exige la habilitación (FLT-R55), si exige los equipos de seguridad (FLT-R150) y si congela el equipamiento (FLT-R151) |
 | Qué queda fijo | El código, desde el alta (FLT-R14) |
 | Retiro | Se desactiva y se puede reactivar: las unidades que ya están en él se quedan y ninguna entra nueva (FLT-R15). No se desactivan el estado inicial ni el estado al que un camino abierto mueve unidades solas (FLT-R16), ni En traspaso e Inactivo (FLT-R143) |
-| Nunca | Se borra (FLT-R25); hay dos estados iniciales, aunque uno esté desactivado (FLT-R13); el inicial exige la habilitación (FLT-R55) |
+| Nunca | Se borra (FLT-R25); hay dos estados iniciales, aunque uno esté desactivado (FLT-R13); el inicial exige la habilitación o los equipos de seguridad (FLT-R55, FLT-R150) |
 
 ### Camino (motivo)
 
@@ -125,7 +131,7 @@ Nada de `fleet` se borra: ni las unidades, ni los estados, ni los caminos, ni el
 | Alta | Lo crea el superadministrador desde un estado de origen, o como camino de alta, sin origen, hacia el estado inicial (FLT-R42). Nombra el permiso que exige; un camino de alta no nombra ninguno (FLT-R19). La semilla trae los caminos de F3. Al guardar un camino que mueve sola la unidad, el sistema asegura en la misma operación el motivo automático del camino de regreso (FLT-R43). El código de los caminos «Migración inicial» es reservado (FLT-R120) |
 | Qué cambia | El nombre, la tolerancia, qué hacer al vencerse y a qué estado mover la unidad (FLT-R22), y el permiso. El motivo automático no se edita ni se cierra (FLT-R43) |
 | Qué queda fijo | El origen, el destino y el código: son el camino (FLT-R20) |
-| Retiro | Se cierra, desactivando su motivo; desactivar todos los motivos de un par cierra el paso entre esos dos estados (§8.3, FLT-R25). Se reabre, salvo que haya ya otro camino de alta abierto hacia el mismo estado (FLT-R21), que sea un camino de alta hacia un estado que ya no es el inicial (FLT-R42), o que mueva unidades solas a un estado desactivado (FLT-R16) o a un estado con puerta desde otro estado que Contrato firmado (FLT-R57) |
+| Retiro | Se cierra, desactivando su motivo; desactivar todos los motivos de un par cierra el paso entre esos dos estados (§8.3, FLT-R25). Se reabre, salvo que haya ya otro camino de alta abierto hacia el mismo estado (FLT-R21), que sea un camino de alta hacia un estado que ya no es el inicial (FLT-R42), o que mueva unidades solas a un estado desactivado (FLT-R16), a un estado con puerta desde otro estado que Contrato firmado (FLT-R57) o a un estado que exige los equipos de seguridad, desde cualquiera (FLT-R150) |
 | Nunca | Se borra; lleva a su propio estado de origen (FLT-R20) |
 
 ### Fila del historial
@@ -175,13 +181,25 @@ Cada equipo físico —un GPS, una pantalla— en el almacén de una empresa, co
 | Quién lo ve | Quien tiene `stock.ver` en su empresa: un equipo de otra empresa responde `404` aunque la cuenta tenga ahí otro rol (D-99) |
 | Retiro | Sale del inventario por Baja; no se borra. Ningún camino lo pasa todavía a Instalado (sección 7) |
 
+### Requisito de equipamiento
+
+Lo que la configuración de `fleet` dice de un tipo de equipo del catálogo: si se exige para pasar a Disponible y si es de seguridad (§11.4, D-260; FLT-R148). Es un catálogo general, sin empresa.
+
+| Momento | Qué pasa |
+|---|---|
+| Alta | La primera marca de un tipo crea su fila, con `catalogos.editar_tipos_documento`, en Catálogos › Requisitos de equipamiento (F8); la semilla trae las del GPS y la pantalla (FLT-R148). Un tipo sin fila no se exige ni es de seguridad: el catálogo de equipos no escribe aquí, así que un tipo nuevo nace sin requisito |
+| Qué cambia | Las dos marcas, con el `updatedAt` que se leyó |
+| Qué queda fijo | El tipo de equipo de la fila |
+| Retiro | No tiene: se desmarca. Un tipo que el catálogo desactiva conserva su fila y deja de exigirse, porque ya no aplica a ninguna unidad (VCT-R28) |
+| Nunca | Se borra; hay dos filas de un mismo tipo; marcarla mueve las unidades que ya están en Disponible: la puerta se aplica al entrar (FLT-R91) |
+
 ---
 
 ## 3. Flujos funcionales
 
 En cada flujo, «el sistema revisa» es lo que el backend comprueba, en ese orden. Toda ruta exige un permiso del catálogo (§5.6, D-95), y el servicio decide dónde actúa con la asignación que lo trae (D-99): una unidad que la cuenta no ve con `stock.ver` no existe para ella (`404`), y una que ve pero sobre la que su permiso no actúa responde `403`. El stock se ve en toda la empresa (D-14); un rol de sede actúa solo sobre las unidades de la ubicación propia de su sede (D-101), y una asignación limitada a una marca, solo sobre las de esa marca (D-102) (FLT-R33 a FLT-R35). Escribir exige leer. Una unidad anulada no admite ninguna escritura (FLT-R49). La ficha y la habilitación de la unidad dicen qué puede hacer la sesión en ella, y la pantalla ofrece solo eso; el backend lo vuelve a revisar en cada operación (FLT-R36, FLT-R87).
 
-**Las pantallas** están en procesos y pantallas: Logística › Inventario y la ficha de cada unidad, Logística › Habilitación y la habilitación de cada unidad, Logística › Inventario de equipamiento, Catálogos › Estados y motivos, Catálogos › Tipos de documento y Configuración › Fondos. Cada una se abre por el permiso que usa (procesos, apartado 3.1): las de Logística, con `stock.ver`; los dos catálogos, con `catalogos.ver`, porque escribir exige leer (D-141); Fondos, con `fondos.ver`.
+**Las pantallas** están en procesos y pantallas: Logística › Inventario y la ficha de cada unidad, Logística › Habilitación y la habilitación de cada unidad, Logística › Inventario de equipamiento, Catálogos › Estados y motivos, Catálogos › Tipos de documento, Catálogos › Requisitos de equipamiento y Configuración › Fondos. Cada una se abre por el permiso que usa (procesos, apartado 3.1): las de Logística, con `stock.ver`; los tres catálogos, con `catalogos.ver`, porque escribir exige leer (D-141); Fondos, con `fondos.ver`.
 
 **Los candados.** El orden de los candados de la habilitación, del cambio de estado, de las cesiones y de las cargas está en los [patrones de persistencia](../patrones-de-persistencia-millennium-mobility.md).
 
@@ -244,7 +262,7 @@ En cada flujo, «el sistema revisa» es lo que el backend comprueba, en ese orde
 
 Están cerrados, con su historial: Activo → Mecánica por «Choque» (el choque va a Siniestro, D-221) y las salidas directas a Inactivo por «Contrato completado» y «Venta directa», de Activo y de Disponible (la salida pasa por En traspaso, D-239). El diagrama está en procesos y pantallas, P7.
 
-1. La ficha ofrece los caminos abiertos que salen del estado actual hacia un estado activo y que la sesión puede recorrer en esa unidad, nunca el motivo automático (FLT-R15, FLT-R17). Así, sobre la misma unidad Activo de su sede, el taller ve los caminos a Mecánica y a Siniestro y el asesor de ventas ninguno; sobre una Disponible, al revés. Muestra retenidos, con lo que falta, los caminos a un estado con puerta mientras a la unidad le falta algo (F11) y los de En traspaso a Inactivo mientras falta el traspaso (FLT-R142).
+1. La ficha ofrece los caminos abiertos que salen del estado actual hacia un estado activo y que la sesión puede recorrer en esa unidad, nunca el motivo automático (FLT-R15, FLT-R17). Así, sobre la misma unidad Activo de su sede, el taller ve los caminos a Mecánica y a Siniestro y el asesor de ventas ninguno; sobre una Disponible, al revés. Muestra retenidos los caminos a un estado con puerta mientras a la unidad le falta algo, con lo que falta (F11); los caminos a un estado que exige los equipos de seguridad mientras le falta uno (FLT-R150); y los de En traspaso a Inactivo mientras falta el traspaso (FLT-R142).
 2. Elige el destino, el motivo, con su tolerancia, y un detalle opcional. Al salir de Puesta a punto hacia un estado con puerta, confirma la revisión física (FLT-R134).
 3. El sistema revisa, en este orden, y la unidad misma se niega a moverse por un camino que no lo permite:
    1. la unidad, bloqueada y vista con `stock.ver`;
@@ -254,10 +272,11 @@ Están cerrados, con su historial: Activo → Mecánica por «Choque» (el choqu
    5. que la unidad no esté anulada (FLT-R49);
    6. la revisión física, al salir de Puesta a punto hacia un estado con puerta (FLT-R134);
    7. el traspaso registrado, al salir de En traspaso hacia Inactivo: es una regla de la unidad, que cerrar o editar un camino no apaga (FLT-R142);
-   8. la puerta: si el destino exige la habilitación, que a la unidad no le falte nada, leído después del candado (FLT-R56).
+   8. la puerta: si el destino exige la habilitación, que a la unidad no le falte nada, leído después del candado (FLT-R56);
+   9. los equipos de seguridad: si el destino los exige, que a la unidad no le falte instalado ninguno de los que le aplican, leído con los mismos hechos que la puerta (FLT-R150).
 4. Escribe el estado de la unidad y su fila del historial en la misma operación, con el vencimiento calculado desde ese momento (FLT-R18, FLT-R23).
 
-**Si falla:** responde el código del primer paso que falla (convenciones §7.2); el traspaso y la puerta dejan el destino retenido, la puerta con todo lo que falta (`422 VEHICLE_ENABLEMENT_INCOMPLETE`).
+**Si falla:** responde el código del primer paso que falla (convenciones §7.2); el traspaso, la puerta y los equipos de seguridad dejan el destino retenido: la puerta con todo lo que falta (`422 VEHICLE_ENABLEMENT_INCOMPLETE`), los equipos de seguridad con los que faltan (`422 VEHICLE_SECURITY_EQUIPMENT_MISSING`).
 **Resultado:** el historial de estados muestra el cambio con su camino, su motivo, quién, cuándo, cuándo vence y, si la hubo, la revisión física.
 
 ### F4 · El regreso automático al vencer la tolerancia
@@ -281,6 +300,7 @@ flowchart TD
 2. La fila dice Contrato firmado → Disponible, con el motivo automático de ese camino, firmada por `SYSTEM` y sin vencimiento, y la unidad también queda firmada por `SYSTEM` (D-42; FLT-R24, FLT-R43). Si el motivo falta, el proceso lo crea; si en ese camino una persona declaró un motivo con el código `REGRESO_AUTOMATICO`, deja la unidad donde está y lo registra en el log (sección 6 b, propuesta 13).
 3. El proceso respeta el catálogo como una persona: un camino cerrado o un destino desactivado no mueve nada, tampoco si cambiaron mientras corría.
 4. **La puerta** (FLT-R57). El regreso desde Contrato firmado no lee la habilitación mientras Contrato firmado la exija: esa marca sostuvo los requisitos de la unidad mientras esperaba (D-184), y el regreso deshace un contrato que no se entregó (D-164). Desmarcado, el proceso deja en Contrato firmado a la unidad a la que le falta algo (D-170). Cada unidad retenida se avisa en el log como advertencia solo en la primera corrida después del vencimiento.
+5. **Los equipos de seguridad** no los revisa: el catálogo no deja que un camino que mueve sola la unidad lleve a un estado que los exige (FLT-R150).
 
 **Resultado:** en el historial, la fila del regreso con `SYSTEM` como autor; la unidad deja de figurar entre las vencidas.
 
@@ -298,13 +318,15 @@ flowchart TD
 
 **Quién:** el superadministrador, con `catalogos.crear_estados`, `editar_estados` o `desactivar_estados` (FLT-R27), en Catálogos › Estados y motivos. Los caminos se leen por su origen, o los de alta (FLT-R46).
 
-1. **Estado nuevo o editado:** código, nombre, familia, si genera ingresos y si es el inicial; al editarlo, además, si exige la habilitación completa para entrar (FLT-R55).
+1. **Estado nuevo o editado:** código, nombre, familia, si genera ingresos y si es el inicial; al editarlo, además, si exige la habilitación completa para entrar (FLT-R55), si exige los equipos de seguridad (FLT-R150) y si congela el equipamiento (FLT-R151).
 2. **Camino nuevo**, desde el estado elegido o como camino de alta: destino, código y nombre del motivo, tolerancia en horas, qué hacer al vencerse —nada, avisar o mover la unidad sola, con el estado al que moverla— y el permiso, entre los permisos `stock` del catálogo (FLT-R19, FLT-R22).
 3. **Desactivar o activar** un estado o un motivo; si era el último motivo de su camino, el camino se cierra. El historial se conserva (FLT-R25).
 
 El sistema revisa: que el código del estado no se repita, y el del motivo no se repita en su camino (FLT-R14, FLT-R20); que el código `MIGRACION_INICIAL` no se use en un camino nuevo ni se cambie (FLT-R120); que haya un solo estado inicial, activo o no (FLT-R13); que no se desactive el inicial, ni el estado al que un camino abierto mueve unidades solas, ni En traspaso ni Inactivo (FLT-R16, FLT-R143); que un camino lleve a otro estado y que lo que pasa al vencerse tenga tolerancia y, si mueve la unidad, un estado distinto del destino y activo mientras el camino esté abierto (FLT-R16, FLT-R22); que el permiso exista en el catálogo; que un camino de alta no nombre permiso y lleve al estado inicial, también al reabrirlo (FLT-R19, FLT-R42); y que no haya dos caminos de alta abiertos hacia un mismo estado, tampoco si dos pedidos llegan a la vez (FLT-R21).
 
 **La puerta no se apaga desde el catálogo** (FLT-R55, FLT-R57): un camino abierto que espera en otro estado que Contrato firmado no mueve solas las unidades a un estado que exige la habilitación —se revisa al crearlo, al editarlo abierto y al reabrirlo—; un estado no pasa a exigirla mientras un camino así lo tenga como destino; el estado inicial no la exige, ni un estado que la exige pasa a ser el inicial; y Disponible no se desmarca. Marcar un estado y guardar o reabrir un camino hacia él no se cruzan: el segundo pedido espera y ve lo que confirmó el primero.
+
+**Los equipos de seguridad tampoco** (FLT-R150). A un estado que los exige se entra solo a mano, que los revisa (F3), así que el estado inicial no los exige ni un estado que los exige pasa a ser el inicial; un estado no pasa a exigirlos mientras un camino abierto mueva solas unidades a él; y un camino abierto que mueve solas las unidades no lleva a un estado que los exige —se revisa al crearlo, al editarlo abierto y al reabrirlo—. A diferencia de la puerta, no hay excepción para el regreso desde Contrato firmado: Disponible no los exige mientras «Firma de contrato» devuelva sola la unidad. Marcar un estado y guardar un camino hacia él no se cruzan, con los mismos candados que la puerta.
 
 **Si falla:** responde el código de la regla, de la familia `VEHICLESTATUS_*`, `STATUSCHANGEREASON_*` o `PERMISSION_NOT_FOUND` (convenciones §7.2).
 **Resultado:** el catálogo cambia para todas las empresas: los estados y los caminos son del sistema, no de cada empresa. Lo que ya está en el historial no cambia, y una tolerancia nueva vale para los movimientos siguientes (D-240).
@@ -343,7 +365,7 @@ Lo que hay que completar para que una unidad pueda entregarse (§11): que ingres
 | 5 | su entrega no está vigente | `LISTO_PARA_ENTREGA` | Listo para entrega | — |
 | 6 | su entrega está vigente | `ENTREGADO` | Entregado | — |
 
-- **Lo que bloquea sale de los datos** (FLT-R60): los tipos de documento activos del país de la unidad que bloquean, salvo los que piden la conversión a gas cuando el modelo no es a GNV ni GLP (FLT-R70); y los equipos que exige el modelo, según `vehiclecatalog`, menos la pantalla cuando el modelo la trae de fábrica (VCT-R28). Marcar otro tipo como bloqueante lo suma a la fila 2 o a la 3 sin programar.
+- **Lo que bloquea sale de los datos** (FLT-R60): los tipos de documento activos del país de la unidad que bloquean, salvo los que piden la conversión a gas cuando el modelo no es a GNV ni GLP (FLT-R70); y los equipos que aplican al tipo de vehículo de la unidad y que la configuración de `fleet` exige para Disponible, menos el que su modelo trae de fábrica: la pantalla de un modelo que la trae (FLT-R148, VCT-R28). Lo que se exige y lo que es de seguridad lo decide un solo lugar, `ModelRequirements`, que cruza lo que dice el catálogo con la configuración: la habilitación, su lista, la puerta, lo que retiene un estado y la carga inicial le preguntan a él. Marcar otro tipo como bloqueante —un documento en Tipos de documento, un equipo en Requisitos de equipamiento (F8)— lo suma a la fila 2 o a la 3 sin programar.
 - **Un documento vigente cuenta aunque haya vencido** (D-188): el vencimiento se sigue en Vencimientos (F12).
 - **La entrega es el paso a Activo**, vigente si la unidad no entró a Puesta a punto después, por el orden de su historial; su momento es el de la primera vez (FLT-R133).
 - **El cuadro completo.** El estado lleva, además del código y el detalle de su fila, todo lo que falta, para que la puerta y la pantalla lo nombren de una vez. La unidad está completa cuando no aplica ninguna de las filas 1 a 4: Listo para entrega o Entregado (D-183). Así una unidad reacondicionada, que ya se entregó alguna vez, vuelve a Disponible por «Reacondicionada».
@@ -359,7 +381,7 @@ Lo que hay que completar para que una unidad pueda entregarse (§11): que ingres
 
 **La bitácora** (§13.1). Los hitos, el primer registro de la placa, la edición de una llave, el costo de una instalación y el serial completado de un GPS migrado dejan su fila (FLT-R90, FLT-R127); la corrección de una placa, además, su motivo (FLT-R03). Los documentos y las instalaciones no necesitan más filas: sus registros ya son su historia (§13.2).
 
-### F8 · Mantener los tipos de documento del vehículo
+### F8 · Mantener los tipos de documento del vehículo y los requisitos de equipamiento
 
 **Quién:** el superadministrador, con `catalogos.crear_tipos_documento`, `editar_tipos_documento` y `desactivar_tipos_documento` (FLT-R73), en Catálogos › Tipos de documento, que se abre con `catalogos.ver` (D-141).
 
@@ -370,6 +392,16 @@ Lo que hay que completar para que una unidad pueda entregarse (§11): que ingres
 La semilla de Perú trae cuatro tipos, todos visibles para el cliente: `TIVE` (Tarjeta de identificación vehicular; no vence, bloquea), `SOAT` (Seguro obligatorio; vence, no bloquea), `CERT_GAS` (Certificado de conversión a gas; vence, no bloquea, solo a gas) y `REV_TECNICA` (Revisión técnica; vence, no bloquea). Es un catálogo general, sin empresa. La lista se exporta (FLT-R72).
 
 **Si falla:** `409 VEHICLEDOCUMENTTYPE_CONFLICT`, también en una carrera; `422 VEHICLEDOCUMENTTYPE_CODE_LOCKED`; `404 COUNTRY_NOT_FOUND`.
+
+**Los requisitos de equipamiento** (D-260, FLT-R148): la otra mitad de los requisitos, qué equipo exige la habilitación y cuál es de seguridad. Los marca quien tiene `catalogos.editar_tipos_documento` —con la semilla, solo el superadministrador—, el mismo permiso que marca los documentos que bloquean, en Catálogos › Requisitos de equipamiento (`GET /vehicle-equipment-requirements`), que leen todos los que tienen `catalogos.ver`.
+
+1. La lista trae cada tipo de equipo del catálogo, activo o no, por su código, con sus dos marcas: si se exige para pasar a Disponible y si es de seguridad. Un tipo sin fila sale con las dos en falso.
+2. Marca o desmarca una de las dos (`PUT /vehicle-equipment-requirements/{equipmentTypeId}`), con el `updatedAt` que leyó, nulo si el tipo no tenía fila: la primera marca de un tipo crea su fila y las siguientes la corrigen. Ninguna se borra.
+3. El sistema revisa que el tipo exista en el catálogo y, con la fila del tipo bloqueada, que siga como se leyó: dos marcas del mismo tipo se esperan, y la segunda ve lo que confirmó la primera.
+
+La semilla trae el GPS con las dos marcas y la pantalla con la primera, lo mismo que se exigía antes. Marcar un equipo no mueve las unidades que ya están en Disponible: la puerta se aplica al entrar (FLT-R91).
+
+**Si falla:** `422 VEHICLEEQUIPMENTREQUIREMENT_OUTDATED`, si la fila cambió desde que se leyó o si otra persona la creó mientras tanto; `404 EQUIPMENTTYPE_NOT_FOUND`.
 
 ### F9 · Registrar el ingreso de las unidades
 
@@ -548,7 +580,7 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | FLT-R57 | El regreso automático de Contrato firmado a Disponible no pasa por la puerta mientras Contrato firmado tenga `requires_enablement`: deshace un contrato que no se entregó, y la marca sostuvo los requisitos mientras esperaba. Desmarcado, el proceso lee la habilitación y deja en Contrato firmado a la unidad a la que le falta algo. Ningún otro camino mueve sola una unidad a un estado con puerta: el catálogo no lo guarda, por el código `CONTRATO_FIRMADO`, y el proceso deja donde está a una unidad incompleta que un camino así movería. El aviso sale una vez por unidad retenida | D-164, D-110, D-184, D-170 | Dominio, Servicio, Frontend | `EnablementGateIntegrationTests`, `AutomaticReturnGateTests`, `AutomaticReturnGateRuleTests`, `VehicleMovementsBreachWarningTests`, `status-change-reason-form-dialog.spec.ts`, `status-change-reasons.store.spec.ts`, `e2e/fleet.spec.ts` | ✅ |
 | FLT-R58 | El estado de habilitación se calcula, nunca se guarda: seis filas en orden, la primera que aplica, con su código estable y su detalle (F8 a F12). Entregado es tener la entrega vigente (FLT-R133); su momento, el de la primera vez. Un documento vigente cuenta aunque haya vencido | §11.9, D-171, D-183, D-188 | Dominio, Servicio, Frontend | `EnablementPolicyTests`, `VehicleEnablementFactsReaderTests`, `enablement-status-badge.spec.ts` | ✅ |
 | FLT-R59 | La consulta de la lista responde lo mismo que la política para cada unidad | §7.5 («escrita una sola vez») | Servicio | `VehicleEnablementProjectionTests` | ✅ |
-| FLT-R60 | Lo que bloquea sale de los datos: los tipos de documento y los equipos con `blocks_availability`, activos y que aplican a la unidad. Marcar otro como bloqueante lo suma a la fila 2 o a la 3 sin programar | §11.2, §11.9, D-165 | Servicio | `EnablementGateIntegrationTests`, `VehicleEnablementProjectionTests`, `VehicleCatalogContextFacadeTests` | ✅ |
+| FLT-R60 | Lo que bloquea sale de los datos: los tipos de documento con `blocks_availability` y los equipos que la configuración de `fleet` marca con `blocks_availability` (FLT-R148), activos y que aplican a la unidad. Marcar otro como bloqueante lo suma a la fila 2 o a la 3 sin programar | §11.2, §11.4, §11.9, D-165, D-260 | Servicio | `EnablementGateIntegrationTests`, `VehicleEnablementProjectionTests`, `VehicleCatalogContextFacadeTests`, `ModelRequirementsTests` | ✅ |
 | FLT-R61 | La habilitación de una unidad se lee con `stock.ver` donde se ve, marca incluida; su lista exige la empresa. El recurso y la fila traen el código de su estado y si exige la habilitación, así que la pantalla no lee el catálogo de estados, que pide `catalogos.ver`. La API filtra la lista también por el estado del ciclo de vida (`currentStatusId`); la pantalla no ofrece ese filtro, que está en Inventario, y ofrece Modelo y Documento solo con `catalogos.ver` | §5.6 (`stock.ver`), D-14, D-99, D-102 | Servicio, Frontend | `VehicleEnablementIntegrationTests`, `VehicleEnablementListIntegrationTests`, `fleet.routes.spec.ts`, `enablement-view.spec.ts` | ✅ |
 | FLT-R62 | El ingreso físico se registra por unidad o en lote, hasta 100, todo o nada, y fija la ubicación, activa y de la empresa de las unidades; su fecha no es futura en la zona de la empresa. El permiso actúa donde está cada unidad y en la ubicación de destino | §11.1, D-165, D-160, D-101, D-163, D-186 | Dominio, Servicio, Frontend | `VehicleArrivalBatchIntegrationTests`, `EnablementDatesInLimaTests`, `register-arrival-dialog.spec.ts`, `vehicle-enablements.store.spec.ts`, `e2e/enablement.spec.ts` | ✅ |
 | FLT-R63 | El ingreso se conserva como hito: corregirlo no lo lleva después de una instalación, y volver a «no ingresada» solo corrige un error, sin instalaciones. Una unidad ingresada no queda sin ubicación, tampoco al editarla en Inventario | §11.1, §8.1, D-165, D-188; guía, columna 13 | Base, Dominio, Servicio, Frontend | `VehicleArrivalIntegrationTests`, `EnablementGateMigrationTests`, `EnablementDatesInLimaTests`, `vehicle-form-dialog.spec.ts`, `register-arrival-dialog.spec.ts` | ✅ |
@@ -635,8 +667,8 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | FLT-R147 | El estado del contrato firmado es `CONTRATO_FIRMADO` y el motivo de su camino desde Disponible, `FIRMA_CONTRATO`; `VENDIDO` y `VENTA` no existen. El camino conserva su tolerancia de 48 h, su regreso solo a Disponible con `REGRESO_AUTOMATICO`, su permiso `stock.vender` y su puerta; las reglas lo reconocen por el código, en el backend y en el frontend | D-251 | Base, Dominio, Frontend | `LeasingCycleSeedTests`, `AutomaticReturnGateRuleTests`, `EnablementGateMigrationTests`, `status-change-reason-form-dialog.spec.ts` | ✅ |
 | FLT-R148 | Qué equipo es requisito lo dice una configuración de `fleet` por tipo de equipo, con dos marcas: `blocks_availability`, sin él la unidad no pasa a Disponible, y `secures_unit`, es un equipo de seguridad. La semilla marca el GPS con las dos y la pantalla con la primera. La aplicabilidad y la pantalla de fábrica siguen en el catálogo de equipos | D-260 | Base, Servicio, Frontend | Por construir | ❌ |
 | FLT-R149 | En Disponible, retirar sin reemplazo un equipo que la unidad exige, vaciar las placas físicas o vaciar el ingreso se registra y, en la misma operación, lleva la unidad a En habilitación por «Pierde un requisito», con el permiso del retiro; `PIERDE_REQUISITO` queda fijo y su camino no se cierra. Vuelve a Disponible solo por una persona, a través de la puerta. Enmienda FLT-R85 y FLT-R93 en Disponible | D-260, D-184 | Dominio, Servicio, Frontend | Por construir | ❌ |
-| FLT-R150 | En un estado con `requires_security_equipment` —la semilla: Contrato firmado y Activo— un equipo de seguridad que aplica a la unidad se reemplaza y no se retira sin reemplazo. Entrar a mano a uno de esos estados exige instalados sus equipos de seguridad, y el rechazo nombra el que falta | D-260 | Base, Dominio, Servicio, Frontend | Por construir | ❌ |
-| FLT-R151 | En un estado con `blocks_equipment_changes` —la semilla: Robado— no se instala, reemplaza ni retira ningún equipo; corregir el costo y completar el serial se permiten | D-260 | Base, Dominio, Servicio, Frontend | Por construir | ❌ |
+| FLT-R150 | En un estado con `requires_security_equipment` —la semilla: Contrato firmado y Activo— un equipo de seguridad que aplica a la unidad se reemplaza y no se retira sin reemplazo. Entrar a mano a uno de esos estados exige instalados sus equipos de seguridad, salvo el que el modelo trae de fábrica, y el rechazo nombra el que falta, después de la puerta; la ficha retiene el camino mientras falte. La marca nace en falso y se pone al editar el estado. El alta, la carga inicial y el regreso automático no revisan los equipos de seguridad, así que el estado inicial no la lleva ni un estado marcado pasa a inicial, y ningún camino abierto mueve solas unidades a un estado marcado, desde ningún estado | D-260, §8.2, §8.3 | Base, Dominio, Servicio, Frontend | Por construir | ❌ |
+| FLT-R151 | En un estado con `blocks_equipment_changes` —la semilla: Robado— no se instala, reemplaza ni retira ningún equipo; corregir el costo y completar el serial se permiten. La marca nace en falso y se pone al editar el estado | D-260, §8.2 | Base, Dominio, Servicio, Frontend | Por construir | ❌ |
 
 Los números FLT-R119, FLT-R128 y FLT-R129 no se usaron.
 
@@ -673,7 +705,7 @@ En el frontend, `FleetFacade` ofrece a `change-log` el resumen de una unidad, a 
 | Contexto | Para qué |
 |---|---|
 | `organization` | La empresa del alta, si existe y quien llama la alcanza, su país, su zona (§2.6) y su moneda funcional (D-187); la marca comercial y la ubicación de un alta, una edición o un ingreso, activas y de la empresa (D-84), con la sede de la ubicación (D-101); y quién instaló un equipo, sin sus datos personales (D-105) |
-| `vehiclecatalog` | El modelo y el color, con si están activos, y la marca y el tipo del modelo (D-108); sus nombres para la ficha, las listas y las exportaciones (FLT-R145); lo que exige cada modelo para la habilitación (VCT-R28 a VCT-R31); el tipo y el modelo de un equipo; y las dos escrituras: el modelo con unidades (FLT-R44) y el tipo de equipo con instalaciones (FLT-R81) |
+| `vehiclecatalog` | El modelo y el color, con si están activos, y la marca y el tipo del modelo (D-108); sus nombres para la ficha, las listas y las exportaciones (FLT-R145); lo que la habilitación necesita de cada modelo —si es a gas, el equipo que le aplica y el que trae de fábrica (VCT-R28 a VCT-R31)—, que `fleet` cruza con su configuración (FLT-R148); todos los tipos de equipo, para Requisitos de equipamiento; el tipo, la marca y el modelo de un equipo; y las dos escrituras: el modelo con unidades (FLT-R44) y el tipo de equipo con instalaciones (FLT-R81) |
 | `location` | El país de un tipo de documento, por su código ISO (D-13), y la moneda del costo de un equipo, con sus decimales |
 | `iam` | Quién hizo cada cosa, como identificador público y nombre (FLT-R40); la cuenta `SYSTEM` que firma el regreso automático (D-42); el permiso que exige cada camino (D-100); y, en el frontend, los permisos de la sesión y la zona de cada empresa |
 | `documents` | Las exportaciones del Inventario, de la lista de habilitación y de los tipos de documento (D-125), y los archivos de los documentos de las unidades (D-189) |
