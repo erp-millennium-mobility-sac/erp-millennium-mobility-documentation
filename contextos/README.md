@@ -22,6 +22,8 @@ Los demás documentos están ordenados por tema: los datos (diccionario), la API
 | [procurement.md](procurement.md) | `procurement`: proveedores, plantillas y órdenes de compra, facturas de compra, notas de crédito, pagos a proveedores y Por pagar |
 | [reporting.md](reporting.md) | `reporting`: la capa de lectura, los reportes de Logística y el exportable de stock (D-232) |
 | [notifications.md](notifications.md) | `notifications`: avisos por correo, SMS y push. Módulo de la plataforma; hoy, el correo del enlace para restablecer la contraseña y el del código para activar una cuenta (D-242, D-243, D-255) |
+| [audit.md](audit.md) | `audit`: la bitácora de cambios, quién cambió qué y cuándo. Módulo de la plataforma, fuera de `shared` desde la fase 1 del plan de migración (D-129, D-262) |
+| [imports.md](imports.md) | `imports`: el registro de las cargas de archivos, con el lector y el escritor de libros. Módulo de la plataforma, fuera de `shared` desde la fase 1 del plan de migración (D-200, D-262) |
 
 Las tolerancias de los caminos entre estados de una unidad están en la [especificación de las tolerancias](../especificacion-tolerancias-de-los-caminos-2026-11-09.md).
 
@@ -52,7 +54,7 @@ Copiar cualquiera de esas fuentes garantiza que este documento y la fuente termi
 
 ## Las reglas y sus identificadores
 
-Cada regla lleva un identificador estable con el prefijo del contexto (`LOC-`, `IAM-`, `ORG-`, `VCT-`, `FLT-`, `PRC-`, `RPT-`, `NTF-`, y `SHR-` para `shared`, cuyas reglas de las cargas de archivos están en el diccionario, §11.8) y un número que no se reutiliza. Así una prueba, un commit o una revisión pueden citarla sin repetirla. Una regla que queda sin efecto conserva su número en una línea que dice qué la sustituye mientras algo la cite; si nadie la cita, se quita de la tabla.
+Cada regla lleva un identificador estable con el prefijo del contexto (`LOC-`, `IAM-`, `ORG-`, `VCT-`, `FLT-`, `PRC-`, `RPT-`, `NTF-`, `AUD-` para `audit`, y `SHR-` para `imports`, cuyas reglas de las cargas de archivos están en el diccionario, §11.8, y conservan el prefijo de cuando eran de `shared`) y un número que no se reutiliza. Así una prueba, un commit o una revisión pueden citarla sin repetirla. Una regla que queda sin efecto conserva su número en una línea que dice qué la sustituye mientras algo la cite; si nadie la cita, se quita de la tabla.
 
 La tabla de reglas tiene las columnas `Id | Regla | Fuente | Capa | Prueba | Estado`:
 

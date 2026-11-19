@@ -41,8 +41,8 @@ En un monolito modular ninguna frontera exige otra base de datos ni otro desplie
 | 12 | `vehiclecatalog` | Catálogo de vehículos | Genérico | El catálogo del producto: tipos, marcas, modelos y colores | Existe; se reduce |
 | 13 | `documents` | Documentos | Mecanismo de plataforma | Los archivos que genera el sistema y los que conserva | Existe |
 | 14 | `notifications` | Notificaciones | Mecanismo de plataforma | Los avisos por correo, SMS y push | Existe |
-| 15 | `audit` | Bitácora | Genérico | Quién cambió qué y cuándo | Se forma por migración (hoy en `shared`) |
-| 16 | `imports` | Cargas de archivos | Genérico | El registro de las cargas y su informe | Se forma por migración (hoy en `shared`) |
+| 15 | `audit` | Bitácora | Genérico | Quién cambió qué y cuándo | Existe: integrada en la fase 1 (19/11/2026) |
+| 16 | `imports` | Cargas de archivos | Genérico | El registro de las cargas y su informe | Existe: integrada en la fase 1 (19/11/2026) |
 | 17 | `reporting` | Reportes | Capa de lectura | Los indicadores y los exportables que cruzan contextos | Existe |
 | 18 | `legacyimport` | Migración inicial | *Anticorruption Layer*, temporal | La traducción del libro de stock heredado | Se forma por migración; se borra después de la puesta en marcha |
 | — | `shared` | Núcleo compartido | *Shared Kernel* | Lo mínimo que todos comparten | Existe; se reduce |
@@ -140,8 +140,8 @@ En un monolito modular ninguna frontera exige otra base de datos ni otro desplie
 ### 3.13 Plataforma: `documents`, `notifications`, `audit` e `imports`
 
 - **`documents`** y **`notifications`** quedan como están: *Cohesive Mechanisms* (cap. 15) que no conocen ningún contexto.
-- **`audit`** es la bitácora (`change_logs`, `GET /change-logs`), hoy en `shared/changelog`.
-- **`imports`** es el registro de las cargas (`import_batches`, `/imports`), hoy en `shared/importbatches`, con su lector y su escritor de libros. Depende de `audit` (los nombres de quien cargó y de la empresa) y de `documents` (donde guarda el archivo y el informe).
+- **`audit`** es la bitácora (`change_logs`, `GET /change-logs`). Integrada en la fase 1 (19/11/2026): salió de `shared/changelog` (D-262).
+- **`imports`** es el registro de las cargas (`import_batches`, `/imports`), con su lector y su escritor de libros. Integrada en la fase 1 (19/11/2026): salió de `shared/importbatches` (D-262). Depende de `audit` (los nombres de quien cargó y de la empresa) y de `documents` (donde guarda el archivo y el informe).
 - **Por qué.** Tienen tabla, endpoint y permiso propios: son *Generic Subdomains*, no núcleo compartido.
 
 ### 3.14 `reporting` — Reportes

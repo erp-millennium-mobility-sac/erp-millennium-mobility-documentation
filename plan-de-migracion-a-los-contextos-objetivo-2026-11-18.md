@@ -104,6 +104,8 @@ Las fases 0 a 10 son entre 52 y 77 días de trabajo de una persona, sin calibrar
 
 ### Fase 1 — `audit` e `imports` salen de `shared`
 
+**Hecha el 19/11/2026** (backend y documentación en `refactor/phase-1`), como la describe esta sección: `shared` ya no tiene `changelog` ni `importbatches`; `documents` sigue en `{}`; `ModularityTests` pasa con `audit::acl` e `imports::acl` como únicas puertas, la de `imports` repartida en sus tipos con `propagate`; y las pruebas que alcanzan los dos módulos, con las de arquitectura y el arranque del contexto, pasan: 334, sin fallos. La decisión nueva del diccionario es D-262 (v1.65). Ningún paso del plan tuvo que cambiar; se sumó `ImportBatchQueryService` a lo que usa `procurement`, que el plan no listaba.
+
 **Por qué.** Un *Shared Kernel* debe ser pequeño y estable (cap. 14). La bitácora y el registro de las cargas tienen tabla, endpoint y permiso propios: son *Generic Subdomains* (cap. 15), no núcleo compartido. Salen de `shared` como ya salieron `documents` y `notifications` (D-125, D-143). El lector y el escritor de libros de `imports` son un *Cohesive Mechanism* (cap. 15) que viaja con su registro.
 
 **Orden dentro de la fase.** Cada paso deja el build y las pruebas de arquitectura en verde, y todo se integra junto.
