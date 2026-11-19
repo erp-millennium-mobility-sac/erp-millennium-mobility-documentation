@@ -1,6 +1,6 @@
 # Especificación: Tolerancias de los caminos de estado
 
-**Versión 2 · 13/11/2026.** Suma la sección 6, un borrador con horas propuestas para que el negocio lo corrija en vez de llenar las tablas en blanco: no es una decisión, y ninguna migración lo aplica hasta que el negocio responda. El código del camino de la firma es `FIRMA_CONTRATO` desde V130 (D-251). Antes, **versión 1 · 09/11/2026.** Decisión del responsable: D-240 del diccionario, con los caminos de En traspaso de D-239. Lee de §8.2 y §8.3 del diccionario y de las migraciones de `fleet` que siembran los caminos: V47, V51, V96, V112, V117 y, desde la versión 2, V130.
+**Decisión abierta:** D-240 del diccionario, a la espera del negocio. La tolerancia de cada camino —sus horas y qué pasa al vencerse— se fija por migración, con los valores que entrega el negocio, para que toda base nueva nazca con ellas; después el superadministrador las ajusta en Catálogos › Estados y motivos. Este documento es el cuestionario: lo que rige hoy, lo que falta responder y una propuesta para corregir. Lee de §8.2 y §8.3 del diccionario, de D-239 y D-240, y de las migraciones de `fleet` que siembran los caminos: V47, V51, V96, V112, V117, V123 y V130. Los caminos, sus motivos y sus permisos están también en [contextos/fleet.md](contextos/fleet.md), F3.
 
 ## 1. Para quién es y qué se pide
 
@@ -16,10 +16,10 @@
 
 Las horas se cuentan desde el movimiento, corridas: también de noche y en feriados. 72 h son 3 días; 720 h, 30 días.
 
-| Al vencer | Qué hace hoy |
+| Al vencer | Qué hace |
 |---|---|
-| Mover sola | El proceso programado devuelve la unidad al estado que se indique, y firma el movimiento el usuario del sistema. Hoy solo lo hace la firma de contrato: a las 48 h vuelve a Disponible |
-| Avisar | La unidad aparece como vencida en Inventario y en los indicadores de Reportes, que la cuentan también como por vencer 72 h antes (D-235). Nadie la mueve |
+| Mover sola | El proceso programado, que corre cada 5 minutos por omisión, devuelve la unidad al estado que se indique, y firma el movimiento el usuario del sistema con el motivo «Regreso automático por vencimiento». Hoy solo lo hace la firma de contrato: a las 48 h vuelve a Disponible |
+| Avisar | La unidad aparece como vencida en Inventario («Solo vencidas») y en los indicadores de Reportes, que la cuentan también como por vencer 72 h antes de que venza (D-235). No se envía ningún aviso aparte, y nadie la mueve |
 | Sin tolerancia | La unidad nunca aparece como vencida |
 
 **Si es «mover sola», diga a qué estado vuelve.** No puede volver a Disponible: entrar ahí exige la habilitación completa, y solo el regreso de la firma de contrato lo hace solo (D-164, D-170).
@@ -28,9 +28,11 @@ Las horas se cuentan desde el movimiento, corridas: también de noche y en feria
 - **Inactivo es final.** No tiene salida, así que una tolerancia ahí vencería en toda unidad que sale de la flota y la dejaría vencida para siempre. Son las filas 30, 32 y 37.
 - **Activo es la unidad con su cliente.** Una tolerancia en un camino que llega a Activo la mostraría vencida mientras genera ingresos. Son las filas 3, 19, 21 y 24.
 
+**Por qué conviene responder antes de cargar unidades reales.** Una unidad que entró a un estado antes de que su camino tenga tolerancia nunca aparece como vencida, hasta que se mueva otra vez.
+
 ## 3. Caminos sin tolerancia
 
-Los manuales que hoy no tienen tolerancia, más los cuatro nuevos de En traspaso (D-239). En las filas 34 a 36, D-239 ya fijó «avisar»: falta cuánto tarda la notaría.
+Los caminos manuales abiertos que hoy no tienen tolerancia. En las filas 34 a 36, D-239 ya fijó «avisar»: falta cuánto tarda la notaría.
 
 | N.º | Origen → Destino | Motivo (código y nombre) | Tolerancia actual | Horas (a llenar) | Al vencer (avisar / mover sola, a llenar) |
 |---|---|---|---|---|---|
@@ -67,36 +69,33 @@ Los manuales que hoy no tienen tolerancia, más los cuatro nuevos de En traspaso
 | 31 | Pérdida total → Puesta a punto | `RECUPERA_VALOR` · Recupera valor | Sin tolerancia | | |
 | 32 | Pérdida total → Inactivo | `BAJA_DEFINITIVA` · Baja definitiva | Sin tolerancia | | |
 | 33 | Puesta a punto → Disponible | `REACONDICIONADA` · Reacondicionada | Sin tolerancia | | |
-| 34 | Activo → En traspaso | `CONTRATO_COMPLETADO` · Contrato completado | Nuevo (D-239) | | Avisar (D-239) |
-| 35 | Activo → En traspaso | `VENTA_DIRECTA` · Venta directa | Nuevo (D-239) | | Avisar (D-239) |
-| 36 | Disponible → En traspaso | `VENTA_DIRECTA` · Venta directa | Nuevo (D-239) | | Avisar (D-239) |
-| 37 | En traspaso → Inactivo | `TRASPASO_INSCRITO` · Traspaso inscrito | Nuevo (D-239) | | |
+| 34 | Activo → En traspaso | `CONTRATO_COMPLETADO` · Contrato completado | Sin tolerancia | | Avisar (D-239) |
+| 35 | Activo → En traspaso | `VENTA_DIRECTA` · Venta directa | Sin tolerancia | | Avisar (D-239) |
+| 36 | Disponible → En traspaso | `VENTA_DIRECTA` · Venta directa | Sin tolerancia | | Avisar (D-239) |
+| 37 | En traspaso → Inactivo | `TRASPASO_INSCRITO` · Traspaso inscrito | Sin tolerancia | | |
 
 ## 4. Ya fijadas: confirmar
 
-Las sembró V47 o V112. Se piden para confirmarlas o corregirlas.
+Las que hoy tienen tolerancia. Se piden para confirmarlas o corregirlas.
 
 | N.º | Origen → Destino | Motivo (código y nombre) | Tolerancia actual | Horas (a llenar) | Al vencer (avisar / mover sola, a llenar) |
 |---|---|---|---|---|---|
-| A | Disponible → Contrato firmado | `FIRMA_CONTRATO` (`VENTA` hasta V130) · Firma de contrato | 48 h, mover sola a Disponible | | |
+| A | Disponible → Contrato firmado | `FIRMA_CONTRATO` · Firma de contrato | 48 h, mover sola a Disponible | | |
 | B | Activo → Mecánica | `MANT_PREVENTIVO` · Mantenimiento preventivo | 72 h, avisar | | |
 | C | Activo → Siniestro | `CHOQUE` · Choque | 480 h (20 días), avisar | | |
 | D | Activo → Custodia | `MOROSIDAD` · Morosidad | 720 h (30 días), avisar | | |
 
 ## 5. Lo que no se pide, y por qué
 
-- **Las altas:** «Registro de compra» y los tres caminos de «Migración inicial» (V117). El tiempo de una unidad nueva hasta su entrega ya lo mide la brecha de días (D-199), y una tolerancia en la carga inicial contaría desde el día de la carga, no desde el hecho.
-- **El regreso automático** de Contrato firmado a Disponible (`REGRESO_AUTOMATICO`, V51): no lleva tolerancia, por regla (D-110).
-- **Activo → Mecánica por «Choque»:** lo cerró D-221; el choque va a Siniestro (fila C).
-- **Los tres caminos a Inactivo que cierra D-239:** Activo → Inactivo por «Contrato completado» y «Venta directa», y Disponible → Inactivo por «Venta directa». Los reemplazan las filas 34 a 37.
+- **Las altas:** «Registro de compra» y los tres caminos de «Migración inicial». El tiempo de una unidad nueva hasta su entrega ya lo mide la brecha de días (D-199), y una tolerancia en la carga inicial contaría desde el día de la carga, no desde el hecho.
+- **El regreso automático** de Contrato firmado a Disponible (`REGRESO_AUTOMATICO`): no lleva tolerancia, por regla (D-110).
+- **Los caminos cerrados**, que se conservan solo por su historial: Activo → Mecánica por «Choque», porque el choque va a Siniestro (D-221; fila C), y las salidas directas a Inactivo —Activo → Inactivo por «Contrato completado» y «Venta directa», y Disponible → Inactivo por «Venta directa»—, porque la salida de la flota pasa por En traspaso (D-239; filas 34 a 37).
 
-Con ellos, las migraciones suman 46 caminos: 41 sin tolerancia y 5 con ella. La tabla 3 lleva los 33 manuales que siguen abiertos y los 4 nuevos; la tabla 4, los 4 abiertos que ya la tienen.
+En total hay 46 caminos abiertos: los 37 de la tabla 3, los 4 de la tabla 4 y los 5 de este apartado. Tienen tolerancia solo los 4 de la tabla 4.
 
-## 6. Borrador para corregir (versión 2, 13/11/2026)
+## 6. Propuesta para corregir
 
-**Es una propuesta, no una decisión.** Se armó con la escala de las cuatro tolerancias que ya existen (72 h, 480 h y 720 h) para que el negocio corrija números en lugar de inventarlos. Cada fila se puede aceptar, cambiar o dejar sin tolerancia. Cuando el negocio responda, una migración de `fleet` fija lo aceptado.
-
-**Por qué conviene responder antes de cargar unidades reales.** El vencimiento de cada movimiento se calcula al registrarlo, y el historial no se reescribe (§2). Una unidad que entró a Mecánica antes de que su camino tenga tolerancia nunca aparece como vencida, hasta que se mueva otra vez.
+**Es una propuesta, no una decisión.** Se armó con la escala de las tolerancias que ya existen (72 h, 480 h y 720 h) para que el negocio corrija números en lugar de inventarlos. Cada fila se puede aceptar, cambiar o dejar sin tolerancia. Ninguna migración la aplica: cuando el negocio responda, una migración de `fleet` fija lo aceptado.
 
 **Siete filas quedan sin tolerancia por diseño**, como explica §2: las que llegan a Activo (3, 19, 21 y 24), porque la unidad está generando ingresos con su cliente, y las que llegan a Inactivo (30, 32 y 37), porque es final. Las demás «avisan»: ninguna puede «mover sola» a Disponible (D-164, D-170), y fuera de la firma de contrato no hay otro regreso que tenga sentido automático.
 
@@ -104,7 +103,7 @@ Con ellos, las migraciones suman 46 caminos: 41 sin tolerancia y 5 con ella. La 
 |---|---|---|---|
 | 1 y 33 | → Disponible por «Habilitación completa» y «Reacondicionada» | 720 h (30 días), avisar | Una unidad lista que no se coloca en un mes es stock parado: lo dicen Inventario y los indicadores |
 | 2 | Disponible → En habilitación por «Pierde un requisito» | 72 h, avisar | Un GPS o un documento que se reemplaza no debería tardar más de tres días |
-| 4 a 7 | Activo → Mecánica por «Falla», «Alerta de sistema», «Kilometraje» y «Tiempo» | 120 h para «Falla»; 72 h para las otras tres, como «Mantenimiento preventivo» | Una unidad en el taller es una unidad sin ingresos; una falla puede pedir repuestos |
+| 4 a 7 | Activo → Mecánica por «Falla», «Alerta de sistema», «Kilometraje» y «Tiempo» | 120 h para «Falla»; 72 h para las otras tres, como «Mantenimiento preventivo»; avisar | Una unidad en el taller es una unidad sin ingresos; una falla puede pedir repuestos |
 | 8 a 10 | Activo → Siniestro por «Accidente», «Robo frustrado» y «Daños a terceros» | 480 h (20 días), avisar, como «Choque» | Mismo tipo de trámite que el choque |
 | 11 y 13 | Activo → Custodia por «Incautación» y «Depósito» | 720 h (30 días), avisar | Una autoridad la tiene: Millennium no decide cuándo vuelve, pero alguien tiene que revisarla cada mes |
 | 12 | Activo → Custodia por «Comisaría» | 168 h (7 días), avisar | Suele resolverse en días |

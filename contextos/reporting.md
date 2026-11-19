@@ -1,38 +1,159 @@
 # Contexto `reporting` — ERP Millennium Mobility
 
-**Actualizado:** 12/11/2026 (las listas de la brecha de días y de la diferencia por inicial abren la unidad desde su VIN y no desde la placa, que decía «Sin placa» sin ella, y solo a quien lee las unidades de la empresa —frontend `2a086825`, merge `c98403fc`, publicado en `develop`; `DESIGN.md`, revisión 87—: en «La unidad desde su VIN», con su primera prueba unitaria de la pantalla). Antes, 10/11/2026 (RPT-R10 construida el mismo día: backend `0f6d7ead` y `678e7b11`, merge `ba5bbb15`, diccionario v1.54, en ✅ con sus pruebas). Antes, el mismo día (la inicial del cliente congelada al saldar, D-248 del diccionario v1.53, decidida ese día y por construir: RPT-R10, en ❌ hasta construirla, y lo que queda). Antes, 09/11/2026 (En traspaso, D-239, que los indicadores cuentan como terminal y el exportable dice de quién es, con RPT-R07 al día: backend `9f9bd093`, en `feature/fleet-transfer-and-delivery`, integrada en `integration/audit-2026-11-09`, merge `9627e4b8`; las pruebas de cada regla; la moneda de grupo, decidida fuera de los reportes; y la sonda en vivo, que no existe). Antes, 06/11/2026 (backend `e5bcc028`, `c69f097d`, `ff52ea1e`, `486428cd`, `85f23e2e`, `bd37d618`, `4f62a26e` y `d68e3b24`, frontend `90a0a7ee`, `ab142f03`, `2896de23` y `85520b76`, migraciones V120 y V121).
+**Fuente:** diccionario de datos, D-232 a D-237, con D-239 y D-248; §10.5 y §11.9 del diccionario, P11 de [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), la guía funcional y la plantilla del cliente `STOCK_MILLENNIUM_2026_EXPORTABLE FINAL.xlsx`. Si este documento y el diccionario no coinciden, manda el diccionario.
 
-La capa de lectura: los reportes que cruzan contextos. Lee por SQL y nunca escribe. Lo que hace y por qué está en la [especificación](../especificacion-reportes-2026-11-06.md); las decisiones son D-232 a D-237.
+La capa de lectura: los reportes que cruzan contextos. Lee por SQL y nunca escribe.
 
-## Reglas
+## 1. Qué es y qué no es
 
-Las pruebas del backend están en `src/test/java/.../reporting` salvo que se diga otro paquete; la de la pantalla, en `e2e/reports.spec.ts`.
+| Qué | Dónde | Permiso |
+|---|---|---|
+| Indicadores de la flota | Logística › Reportes, pestaña Indicadores | `reportes.ver` |
+| Brecha de días por unidad | Pestaña Brecha de días | `reportes.ver` |
+| Diferencia por inicial por unidad | Pestaña Diferencia por inicial | `reportes.ver` y `stock.ver_costos` |
+| Exportable de stock, 52 columnas | Botón «Exportar stock» | `reportes.ver`; los montos, con `stock.ver_costos` |
 
-| ID | Regla | Fuente | Prueba | Estado |
-|---|---|---|---|---|
-| RPT-R01 | `reporting` no escribe, y depende solo de `shared`, `documents::acl` y `fleet::acl` | D-232 | `ModularityTests` (la raíz), con los `allowedDependencies` del `package-info.java` del módulo | ✅ |
-| RPT-R02 | Las reglas con dueño se piden a `fleet::acl`: habilitación, entrega vigente, brecha y montos | D-232 | `ReportsIntegrationTests.theGapOfEachUnitComesFromItsBaseDate` y `theExportSaysWhatTheRecordOfTheUnitSays` | ✅ |
-| RPT-R03 | Un reporte es de una empresa que el llamante lee con `reportes.ver`; si no, `404 COMPANY_NOT_FOUND`. Una asignación acotada a marcas lee solo esas | D-233 | `ReportsIntegrationTests.aReportReadsOnlyTheCompanyAndTheBrandsOfTheCaller`, `withoutThePermissionOfTheReportsNothingIsRead` y `theExportOfACompanyTheCallerDoesNotReadIsNotFound` | ✅ |
-| RPT-R04 | Las unidades anuladas no cuentan | D-233 | `ReportsIntegrationTests.theRateCountsTheActiveOverTheActiveAndTheStopped`, con una unidad Activo anulada que no suma | ✅ |
-| RPT-R05 | El exportable conserva los 52 encabezados y el orden de la plantilla, en cualquier idioma | D-234 | `ReportsIntegrationTests.theExportKeepsTheHeadersOfTheTemplateInItsOrder` | ✅ |
-| RPT-R06 | Los montos siguen a `stock.ver_costos` por empresa y marca, y ese permiso entra en el alcance del documento | D-234 | `ReportsIntegrationTests.theExportSaysWhatTheRecordOfTheUnitSays`, con un lector sin costos; `StockRowsTests` | ✅ |
-| RPT-R07 | Robado, Pérdida total, En traspaso e Inactivo no cuentan como paralizadas: son de familia terminal. Sí se cuentan en Unidades por estado. En traspaso se suma desde el 09/11/2026, con V123 (D-239) | D-235, D-239 | `FleetIndicatorsPolicyTests.theRateIsTheActiveOverTheActiveAndTheStoppedToOneDecimal`; `ReportsIntegrationTests.theRateCountsTheActiveOverTheActiveAndTheStopped`, que desde `9f9bd093` pone una unidad En traspaso y la cuenta en su estado, de familia `terminal`, fuera del porcentaje | ✅ |
-| RPT-R08 | La diferencia por inicial exige `stock.ver_costos` en la empresa y totaliza por moneda | D-236 | `ReportsIntegrationTests.theDifferenceByDownPaymentAsksForTheCosts` | ✅ |
-| RPT-R09 | Cada tabla que muestra un documento tiene sus casillas en `data_versions` | D-237 | Ninguna prueba nombra todavía las tres tablas que V121 versiona | ⚠️ |
-| RPT-R10 | La diferencia por inicial es la inicial del cliente congelada al saldar, la de la imputación que salda (`customer_initial`), que una nota posterior no achica: «Diferencia por inicial» lista los saldados con inicial mayor que cero, y la columna 45 del exportable la lee. El exportable sube a la versión 2 de su diseño (`STOCK_LAYOUT`). Decidida y construida el 10/11/2026 (backend `0f6d7ead` y `678e7b11`, merge `ba5bbb15`), por `ReportUnitPurchase`, que `fleet` responde con la inicial congelada | D-248, D-236 | `ReportsIntegrationTests.aSettledUnitWithALaterNoteKeepsItsInitial`, `theInitialOfColumn45IsPartOfTheVersionOfTheExport` | ✅ |
+`reportes.ver` lo siembra V120 en `SUPERADMIN`, `ADMIN_EMPRESA`, `OPERACIONES` y `CONTABILIDAD` (D-232).
 
-**La unidad desde su VIN** (12/11/2026; `DESIGN.md`, revisión 87). En las listas de la brecha de días y de la diferencia por inicial, el VIN de cada fila abre la ficha de la unidad. Hasta ese día la abría la placa, y una unidad sin placa la abría desde «Sin placa», un texto que no nombra ninguna. El enlace aparece solo a quien tiene `stock.ver` en la empresa del reporte; a quien lee los reportes sin leer las unidades, el VIN es texto. Hoy los cuatro roles con `reportes.ver` tienen `stock.ver`, así que la condición cuenta solo para un rol propio (`reports-view.spec.ts`, la primera prueba unitaria de la pantalla).
+**Dónde vive (D-232).** Un módulo `reporting`, capa de lectura: no escribe, no tiene tablas propias ni pantallas de escritura. Lee por SQL los datos de los contextos y pide a `fleet::acl` las reglas que tienen dueño, porque escribirlas de nuevo en SQL daría otro número y un reporte nunca debe decir otra cosa que la ficha de la unidad:
 
-**El propietario en el exportable** (columna 50, D-223). Desde el 09/11/2026 vale también para una unidad En traspaso: dice a quién se traspasó cuando su traspaso está registrado, y la razón social de la empresa mientras falta (`ReportsIntegrationTests.theExportSaysWhatTheRecordOfTheUnitSays`).
+| Regla | Dueño | Por dónde llega |
+|---|---|---|
+| Estado de habilitación con lo que falta, entrega vigente, primera entrega, fecha base y brecha de días | `fleet` | `FleetContextFacade.fetchReportFacts` |
+| Proveedor, factura, notas, valor del vehículo, valores en moneda funcional, pagos que alcanzan la unidad y la inicial congelada | `procurement`, que lo calcula | `FleetContextFacade.fetchPurchaseCosts`, por el puerto `UnitPurchases` de `fleet` |
 
-## Fuera de alcance
+`reporting` depende solo de `shared`, `documents::acl` y `fleet::acl`. Lo que llega de `fleet` lo traduce su `ExternalFleetService` a registros propios (`ReportUnitFacts`, `ReportUnitPurchase`), y ninguna otra clase nombra esos tipos. Cada consulta suya corre contra el esquema de Flyway en una prueba de integración (`ReportsIntegrationTests`).
 
-- El costo por día paralizada: no hay ese dato.
-- La validación de la inicial contra el contrato: espera al bloque 12.
-- **La moneda de grupo** (09/11/2026). D-46 y §4.8 del diccionario la mandaban construir con los reportes, el paso 11. D-233 la deja fuera en la práctica: un reporte es de una empresa, se lee en su moneda funcional y dos monedas no se suman. Queda decidida fuera del alcance de los reportes, y pendiente para cuando haya dos monedas funcionales que reunir en un mismo reporte.
+**Queda fuera, y por qué:**
+- **Costo por día paralizada:** el sistema no guarda ningún costo diario de una unidad detenida. Calcularlo sería inventar el dato (D-235).
+- **Validación de la inicial contra el contrato:** cruza compras con ventas, y espera al bloque 12 (D-236, §10.5).
+- **Pólizas (columnas 28 a 30 del exportable):** son candidato (§11.6). Las columnas salen vacías para conservar la plantilla.
+- **Excel de la brecha y de la diferencia:** el exportable de stock ya las trae, columnas 24 y 45.
+- **Moneda de grupo:** un reporte es de una empresa y se lee en su moneda funcional, y dos monedas no se suman (D-233), así que ningún reporte la usa. Queda pendiente para cuando haya dos monedas funcionales que reunir en un mismo reporte (D-46, §4.8).
 
-## Estado y pendientes
+## 2. Alcance de cada pedido (D-233)
 
-- **La sonda en vivo** (09/11/2026). No existe: `e2e-live/` no tiene `reports.live.spec.ts`. La pantalla tiene su prueba contra el simulador del backend (`e2e/reports.spec.ts`), y las consultas, su prueba de integración contra el esquema de Flyway. Escribirla y correrla contra el backend real queda pendiente, con las sondas que nunca corrieron ([orden de implementación](../orden-de-implementacion-millennium-mobility.md), pendientes transversales).
-- RPT-R09, sin prueba propia (arriba).
-- ~~**RPT-R10** (10/11/2026, D-248), decidida y por construir con `feature/unit-level-balance` (backend, V127): `StockRows` toma la columna 45 de la inicial congelada, y «Diferencia por inicial» (`ReportQueryServiceImpl`) lista los saldados con inicial mayor que cero. Hasta entonces, la inicial es lo que le falta a la unidad saldada, y una nota posterior la achica ([especificación](../especificacion-reportes-2026-11-06.md), versión 3, §6).~~ Construida el mismo día (backend `0f6d7ead` y `678e7b11`, merge `ba5bbb15`; arriba).
+Un reporte es de **una empresa**: `companyId` es obligatorio, porque de ella salen la zona y la moneda funcional, y dos monedas no se suman. `commercialBrandId` es opcional.
+
+- La empresa se lee con `reportes.ver`; sin el permiso, `403 ACCESS_DENIED`, y una empresa que no existe o fuera de ese alcance, `404 COMPANY_NOT_FOUND`.
+- Quien tiene `reportes.ver` acotado a marcas lee solo esas marcas.
+- Las unidades anuladas no cuentan.
+- Los montos siguen a `stock.ver_costos`, por empresa y marca de cada unidad. Sin ese permiso las columnas de montos salen vacías, y no salen de la base hacia la respuesta.
+
+## 3. Los reportes
+
+### Indicadores (D-235)
+
+`GET /api/v1/reports/indicators?companyId=&commercialBrandId=`
+
+| Indicador | Cómo sale |
+|---|---|
+| **% de activación** | Activos / (Activos + Paralizadas) × 100, con un decimal. Activos: familia `productivo`. Paralizadas: familia `recuperacion`, es decir Mecánica, Siniestro, Custodia y Puesta a punto. Sin unidades en ninguna de las dos, no hay porcentaje (`FleetIndicatorsPolicy.activationRate`) |
+| **Unidades por estado** | Cuenta por estado actual: cada estado activo, y uno inactivo que todavía tiene unidades |
+| **Días promedio por estado** | Promedio de cada estadía en el estado, desde que la unidad entró hasta que salió, o hasta ahora si sigue ahí |
+| **Tolerancia vencida** | Unidades cuya fila actual del historial ya pasó su `due_at` |
+| **Próximas a tolerancia vencida** | Unidades cuya fila actual vence dentro de 72 horas (`FleetIndicatorsPolicy.WINDOW`) |
+| **Próximas a resolución** | Unidades en Custodia con tolerancia vencida o por vencer dentro de 72 horas. Custodia es el único estado que lleva a «Resolución de contrato» |
+| **En riesgo de pérdida** | Unidades en Custodia por Incautación, Comisaría o Depósito: una autoridad las tiene y Millennium no decide cuándo vuelven |
+
+**Qué cuenta como paralizada.** Solo la familia `recuperacion`. Robado, Pérdida total, En traspaso e Inactivo no son paralizadas: son de familia `terminal`, no entran en el porcentaje y no bajan la activación (D-219, D-220, D-235, D-239). Sí se cuentan en Unidades por estado.
+
+### Brecha de días
+
+`GET /api/v1/reports/day-gaps?companyId=&commercialBrandId=&q=&delivered=&page=&size=&sort=`
+
+Unidades con línea vigente. La brecha es la de D-199, que calcula `fleet`: de la fecha base —el primer pago que cubre parte de la unidad o, si ninguno la cubre, la fecha de la factura— a la primera entrega o, sin entrega, a hoy en la zona de la empresa. Ordena por `dayGap`, por defecto de mayor a menor, `baseDate` o `plate`. `q` busca en placa y VIN. `delivered` deja las entregadas alguna vez (`true`) o las que nunca se entregaron (`false`). La página se corta en memoria, porque lo que la ordena sale de reglas que no se escriben dos veces (D-236).
+
+### Diferencia por inicial (D-236, D-248)
+
+`GET /api/v1/reports/initial-differences?companyId=&commercialBrandId=&q=&page=&size=`
+`GET /api/v1/reports/initial-differences/totals?companyId=&commercialBrandId=&q=`
+
+Las unidades saldadas del canal de dealers (D-197), con su inicial del cliente mayor que cero, de mayor a menor. La inicial es la congelada al saldar, en la imputación que salda (`payment_allocations.customer_initial`), y una nota posterior no la achica: lo que la nota baja pasa a saldo a favor del proveedor (D-248). Así, un auto de 50 000,00 saldado con 42 000,00 de Millennium y 8 000,00 de inicial sigue con 8 000,00 de inicial aunque después llegue una nota de 10 000,00, que pasa entera a saldo.
+
+Exige `stock.ver_costos` en la empresa: si no, `403 ACCESS_DENIED`. Las unidades de una marca que ese permiso no lee no aparecen. Los totales van por moneda, con cuántas unidades y cuánto suma cada una. Como la brecha, corta su página en memoria (D-236).
+
+### Exportable de stock (D-234)
+
+`GET /api/v1/reports/stock?companyId=&commercialBrandId=` con `Accept` de Excel: un documento generado (D-106), en `303` hacia `/api/v1/documents/{id}`, reutilizado si es idéntico; con demasiados documentos en curso, `503 DOCUMENTS_BUSY`. Una fila por unidad no anulada de la empresa, con los encabezados y el orden exactos de la plantilla, hoja `STOCK`, en cualquier idioma. El día de la empresa entra en el pedido, porque la brecha cambia de un día a otro sin que nada más cambie, y el alcance incluye `stock.ver_costos`: quien no ve montos nunca recibe el archivo de quien sí.
+
+| # | Columna | Sale de |
+|---|---|---|
+| 1 | N° | `legacy_number`; vacío en una unidad que no vino del Excel |
+| 2 | LLAVE | Grupo de la llave duplicada; `NO TIENE` sin duplicado |
+| 3, 4, 6 | PLACA, VIN, MOTOR | La unidad |
+| 5 | ESTADO DE HABILITACIÓN | §11.9, con lo que falta entre paréntesis: «Sin equipo (GPS)» |
+| 7 a 10 | MARCA, MODELO, COLOR, AÑO | El catálogo y la unidad |
+| 11, 35, 36 | PROVEEDOR, FACTURA, FECHA DE FACTURA | La línea vigente |
+| 12 | DUPLICADO DE LLAVES | Su serial; `SI` sin serial; `NO` sin duplicado |
+| 13 | EN PLANTA | `SI` con fecha de ingreso |
+| 14, 15 | INMATRICULACIÓN / TÍTULO, FECHA DE TÍTULO | La unidad |
+| 16, 17 | TIVE, PLACAS | `SI` con documento vigente y con placas físicas |
+| 18, 19 | GPS, FECHA | Instalación abierta |
+| 20, 21 | PANTALLA, FECHA | `NO CORRESPONDE` si el tipo no la lleva; `SI` y `DE FÁBRICA` si el modelo la trae; si no, su instalación abierta. Lo decide el catálogo, nunca un nombre |
+| 22 | ENTREGADO | `SI` mientras la entrega sigue vigente (D-216) |
+| 23 | FECHA DE PRIMERA ENTREGA | La primera, también en una unidad recolocada |
+| 24 | BRECHA DE DÍAS DE HABILITACIÓN | D-199 |
+| 25 a 27 | SOAT y sus fechas | Documento vigente |
+| 28 a 30 | PÓLIZA y sus fechas | Siempre vacías (§11.6) |
+| 31, 32 | SAT, FECHA DECLARACIÓN SAT | La última declaración cargada |
+| 33 | GARANTÍA MOBILIARIA | `SI` con cesión abierta |
+| 34 | ORDEN DE COMPRA | La orden de la factura |
+| 37 | PRECIO DE FACTURA | Monto |
+| 38 a 40 | NC / ND, FECHA, VALOR | Notas vigentes: números unidos por `/`, la primera fecha, el total (monto) |
+| 41 | VALOR DEL VEHÍCULO | §9.6 (monto) |
+| 42, 43 | OPERACIÓN DE PAGO, FECHA DE PAGO | Pagos vigentes que alcanzan la unidad: sus operaciones unidas por `/`, y la fecha del primero (guía) |
+| 44 | MONTO DE PAGO | Suma de esos pagos completos, una vez cada uno, repetida en las filas del bloque (guía); si están en dos monedas, cada una por separado (monto) |
+| 45 | DIFERENCIA POR INICIAL | La inicial del cliente congelada al saldar, que una nota posterior no achica (D-248); vacía si la unidad no está saldada con inicial (monto) |
+| 46, 47 | MONEDA, TC | La factura |
+| 48, 49 | PRECIO DE COMPRA PEN, VALOR CONTABLE PEN | En la moneda funcional de la empresa (D-159): el valor del vehículo y su costo sin impuesto (monto) |
+| 50 | PROPIETARIO | A quién se traspasó (D-223); sin traspaso registrado, la razón social de la empresa, que es quien figura en el registro. Una unidad En traspaso dice la empresa hasta que se registra su traspaso (D-239) |
+| 51 | DECLARACIÓN DE STOCK | Última entrada a Disponible, así una unidad recolocada dice cuándo volvió a estar lista |
+| 52 | TIPO DE VEHÍCULO | El catálogo |
+
+**Qué sale vacío.** Las columnas 28 a 30, siempre. Las de compra (11 y 35 a 49), en una unidad sin línea vigente. Los montos (37, 40, 41, 44, 45, 48 y 49), para quien no tiene `stock.ver_costos` en la empresa y la marca de la unidad. Las filas van por N° y VIN.
+
+**Versión del documento (D-237).** V121 versiona en `data_versions` `vehicle_keys`, `vehicle_tax_declarations` y `vehicle_fund_assignments`, porque el exportable las muestra y un cambio en ellas debe cambiar la versión del documento (regla 6.4). El diseño de las columnas tiene además su propia versión (`STOCK_LAYOUT`, hoy `stock-columns=2`, en `ReportingDocumentKinds`): cambiar cómo se lee una columna la sube, para que no se sirva un archivo generado con la regla anterior.
+
+### Pantalla
+
+Ruta `/reports`, carpeta `reporting`, opción Logística › Reportes. Permiso `reportes.ver` en la ruta y en el menú. Arriba, el filtro de empresa (`mm-company-filter`, que ofrece solo las empresas donde la sesión tiene `reportes.ver`), el de marca comercial y «Exportar stock» a la derecha. Tres pestañas: Indicadores, Brecha de días y Diferencia por inicial, que se ofrece solo a quien tiene `stock.ver_costos` en la empresa elegida.
+
+**La unidad desde su VIN.** En las listas de la brecha de días y de la diferencia por inicial, el VIN de cada fila abre la ficha de la unidad, que una unidad sin placa también tiene. El enlace aparece solo a quien tiene `stock.ver` en la empresa del reporte; a quien lee los reportes sin leer las unidades, el VIN es texto, porque un enlace que no podría abrir sería un callejón (`DESIGN.md`, revisión 87). Los cuatro roles del sistema con `reportes.ver` tienen `stock.ver`, así que la condición cuenta solo para un rol propio.
+
+## 4. Reglas
+
+Las pruebas del backend son del módulo `reporting`, salvo `ModularityTests`, que es de la raíz; las de la pantalla son `reports-view.spec.ts` y `e2e/reports.spec.ts`.
+
+| Id | Regla | Fuente | Capa | Prueba | Estado |
+|---|---|---|---|---|---|
+| RPT-R01 | `reporting` no escribe, y depende solo de `shared`, `documents::acl` y `fleet::acl` | D-232 | Servicio | `ModularityTests` | ✅ |
+| RPT-R02 | Las reglas con dueño se piden a `fleet::acl`: habilitación, entrega vigente, brecha y montos | D-232 | Servicio | `ReportsIntegrationTests` | ✅ |
+| RPT-R03 | Un reporte es de una empresa que el llamante lee con `reportes.ver`; si no, `404 COMPANY_NOT_FOUND`. Una asignación acotada a marcas lee solo esas | D-233 | Servicio | `ReportsIntegrationTests` | ✅ |
+| RPT-R04 | Las unidades anuladas no cuentan | D-233 | Servicio | `ReportsIntegrationTests` | ✅ |
+| RPT-R05 | El exportable conserva los 52 encabezados y el orden de la plantilla, en cualquier idioma | D-234 | Servicio | `ReportsIntegrationTests` | ✅ |
+| RPT-R06 | Los montos siguen a `stock.ver_costos` por empresa y marca, y ese permiso entra en el alcance del documento | D-234 | Servicio | `ReportsIntegrationTests`, `StockRowsTests` | ✅ |
+| RPT-R07 | Robado, Pérdida total, En traspaso e Inactivo no cuentan como paralizadas: son de familia terminal. Sí se cuentan en Unidades por estado | D-235, D-239 | Dominio, Servicio | `FleetIndicatorsPolicyTests`, `ReportsIntegrationTests` | ✅ |
+| RPT-R08 | La diferencia por inicial exige `stock.ver_costos` en la empresa y totaliza por moneda | D-236 | Servicio, Frontend | `ReportsIntegrationTests`, `reports.spec.ts` | ✅ |
+| RPT-R09 | Cada tabla que muestra un documento tiene sus casillas en `data_versions` | D-237 | Base | Ninguna nombra las tres tablas que se versionan para el exportable | ⚠️ |
+| RPT-R10 | La diferencia por inicial es la inicial del cliente congelada al saldar, la de la imputación que salda, que una nota posterior no achica: «Diferencia por inicial» lista los saldados con inicial mayor que cero, y la columna 45 del exportable la lee. El diseño del exportable va en su versión 2. La inicial llega de `fleet`, que la responde congelada | D-248, D-236 | Servicio | `ReportsIntegrationTests` | ✅ |
+
+## 5. Relación con otros contextos
+
+- **`fleet::acl`:** `FleetContextFacade.fetchReportFacts(companyId)`, los hechos de cada unidad de la empresa, y `fetchPurchaseCosts(vehicleIds)`, la compra de cada unidad, que `fleet` obtiene de `procurement` por el puerto `UnitPurchases` (sección 1).
+- **`documents::acl`:** el exportable de stock es un documento generado (D-106), con su tipo `stock` en `ReportingDocumentKinds` y la versión de sus datos por `ReportingDataVersions`.
+- **`shared`:** el alcance de quien llama (`CurrentAccessScope`) y los permisos de `PermissionCodes`.
+- **Frontend:** la pantalla usa `mm-company-filter` de `organization`, las marcas de la empresa por `OrganizationFacade` y los permisos de la sesión por `IamFacade` (`hasPermissionIn`).
+
+Ningún contexto depende de `reporting`.
+
+## 6. Estado y pendientes
+
+- **RPT-R09**, sin prueba propia.
+- **La sonda en vivo:** `e2e-live/` no tiene `reports.live.spec.ts`. La pantalla tiene su prueba contra el simulador del backend (`e2e/reports.spec.ts`), y las consultas, su prueba de integración contra el esquema de Flyway.
+- **La validación de la inicial contra el contrato:** espera al bloque 12 (D-236).
+- **La moneda de grupo:** para cuando haya dos monedas funcionales que reunir en un mismo reporte (sección 1).
+
+## 7. Preguntas abiertas
+
+Ninguna.

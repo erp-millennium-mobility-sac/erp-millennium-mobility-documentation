@@ -1,45 +1,71 @@
 # Contextos — ERP Millennium Mobility
 
-**Actualizado:** 09/11/2026 (la auditoría de punta a punta de ese día y sus cinco ramas, integradas en `integration/audit-2026-11-09` —backend merges `b4ade13a`, `9627e4b8`, `ddd67d26`, `d00879e2` y `c5f9bc36`; frontend `59f7733e`, `69925e63`, `d4d53692` y `13edd6fa`—, con V122 a V126 y el diccionario v1.48: los nueve documentos al día —En traspaso, la entrega del asesor de ventas y B14 en `fleet.md`, `vehiclecatalog.md` y `reporting.md`; el historial de ingresos y las cuentas bancarias en `organization.md`; el enlace para restablecer la contraseña en `iam.md`; el primer caso de `notifications.md`, que deja de ser solo arquitectura; la cuenta de origen, el voucher y las pruebas de la plantilla en `procurement.md`; y el texto de los códigos ISO bloqueados en `location.md`—; y la fila de `reporting.md`, que faltaba en la tabla). Antes, 06/11/2026 (las cargas de archivos, con el prefijo `SHR-` para las reglas de `shared`: backend `7f01d0b2`, frontend `94ed5925`) · 30/10/2026 (`notifications.md`, el módulo de notificaciones, diseñado y con solo su arquitectura creada) · 30/10/2026 (diccionario v1.33, D-136 a D-142, y el código del 30/10/2026 en `develop`, publicado ese día: los seis documentos al día —el alta del proveedor sin contactos y la hoja de la plantilla en `procurement.md`, el correo de más de 255 caracteres en `iam.md`, la exportación de las marcas fuera de la API en `vehiclecatalog.md`, las pantallas de Catálogos solo con `catalogos.ver` en `location.md`, `vehiclecatalog.md` y `fleet.md`, y la búsqueda sin tildes en todos—) · 29/10/2026 (`iam.md` y `organization.md` al día con el código publicado el 29/10/2026; `fleet.md` cubre también los fondos del paso 10 desde el 26/10/2026; la auditoría de `vehiclecatalog` y la segunda ronda, en `develop` y publicadas) · 23/10/2026 (`procurement.md`: proveedores, tipos, plantillas y órdenes, con el paso 7 todavía abierto) · 20/10/2026 (la segunda fase de la segunda ronda, integrada en `develop` en los dos repositorios: `iam.md` y `organization.md` verificados contra el código, sin marcas pendientes) · 20/10/2026 (la segunda ronda de la auditoría, diccionario v1.25, en construcción: `iam.md`, `organization.md` y `fleet.md` al día, y una línea en `location.md` y `vehiclecatalog.md`) · 20/10/2026 (`vehiclecatalog.md`, la primera versión, con lo que aprobó la auditoría del 20/10/2026; diccionario v1.24) · 20/10/2026 (`fleet.md`: el paso 5, construido en `feature/fleet` e integrado en `develop` el mismo día) · 19/10/2026 (diccionario v1.23; la matriz de permisos, construida como paso 3b e integrada en `develop` el 19/10/2026) · 18/10/2026 (diccionario v1.22; `vehiclecatalog` ya tiene código) · 14/10/2026 · **Estado:** borrador para validar · **Fuente:** diccionario de datos v1.33, [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md) y el código de las ramas revisadas. Si un documento de esta carpeta y el diccionario no coinciden, manda el diccionario.
+**Fuente:** diccionario de datos, [mapa de contextos](../mapa-de-contextos-millennium-mobility.md), [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md) y el código. Si un documento de esta carpeta y el diccionario no coinciden, manda el diccionario.
 
-Los demás documentos están ordenados por tema: los datos (diccionario), la API (convenciones), las fronteras (mapa), los procesos de negocio (procesos y pantallas). Para entender un contexto completo hay que leer partes de los cuatro y después el código. Esta carpeta junta, por contexto, lo que no está en ninguno de ellos.
+Los demás documentos están ordenados por tema: los datos (diccionario), la API (convenciones), las fronteras (mapa), los procesos de negocio y las pantallas (procesos y pantallas). Cada documento de esta carpeta explica un contexto a nivel de negocio: qué es, cómo vive cada agregado, qué hace cada persona y qué reglas lo gobiernan. Cada hecho vive en un solo lugar:
 
-| Documento | Contexto | Paso |
-|---|---|---|
-| [location.md](location.md) | `location`: geografía, monedas y documentos tributarios | 1 |
-| [iam.md](iam.md) | `iam`: cuentas, roles, permisos y sesiones | 0, 3 y 3b |
-| [organization.md](organization.md) | `organization`: empresas, marcas, sedes, ubicaciones y colaboradores | 2 y 3 |
-| [vehiclecatalog.md](vehiclecatalog.md) | `vehiclecatalog`: tipos de vehículo, marcas y modelos, colores y equipamiento | 4 |
-| [fleet.md](fleet.md) | `fleet`: el vehículo, sus estados, sus caminos y su kilometraje; y, desde el 26/10/2026, el catálogo de fondos y las cesiones a mano | 5 y 10 |
-| [procurement.md](procurement.md) | `procurement`: proveedores, plantillas y órdenes de compra; ~~facturas, notas y pagos siguen sin código~~ desde el 03/11/2026, también facturas, notas de crédito y pagos, y desde el 06/11/2026, Por pagar y la carga inicial | 7 y 8; la carga inicial, con las cargas del 9 |
-| [reporting.md](reporting.md) | `reporting`: la capa de lectura, los reportes de Logística y el Excel de stock (D-232) | 11 |
-| [notifications.md](notifications.md) | `notifications`: avisos por correo, SMS y push. Módulo de la plataforma; ~~diseñado; existe solo su arquitectura~~ desde el 09/11/2026, el correo con su primer caso, el enlace para restablecer la contraseña (D-242, D-243) | ~~Ninguno: llega con su primer caso~~ Llegó con el enlace del 09/11/2026 |
+| Hecho | Dónde vive |
+|---|---|
+| Los datos y las decisiones | El diccionario |
+| El contrato de la API: las rutas, los errores y las exportaciones | Las convenciones: §2.2, §7.2 y §8.1 |
+| La pantalla | Procesos y pantallas, y el `DESIGN.md` del frontend |
+| Los bloqueos y la escritura, con el orden de los candados | Los [patrones de persistencia](../patrones-de-persistencia-millennium-mobility.md) |
+| El comportamiento de un contexto | Su documento, en esta carpeta |
 
-El paso 3b, la matriz de permisos, se construyó el 19/10/2026 en `feature/permissions-matrix`, sobre `feature/organization-followup`; las dos ramas se integraron en `develop` ese mismo día, y lo que cada una cambia está en la sección 6 de [iam.md](iam.md) y de [organization.md](organization.md). `vehiclecatalog` tiene documento desde el 20/10/2026: su paso, el 4, está construido en `develop` y sigue abierto, a falta de los modelos reales conciliados ([orden de implementación](../orden-de-implementacion-millennium-mobility.md), paso 4), y lo que la auditoría de ese día le sumó, con su segunda fase, la exportación, se integró en `develop` el mismo 20/10/2026. `fleet` tiene documento desde el 20/10/2026: su paso, el 5, se construyó en `feature/fleet`, en el backend y en el frontend, y se integró en `develop` ese mismo día, con el paso 4 todavía abierto, por decisión del responsable. La segunda ronda de la auditoría (20/10/2026; D-117 a D-128) toca a todos. La primera fase está integrada en `develop` del backend (merge `e245186`): la exportación de cada contexto pasa por el módulo `documents` (D-125), con la versión de sus datos por su propio puerto y por los contadores de `data_versions` (D-128), los códigos de los permisos por `PermissionCodes`, de `shared`, y `fleet` mueve y parte sus piezas de acceso. La segunda también está integrada en `develop`, en los dos repositorios (merges `007151dd` en el backend y `11235e0` en el frontend, publicados después): Seguridad pasa a permisos (D-117 a D-124) y Roles y permisos suma la matriz (D-126), con V56 a V58. Las marcas que los documentos dejaron donde dependían del código se resolvieron contra él al integrar; no queda ninguna. `procurement` tiene documento desde el 23/10/2026: su paso, el 7, está en curso en `develop`, con proveedores, tipos, plantillas y órdenes; facturas, notas de crédito y pagos siguen sin código, y el documento los nombra como pendientes en vez de describir un flujo que el código todavía no decidió. El documento de un contexto se escribe cuando empieza su paso. `notifications` es la excepción: tiene documento desde el 30/10/2026, antes de construirse, porque su arquitectura quedó creada para implementarlo después. Lo que este párrafo dice de `procurement` y de `notifications` era cierto el día que se escribió: las facturas, las notas de crédito y los pagos tienen código desde el 03/11/2026, y `notifications`, su primer caso desde el 09/11/2026; cada documento lo cuenta en su sección 6. `reporting` tiene documento desde el 06/11/2026, el día que se construyó su paso, el 11.
+| Documento | Contexto |
+|---|---|
+| [location.md](location.md) | `location`: monedas, países con su estructura territorial, divisiones y ubigeo, direcciones, tipos de documento tributario y tasas de cambio |
+| [iam.md](iam.md) | `iam`: cuentas, roles, permisos y sesiones; dar acceso con su código de activación, bloqueos y el enlace para restablecer la contraseña |
+| [organization.md](organization.md) | `organization`: empresas, marcas comerciales, sedes, ubicaciones, cuentas bancarias y colaboradores con su historial de ingresos |
+| [vehiclecatalog.md](vehiclecatalog.md) | `vehiclecatalog`: tipos de vehículo, marcas y modelos, colores, tipos y modelos de equipamiento |
+| [fleet.md](fleet.md) | `fleet`: el vehículo, sus estados, sus caminos y su kilometraje, la habilitación, los fondos y las cesiones |
+| [procurement.md](procurement.md) | `procurement`: proveedores, plantillas y órdenes de compra, facturas de compra, notas de crédito, pagos a proveedores y Por pagar |
+| [reporting.md](reporting.md) | `reporting`: la capa de lectura, los reportes de Logística y el exportable de stock (D-232) |
+| [notifications.md](notifications.md) | `notifications`: avisos por correo, SMS y push. Módulo de la plataforma; hoy, el correo del enlace para restablecer la contraseña y el del código para activar una cuenta (D-242, D-243, D-255) |
+
+Las tolerancias de los caminos entre estados de una unidad están en la [especificación de las tolerancias](../especificacion-tolerancias-de-los-caminos-2026-11-09.md).
 
 ## Qué lleva cada documento
 
-1. **Qué es y qué no es.** El propósito, las tablas que posee y lo que parece suyo y no lo es.
-2. **Ciclo de vida de cada agregado.** Quién lo crea, qué se puede cambiar y qué queda fijo desde cuándo, cómo se retira y qué nunca pasa.
-3. **Flujos funcionales.** Lo que hace una persona, paso a paso: con qué rol, en qué pantalla, qué revisa el sistema en cada paso y qué ve si algo falla.
-4. **Reglas de negocio.** Cada regla con un identificador, su fuente en el diccionario, dónde se aplica y qué prueba la cubre.
-5. **Relación con otros contextos.** Quién usa su fachada y para qué; lo que el contexto necesita de otros.
-6. **Estado y pendientes para cerrar.** Lo construido, lo que falta y quién lo resuelve.
-7. **Preguntas abiertas.** Con un enlace al documento donde se lleva cada una.
+1. **Qué es y qué no es.** Breve: el propósito, las tablas que posee y lo que parece suyo y no lo es.
+2. **Ciclo de vida de cada agregado.** Sus estados y transiciones, qué queda fijo y desde cuándo, y cómo se retira. Cita las reglas por su identificador, sin volver a enunciarlas.
+3. **Flujos funcionales**, a nivel de negocio. Quién lo hace (el rol o el permiso), qué pasos da y qué revisa el sistema en cada uno, citando el identificador de la regla. Si algo falla, una línea que lo diga, citando como mucho el código de error. Un flujo puede nombrar la pantalla («Logística › Facturas») y, para ubicar cada paso, el endpoint (método y ruta).
+4. **Reglas de negocio.** Una tabla con cada regla, su identificador, su fuente, la capa que la impone, la prueba que la cubre y su estado (abajo).
+5. **Relación con otros contextos.** Los miembros de la fachada y los puertos, quién los usa y para qué, en forma breve; y lo que el contexto necesita de otros.
+6. **Estado y pendientes.** Solo lo que falta de verdad, y quién lo resuelve o cuándo.
+7. **Preguntas abiertas.** Con el documento donde se lleva cada una.
+
+Un mismo hecho no se enuncia en dos secciones del mismo documento. Se enuncia una vez, como regla en la sección 4, y el ciclo de vida y los flujos la citan por su identificador.
 
 ## Qué no lleva
 
 - **Las columnas de las tablas.** Están en el diccionario, que es la fuente única. Aquí se cita la sección.
-- **La lista de endpoints.** Está en convenciones §2.2. Un flujo nombra el endpoint de cada paso solo para ubicarlo.
-- **La estructura de paquetes y las clases.** Están en las skills `backend-module` y `frontend-feature`.
+- **La lista de endpoints, el catálogo de errores y las exportaciones.** Están en convenciones §2.2, §7.2 y §8.1. Un flujo nombra el endpoint de un paso solo para ubicarlo, y un error solo por su código.
+- **Las columnas de las listas y de las exportaciones.** Están en convenciones §8.1 y en procesos y pantallas.
+- **El detalle de pantalla:** los rótulos de los botones, las pestañas, los píxeles, los textos de los mensajes y los cuerpos JSON. Están en procesos y pantallas, en el `DESIGN.md` del frontend y en las convenciones.
+- **La estructura de paquetes, las clases y las restricciones.** Los nombres de clases, de restricciones de la base, los grants y las migraciones que imponen una regla los dice el código; la estructura, las skills `backend-module` y `frontend-feature`.
+- **Los métodos de prueba.** Una regla nombra la clase o el archivo de prueba que la cubre, nunca la lista de sus métodos.
+- **El orden de los candados.** Vive en los patrones de persistencia.
+- **La historia.** Cómo se llegó a una regla, cuándo se construyó, en qué rama o commit, qué hallazgo la pidió y qué decía antes: lo guarda git. Un documento dice solo lo que rige hoy.
 
-Copiar cualquiera de las tres garantiza que este documento y la fuente terminen diciendo cosas distintas.
+Copiar cualquiera de esas fuentes garantiza que este documento y la fuente terminen diciendo cosas distintas.
 
 ## Las reglas y sus identificadores
 
-Cada regla lleva un identificador estable con el prefijo del contexto (`LOC-`, `IAM-`, `ORG-`, `VCT-`, `FLT-`, `PRC-`, `RPT-`, `NTF-`, y `SHR-` para `shared`) y un número que no se reutiliza. Así una prueba, un commit o una revisión pueden citarla sin repetirla. Una regla que se retira queda en la tabla marcada como retirada.
+Cada regla lleva un identificador estable con el prefijo del contexto (`LOC-`, `IAM-`, `ORG-`, `VCT-`, `FLT-`, `PRC-`, `RPT-`, `NTF-`, y `SHR-` para `shared`, cuyas reglas de las cargas de archivos están en el diccionario, §11.8) y un número que no se reutiliza. Así una prueba, un commit o una revisión pueden citarla sin repetirla. Una regla que queda sin efecto conserva su número en una línea que dice qué la sustituye mientras algo la cite; si nadie la cita, se quita de la tabla.
 
-La columna **Dónde se aplica** dice qué capa la impone, porque de eso depende qué tan protegida está:
+La tabla de reglas tiene las columnas `Id | Regla | Fuente | Capa | Prueba | Estado`:
+
+| Columna | Qué lleva |
+|---|---|
+| Id | El identificador de la regla |
+| Regla | Qué se exige y, en breve, por qué. Sin nombres de clases, restricciones, grants ni migraciones |
+| Fuente | La sección del diccionario y la decisión (D-n) de donde sale |
+| Capa | La capa que la impone: Base, Dominio, Servicio o Frontend, una o varias, sin nombres de clases |
+| Prueba | Solo el nombre de la clase o del archivo de prueba que la cubre (`InvoiceDatePolicyTests`, `purchase-invoices.store.spec.ts`), nunca la lista de sus métodos |
+| Estado | Si la regla se cumple hoy: ✅ aplicada y probada, ⚠️ aplicada sin prueba o solo en parte, ❌ no aplicada |
+
+La **capa** dice qué tan protegida está la regla:
 
 | Capa | Qué significa |
 |---|---|
@@ -48,10 +74,6 @@ La columna **Dónde se aplica** dice qué capa la impone, porque de eso depende 
 | Servicio | El servicio de comandos lo revisa antes de guardar. Otro camino de escritura podría saltársela |
 | Frontend | La pantalla no deja hacerlo. Nunca alcanza por sí sola: la API sigue abierta |
 
-La columna **Estado** dice si la regla se cumple hoy: ✅ aplicada y probada, ⚠️ aplicada sin prueba o solo en parte, ❌ no aplicada.
-
 ## Cuándo se actualiza
 
-Un documento de contexto se actualiza en el mismo cambio que modifica una regla, un flujo o el estado de su paso, igual que el orden de implementación. Al cerrar un paso, la sección 6 de su contexto queda sin pendientes de código o con cada pendiente asignado a un paso posterior.
-
-**Los documentos citan commits y fechas, nunca si algo está publicado** (desde el 31/10/2026, para todos los documentos del repositorio). Que un commit esté o no en el remoto cambia sin que nadie toque el documento, así que esa frase queda vieja sola; lo dice git (`git branch -r --contains <commit>`). Las entradas anteriores que dicen "publicado" o "sin push" se conservan: registran lo que era cierto ese día.
+Un documento de contexto se actualiza en el mismo cambio que modifica una regla, un flujo o lo que falta de su contexto, y se reescribe a su estado vigente: la regla nueva reemplaza el texto de la anterior en vez de sumarse a él, y lo que se construyó deja de figurar como pendiente.
