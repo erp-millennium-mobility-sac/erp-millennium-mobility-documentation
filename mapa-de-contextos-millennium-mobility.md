@@ -6,6 +6,8 @@ El diccionario (§3) fija dos cosas: qué contexto es dueño de cada bloque, y q
 
 **Cómo leerlo.** Lo que cita una sección o una decisión del diccionario (§n, D-n) o una regla de arquitectura está decidido. Lo marcado **(propuesta)** no lo decide nadie todavía y figura en las decisiones pendientes (§11).
 
+**Hacia dónde va.** El [mapa de contextos objetivo](mapa-de-contextos-objetivo-millennium-mobility.md) propone la estructura de contextos que sigue a esta, incluido el bloque 12, y el [plan de migración](plan-de-migracion-a-los-contextos-objetivo-2026-11-18.md) dice cómo llegar por fases. Este documento sigue describiendo lo que rige hoy; cada fase que se integra actualiza aquí su parte.
+
 ---
 
 ## 1. El criterio
