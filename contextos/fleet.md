@@ -187,7 +187,7 @@ Lo que la configuración de `fleet` dice de un tipo de equipo del catálogo: si 
 
 | Momento | Qué pasa |
 |---|---|
-| Alta | La primera marca de un tipo crea su fila, con `catalogos.editar_tipos_documento`, en Catálogos › Requisitos de equipamiento (F8); la semilla trae las del GPS y la pantalla (FLT-R148). Un tipo sin fila no se exige ni es de seguridad: el catálogo de equipos no escribe aquí, así que un tipo nuevo nace sin requisito |
+| Alta | La primera marca de un tipo crea su fila, con `catalogos.editar_tipos_documento`, en Catálogos › Requisitos de equipos (F8); la semilla trae las del GPS y la pantalla (FLT-R148). Un tipo sin fila no se exige ni es de seguridad: el catálogo de equipos no escribe aquí, así que un tipo nuevo nace sin requisito |
 | Qué cambia | Las dos marcas, con el `updatedAt` que se leyó |
 | Qué queda fijo | El tipo de equipo de la fila |
 | Retiro | No tiene: se desmarca. Un tipo que el catálogo desactiva conserva su fila y deja de exigirse, porque ya no aplica a ninguna unidad (VCT-R28) |
@@ -199,7 +199,7 @@ Lo que la configuración de `fleet` dice de un tipo de equipo del catálogo: si 
 
 En cada flujo, «el sistema revisa» es lo que el backend comprueba, en ese orden. Toda ruta exige un permiso del catálogo (§5.6, D-95), y el servicio decide dónde actúa con la asignación que lo trae (D-99): una unidad que la cuenta no ve con `stock.ver` no existe para ella (`404`), y una que ve pero sobre la que su permiso no actúa responde `403`. El stock se ve en toda la empresa (D-14); un rol de sede actúa solo sobre las unidades de la ubicación propia de su sede (D-101), y una asignación limitada a una marca, solo sobre las de esa marca (D-102) (FLT-R33 a FLT-R35). Escribir exige leer. Una unidad anulada no admite ninguna escritura (FLT-R49). La ficha y la habilitación de la unidad dicen qué puede hacer la sesión en ella, y la pantalla ofrece solo eso; el backend lo vuelve a revisar en cada operación (FLT-R36, FLT-R87).
 
-**Las pantallas** están en procesos y pantallas: Logística › Inventario y la ficha de cada unidad, Logística › Habilitación y la habilitación de cada unidad, Logística › Inventario de equipamiento, Catálogos › Estados y motivos, Catálogos › Tipos de documento, Catálogos › Requisitos de equipamiento y Configuración › Fondos. Cada una se abre por el permiso que usa (procesos, apartado 3.1): las de Logística, con `stock.ver`; los tres catálogos, con `catalogos.ver`, porque escribir exige leer (D-141); Fondos, con `fondos.ver`.
+**Las pantallas** están en procesos y pantallas: Logística › Inventario y la ficha de cada unidad, Logística › Habilitación y la habilitación de cada unidad, Logística › Inventario de equipamiento, Catálogos › Estados y motivos, Catálogos › Tipos de documento, Catálogos › Requisitos de equipos y Configuración › Fondos. Cada una se abre por el permiso que usa (procesos, apartado 3.1): las de Logística, con `stock.ver`; los tres catálogos, con `catalogos.ver`, porque escribir exige leer (D-141); Fondos, con `fondos.ver`.
 
 **Los candados.** El orden de los candados de la habilitación, del cambio de estado, de las cesiones y de las cargas está en los [patrones de persistencia](../patrones-de-persistencia-millennium-mobility.md).
 
@@ -399,7 +399,7 @@ La semilla de Perú trae cuatro tipos, todos visibles para el cliente: `TIVE` (T
 
 **Si falla:** `409 VEHICLEDOCUMENTTYPE_CONFLICT`, también en una carrera; `422 VEHICLEDOCUMENTTYPE_CODE_LOCKED`; `404 COUNTRY_NOT_FOUND`.
 
-**Los requisitos de equipamiento** (D-260, FLT-R148): la otra mitad de los requisitos, qué equipo exige la habilitación y cuál es de seguridad. Los marca quien tiene `catalogos.editar_tipos_documento` —con la semilla, solo el superadministrador—, el mismo permiso que marca los documentos que bloquean, en Catálogos › Requisitos de equipamiento (`GET /vehicle-equipment-requirements`), que leen todos los que tienen `catalogos.ver`.
+**Los requisitos de equipamiento** (D-260, FLT-R148): la otra mitad de los requisitos, qué equipo exige la habilitación y cuál es de seguridad. Los marca quien tiene `catalogos.editar_tipos_documento` —con la semilla, solo el superadministrador—, el mismo permiso que marca los documentos que bloquean, en Catálogos › Requisitos de equipos (`GET /vehicle-equipment-requirements`), que leen todos los que tienen `catalogos.ver`.
 
 1. La lista trae cada tipo de equipo del catálogo, activo o no, por su código, con sus dos marcas: si se exige para pasar a Disponible y si es de seguridad. Un tipo sin fila sale con las dos en falso.
 2. Marca o desmarca una de las dos (`PUT /vehicle-equipment-requirements/{equipmentTypeId}`), con el `updatedAt` que leyó, nulo si el tipo no tenía fila: la primera marca de un tipo crea su fila y las siguientes la corrigen. Ninguna se borra.

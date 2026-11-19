@@ -3346,7 +3346,7 @@ Cada equipo físico —un GPS, una pantalla— en el almacén de una empresa, an
 
 #### `vehicle_equipment_requirements` — Qué equipo exige la habilitación (D-260)
 
-Lo que `fleet` dice de cada tipo de equipo: si sin él la unidad no pasa a Disponible —la fila 3 de §11.9— y si es un equipo de seguridad, el que una unidad con un cliente no pierde. Es la otra mitad de los requisitos: la primera son los tipos de documento que bloquean (§11.2). Se mantiene en Catálogos › Requisitos de equipamiento. La crea V142, como catálogo general, igual que `vehicle_document_types`: sin `company_id`, sin Row Level Security y con fechas sin autor (D-42, D-73); como `equipment_types`, no es por país.
+Lo que `fleet` dice de cada tipo de equipo: si sin él la unidad no pasa a Disponible —la fila 3 de §11.9— y si es un equipo de seguridad, el que una unidad con un cliente no pierde. Es la otra mitad de los requisitos: la primera son los tipos de documento que bloquean (§11.2). Se mantiene en Catálogos › Requisitos de equipos. La crea V142, como catálogo general, igual que `vehicle_document_types`: sin `company_id`, sin Row Level Security y con fechas sin autor (D-42, D-73); como `equipment_types`, no es por país.
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|

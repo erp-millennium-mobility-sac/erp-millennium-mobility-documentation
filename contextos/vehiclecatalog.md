@@ -100,7 +100,7 @@ Nada de `vehiclecatalog` se borra: ni los tipos, ni las marcas, ni los modelos, 
 
 | Momento | Qué pasa |
 |---|---|
-| Alta | El superadministrador, en el diálogo de los tipos de Catálogos › Equipamiento, con su código, su nombre, si requiere número de serie y los tipos de vehículo a los que aplica, al menos uno (VCT-R18). La semilla trae `GPS` y `PANTALLA` con sus banderas y sus tipos (VCT-R22), y el GPS es telemático. Un tipo con código `GPS` es siempre telemático; los demás nacen sin serlo, salvo que la API reciba `requiresTelematics` (VCT-R35). Un tipo nuevo nace sin requisito: si se exige para Disponible y si es de seguridad lo marca `fleet`, en Catálogos › Requisitos de equipamiento (D-260) |
+| Alta | El superadministrador, en el diálogo de los tipos de Catálogos › Equipamiento, con su código, su nombre, si requiere número de serie y los tipos de vehículo a los que aplica, al menos uno (VCT-R18). La semilla trae `GPS` y `PANTALLA` con sus banderas y sus tipos (VCT-R22), y el GPS es telemático. Un tipo con código `GPS` es siempre telemático; los demás nacen sin serlo, salvo que la API reciba `requiresTelematics` (VCT-R35). Un tipo nuevo nace sin requisito: si se exige para Disponible y si es de seguridad lo marca `fleet`, en Catálogos › Requisitos de equipos (D-260) |
 | Qué cambia | El nombre, si requiere número de serie, los tipos a los que aplica y el código mientras no quede fijo. Si es telemático cambia solo por la API: una edición que no lo manda conserva lo guardado, y la pantalla nunca lo manda (D-254) |
 | Qué queda fijo | El código de `GPS` y el de `PANTALLA`, desde la semilla (VCT-R19); el de otro equipamiento, desde su primera instalación (VCT-R30) |
 | Retiro | Se desactiva y se reactiva. Quitarle un tipo de vehículo desactiva esa aplicabilidad, y volver a marcarlo reactiva la misma (VCT-R18). Para que deje de instalarse en todo se desactiva el equipamiento, no se le quitan todos los tipos. Un tipo inactivo no recibe modelos nuevos ni reactiva los suyos (VCT-R34) |
@@ -209,7 +209,7 @@ Las lecturas piden `catalogos.ver` y las escrituras, crear, editar o desactivar 
 
 **Los tipos de equipamiento** (`/equipment-types`). El diálogo los lista, los busca y los pagina en el servidor; la API busca por código o nombre y filtra también por el tipo de vehículo al que aplica hoy.
 
-1. Registra un tipo con su código, su nombre, si requiere serie y los tipos de vehículo activos a los que aplica, al menos uno (VCT-R18). La pantalla no muestra ni envía si es telemático: lo dice el backend (VCT-R35). Si el tipo se exige para Disponible o es de seguridad no se marca aquí: lo marca `fleet` en Catálogos › Requisitos de equipamiento (D-260).
+1. Registra un tipo con su código, su nombre, si requiere serie y los tipos de vehículo activos a los que aplica, al menos uno (VCT-R18). La pantalla no muestra ni envía si es telemático: lo dice el backend (VCT-R35). Si el tipo se exige para Disponible o es de seguridad no se marca aquí: lo marca `fleet` en Catálogos › Requisitos de equipos (D-260).
 2. Lo edita: el código de `GPS`, de `PANTALLA` y de un equipamiento que ya tuvo una instalación no cambia (VCT-R19, VCT-R30); el formulario ofrece también los tipos de vehículo inactivos a los que ya aplica, para poder desmarcarlos (VCT-R18).
 3. Lo desactiva o lo activa.
 
