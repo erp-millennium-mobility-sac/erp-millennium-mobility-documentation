@@ -1,6 +1,6 @@
 # Plan de migración a los contextos objetivo — ERP Millennium Mobility
 
-**Estado:** propuesta para validar por el responsable, junto con el [mapa de contextos objetivo](mapa-de-contextos-objetivo-millennium-mobility.md). Versión 3, del 19/11/2026: incorpora la auditoría del mismo día, que verificó el plan contra el mapa objetivo y contra el código (§9).
+**Estado:** aprobado por el responsable el 19/11/2026, junto con el [mapa de contextos objetivo](mapa-de-contextos-objetivo-millennium-mobility.md), para empezar por las fases 0, 1 y 6; las decisiones de cada fase siguiente se resuelven al llegar a ella. Versión 3, del 19/11/2026: incorpora la auditoría del mismo día, que verificó el plan contra el mapa objetivo y contra el código (§9).
 
 **Fuente:** el inventario del código de `develop` (backend `ed5adc12` y frontend `835ed667`) del 18/11/2026, la rama sin integrar `refactor/remove-equipment-type-flags` (backend `d6d23fe8`, frontend `37dbc8dd`), las reglas de arquitectura de las skills `backend-module`, `frontend-feature` y `architecture-review`, y *Domain-Driven Design* de Eric Evans (las referencias «cap. n» son capítulos del libro). Las rutas de archivo y los números de línea citados son los de ese `develop`: antes de ejecutar una fase se comprueban otra vez, porque el código sigue cambiando.
 
@@ -41,7 +41,7 @@ Estas garantías hacen que cada fase sea un cambio de estructura y no de comport
   - en local, en una base nueva de `erp_mm_owner` y nunca con el `.env` remoto: las pruebas del contexto que se mueve, las de quien lo consume, las de arquitectura (`ModularityTests`, `LayerDependencyTests`, `ForeignAclStaysInTranslationLayerTests`, `NoRoleAnnotationTests`, `PermissionCatalogConsistencyTests`, `DeadlockRetryTests`, `JdbcDataVersionsTests`, `NoDeleteEndpointsTests`, `OwnErrorCodesHaveMessagesTests`) y `ErpMillenniumMobilityBackendApplicationTests`, que arranca el contexto y detecta los beans repetidos;
   - en el frontend, el build, las specs de lo movido y de lo que cambia, y `lint:styles`;
   - todo lo demás, en el CI. Las imágenes de referencia del e2e se nombran por la pantalla (`screen.name`), no por la ruta: **no se regeneran**, y una que cambie es una regresión.
-- **Las skills son cuatro copias locales** —`.claude` y `.cursor` del backend y del frontend—, fuera de git: `/.claude/skills/` y `/.cursor/skills/` están en el `.gitignore` de los dos repositorios. Nombran los contextos, sus `allowedDependencies` y la lista de contextos de la búsqueda de la regla 1.2 de `architecture-review`. Mientras sigan locales (decisión 15 de la fase 0), la rama de una fase no las lleva: cada fase las actualiza a mano en las cuatro el día que integra.
+- **Las skills son cuatro copias locales** —`.claude` y `.cursor` del backend y del frontend—, fuera de git: `/.claude/skills/` y `/.cursor/skills/` están en el `.gitignore` de los dos repositorios. Nombran los contextos, sus `allowedDependencies` y la lista de contextos de la búsqueda de la regla 1.2 de `architecture-review`. Nunca se versionan ni se suben (decisión 15 de la fase 0, resuelta): la rama de una fase no las lleva, y cada fase las actualiza a mano en las cuatro, que quedan idénticas, el día que integra.
 
 ---
 
@@ -71,12 +71,14 @@ Las fases 0 a 10 son entre 52 y 77 días de trabajo de una persona, sin calibrar
 
 ### Fase 0 — Preparación
 
+**Hecha el 19/11/2026** (backend y documentación en `refactor/phase-0`): las cuatro copias de las skills quedaron idénticas; la línea base de la suite del backend corrió en local, con las dos cuentas, sobre `develop` con D-261: 4138 pruebas, 0 fallos, 0 errores y 2 omitidas; `CurrencyUsageWiringTests` exige los cuatro implementadores; `procurement` dejó `iam::acl`. Están resueltas las decisiones 1, 3, 9 y 15; las demás se resuelven al llegar a su fase.
+
 - **Sincronizar las cuatro copias de las skills**, que ya divergen: las de `.cursor` son versiones viejas de `backend-module`, `architecture-rules`, `frontend-feature`, `frontend-rules` y `architecture-review`, y `frontend-feature` de `.claude` es más reciente en el frontend que en el backend. La fuente es `.claude` del frontend para `frontend-feature` y `.claude` del backend para las demás; las otras tres copias se sobrescriben con ellas. Son copias locales: `/.claude/skills/` y `/.cursor/skills/` están en el `.gitignore` del backend (`7475cb64`) y del frontend (`8c84a054`). La rama de una fase no las lleva, el CI no las revisa y revertir un commit no las restaura (decisión 15).
 - **Línea base:** la suite completa en verde con las dos cuentas de la base, en el backend y en el frontend.
 - **La prueba de arranque de `CurrencyUsage`,** que exige en un solo lugar sus cuatro implementadores, como `BankAccountPaymentsWiringTests` exige el suyo (§5). Hoy solo hay cobertura parcial: `PurchaseInvoiceUnitPurchasesAdapterTests:119-120` exige `PurchaseInvoiceCurrencyUsageAdapter` en la lista, y `VehicleEquipmentCurrencyUsageTests` inyecta `VehicleEquipmentCurrencyUsageAdapter` por su clase. `PurchaseOrderCurrencyUsageAdapter` y `SupplierPaymentCurrencyUsageAdapter` no los exige ninguna prueba.
 - **Quitar de `procurement` la dependencia `iam::acl`,** que declara y no usa: `git grep -n "erp\.iam\." -- src/main/java/ky/millennium/mobility/erp/procurement` no devuelve nada. Sus pruebas sí usan `iam`, pero Modulith no las analiza. En el mismo cambio se corrigen la fila `procurement` de la tabla de dependencias del mapa vigente (§4), la línea 369 del `README.md` del backend y §2 de `backend-module/SKILL.md`. Está terminado cuando `ModularityTests` pasa.
 - **Aprobar** el mapa objetivo y este plan, y resolver con el responsable:
-  1. **Los códigos de los permisos** no cambian en la migración (decisión 2 del mapa objetivo).
+  1. **Los códigos de los permisos** no cambian en la migración (decisión 2 del mapa objetivo). **Resuelta el 19/11/2026:** no cambian.
   2. **Renombrar `location`** a `reference`: sí o no (decisión 4).
   3. **Los requisitos de la habilitación:** resuelta (decisión 5 del mapa objetivo, D-260). Qué equipo es requisito pasa a una configuración de `fleet`; la aplicabilidad y la pantalla de fábrica se quedan con el catálogo de equipos. D-260 se construye como trabajo funcional, en el trabajo previo de D-260 (antes de la fase 2).
   4. **La carga inicial** (decisión 9 del mapa objetivo): si se ejecuta antes de la fase 3, la fase 3 se reemplaza por borrar su código después de la puesta en marcha (3b en §3).
@@ -84,7 +86,7 @@ Las fases 0 a 10 son entre 52 y 77 días de trabajo de una persona, sin calibrar
   6. **Fase 4, opción A1 o A2:** quién dibuja la pestaña de cesiones de la ficha de la unidad. A1, recomendada: `fleet`, alimentada por `FinancingFacade`. A2: una pieza prestada de `financing`, con su excepción en la regla 1.2 del frontend.
   7. **Fase 5, opción A o B:** quién es dueño de la brecha de días. A, recomendada: sigue en `fleet` y el recurso de la unidad no cambia. B: pasa a `procurement`, nunca a `reporting`, y cambia el recurso de la unidad.
   8. **El destino de un dispositivo al retirarlo de una unidad**, para cuando el monitoreo una el inventario a la instalación (fase 2 §2.6): la propuesta es `falla` a mantenimiento, `robo` a baja y `reemplazo` a disponible. Se decide junto con la 11.
-  9. **Las referencias a cuentas fuera de `iam`** (decisión 6 del mapa vigente, abierta): la opción B, que este plan da por hecha. `fleet` conserva `iam::acl`, `financing` lo suma en la fase 4 y `procurement` lo pierde en esta fase, porque no lo usa. Se cierra en el mapa vigente §11. Si se elige la A, la fase 4 no da `iam::acl` a `financing`, y quitarlo de `fleet` es un cambio aparte.
+  9. **Las referencias a cuentas fuera de `iam`** (decisión 6 del mapa vigente): la opción B, que este plan da por hecha. **Resuelta el 19/11/2026 con la opción B**, cerrada en el mapa vigente §11. `fleet` conserva `iam::acl`, `financing` lo suma en la fase 4 y `procurement` lo pierde en esta fase, porque no lo usa. Se cierra en el mapa vigente §11. Si se elige la A, la fase 4 no da `iam::acl` a `financing`, y quitarlo de `fleet` es un cambio aparte.
   10. **Dónde se guarda un equipo del inventario y si todo equipo instalado exige su serial** (diccionario §14, abiertas). Las dos deciden la rama `refactor/remove-equipment-type-flags` y se resuelven antes del trabajo previo de D-260:
       - **V140** lleva `fleet_equipments.location_id` de las ubicaciones a las sedes. Si se conserva, se corrige:
         - lee la sede por `locations.branch_id`: hoy compara el id de una ubicación con el de una sede, y deja sin cambiar el equipo cuya ubicación tiene el mismo número que alguna sede, que pasa a apuntar a esa sede;
@@ -97,7 +99,7 @@ Las fases 0 a 10 son entre 52 y 77 días de trabajo de una persona, sin calibrar
   12. **`deactivation-question.ts`,** que hoy vive en `vehiclecatalog/presentation/components` y después de la fase 2 lo usan los dos catálogos: una copia en `equipment`, con `equipment-type`, `equipment-model` y `equipment-brand`, o su paso a `shared` (fase 2 §2.8).
   13. **La serialización de la fase 8:** la fila del catálogo `FOR UPDATE` antes de preguntar, que es la propuesta, o lecturas `ForShare` en los cuatro caminos que escriben (`VehicleCommandServiceImpl`, `PurchasedUnitRegistrations`, `MigratedUnitRegistrations` y `VehicleEquipmentInstallations`). Se elige una antes de la fase 8.
   14. **Las acciones de cuenta de cada fila de Colaboradores** (fase 7): se quedan en `organization`, calculadas por `EmployeeAllowedActions` con `ProtectedAccounts` y `PendingAccountActivations` de `shared`, o pasan a `iam` en una fase propia, que se suma a §3. Moverlas cambia el contrato de `allowedActions` de la lista de colaboradores.
-  15. **Las skills:** versionarlas en git o seguir con copias locales. Si se versionan, esta fase retira `/.claude/skills/` y `/.cursor/skills/` de los dos `.gitignore` y sube las cuatro copias sincronizadas, y desde ahí viajan con la rama de cada fase. Si siguen locales, cada fase las actualiza a mano en las cuatro copias el día que integra, y la vuelta atrás las restaura a mano (§6).
+  15. **Las skills:** versionarlas en git o seguir con copias locales. **Resuelta el 19/11/2026: nunca se versionan ni se suben**; solo se alinean en local, en las cuatro copias. Si se versionan, esta fase retira `/.claude/skills/` y `/.cursor/skills/` de los dos `.gitignore` y sube las cuatro copias sincronizadas, y desde ahí viajan con la rama de cada fase. Si siguen locales, cada fase las actualiza a mano en las cuatro copias el día que integra, y la vuelta atrás las restaura a mano (§6).
   16. **Cuándo se responde la 2:** antes de empezar el bloque 12. Si es sí, la fase 9 va antes del primer contexto nuevo, para que `customers`, `leasing` y `collections` nazcan con `reference::acl` y no sumen su `location::acl`. Si es no, el mapa objetivo vuelve a llamarlo `location` en todas sus secciones.
 
 ### Fase 1 — `audit` e `imports` salen de `shared`
@@ -246,14 +248,16 @@ La fase 2 solo mueve: si los requisitos se construyen después, se mueven dos ve
 
 #### Migraciones
 
-Se numeran desde el siguiente número libre de `develop`: hoy V138, porque `develop` llega a V137 (V129 es una migración Java de `procurement`). Si `develop` integra otra migración antes, se corren todas. Con los números de hoy:
+Se numeran desde el siguiente número libre de `develop`: hoy V141, porque `develop` llega a V140 desde que integró D-261 el 19/11/2026 (V138 a V140, el cifrado de los datos personales de los colaboradores; V129 y V139 son migraciones Java, de `procurement` y de `organization`). Si `develop` integra otra migración antes, se corren todas. Con los números de hoy:
 
 | Entrega | Migración | Qué |
 |---|---|---|
-| N | V138 | Las marcas de equipo (V139 de la rama), sin cambios |
-| N | V139 | D-260, de `fleet` |
-| N | V140 | La ubicación del inventario en las sedes, solo si la decisión 10 la conserva, con las correcciones que ella dice |
-| N+1 | V141, o V140 sin la anterior | Borra `equipment_types.blocks_availability` y, si la decisión 10 retira `requires_serial`, esa columna, con `lock_timeout` |
+| N | V141 | Las marcas de equipo (V139 de la rama), sin cambios |
+| N | V142 | D-260, de `fleet` |
+| N | V143 | La ubicación del inventario en las sedes (V140 de la rama), solo si la decisión 10 la conserva, con las correcciones que ella dice |
+| N+1 | V144, o V143 sin la anterior | Borra `equipment_types.blocks_availability` y, si la decisión 10 retira `requires_serial`, esa columna, con `lock_timeout` |
+
+Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migraciones de la rama `refactor/remove-equipment-type-flags` —V138 retira las banderas, V139 crea las marcas de equipo y V140 lleva el inventario a las sedes—, nunca de las de `develop`, que son las de D-261.
 
 **La migración de D-260**, con el alcance `SYSTEM` y `lock_timeout`, como V96:
 - **`vehicle_equipment_requirements`:** `id`, `public_id`, `equipment_type_id` (`NOT NULL`, `UNIQUE`, FK a `equipment_types`), `blocks_availability` y `secures_unit` (`BOOLEAN NOT NULL`), `created_at` y `updated_at`.

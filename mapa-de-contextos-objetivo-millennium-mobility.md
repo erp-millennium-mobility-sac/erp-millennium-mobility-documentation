@@ -1,6 +1,6 @@
 # Mapa de contextos objetivo — ERP Millennium Mobility
 
-**Estado:** propuesta para validar por el responsable (18/11/2026; revisada el 19/11/2026 con la auditoría del plan). Hasta que se apruebe, rige el [mapa de contextos](mapa-de-contextos-millennium-mobility.md) vigente; cuando una fase del [plan de migración](plan-de-migracion-a-los-contextos-objetivo-2026-11-18.md) se integra, su parte pasa al mapa vigente y aquí se queda, con la marca «Integrada en la fase n (fecha)».
+**Estado:** aprobado por el responsable el 19/11/2026 (propuesto el 18/11/2026 y revisado el 19/11/2026 con la auditoría del plan). Mientras las fases no se integren, rige el [mapa de contextos](mapa-de-contextos-millennium-mobility.md) vigente; cuando una fase del [plan de migración](plan-de-migracion-a-los-contextos-objetivo-2026-11-18.md) se integra, su parte pasa al mapa vigente y aquí se queda, con la marca «Integrada en la fase n (fecha)».
 
 **Fuente:** el código de `develop` (backend `ed5adc12` y frontend), el diccionario de datos v1.62, el mapa de contextos vigente y *Domain-Driven Design* de Eric Evans (el «libro azul»). Las referencias «cap. n» son capítulos de ese libro.
 
@@ -238,8 +238,8 @@ Un contexto depende de los de su capa o de las de abajo (cap. 16, criterio 6): l
 
 ## 7. Decisiones abiertas para el responsable
 
-1. **Aprobar este mapa objetivo** y el orden del plan de migración.
-2. **Los códigos de los permisos no cambian** con la migración (por ejemplo, `stock.crear_equipamiento` sigue igual aunque su pantalla pase a `equipment`); renombrarlos es una decisión aparte, con su migración de `iam`.
+1. **Aprobar este mapa objetivo** y el orden del plan de migración. **Resuelta el 19/11/2026:** aprobados.
+2. **Los códigos de los permisos no cambian** con la migración (por ejemplo, `stock.crear_equipamiento` sigue igual aunque su pantalla pase a `equipment`); renombrarlos es una decisión aparte, con su migración de `iam`. **Resuelta el 19/11/2026:** no cambian.
 3. **Las cuentas bancarias:** cerrada por la auditoría del plan. Se quedan en `organization`, con su pantalla en la ficha de la empresa, y cada consumidor responde por `BankAccountUsage`.
 4. **Renombrar `location` a `reference`:** sí o no.
 5. **Los requisitos de la habilitación:** cerrada (D-260). Qué equipo es requisito pasa a una configuración de `fleet`, como `vehicle_document_types`, con dos marcas: si se exige para pasar a Disponible y si es un equipo de seguridad, que una unidad con un cliente no pierde. La aplicabilidad y la pantalla de fábrica se quedan con el catálogo de equipos, en `equipment`. Se construye antes de la fase 2 del plan.
