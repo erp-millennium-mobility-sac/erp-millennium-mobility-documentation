@@ -225,6 +225,24 @@ No hay ciclos: `audit` no depende de nadie, e `imports` solo de `audit` y `docum
 
 ### Antes de la fase 2 — D-260
 
+**Hecha la entrega N el 19/11/2026** (backend y frontend en `feature/d-260`, documentación en `docs/d-260`), como la describe esta sección: la rama `refactor/remove-equipment-type-flags` corregida según la decisión 10, con sus marcas de equipo en V141; la configuración de lo que se exige, las marcas de los estados y el camino «Pierde un requisito» abierto, en V142; lo que se exige, decidido en `ModelRequirements`; los equipos de seguridad, el equipamiento congelado de Robado y el paso por «Pierde un requisito» en Disponible; y FLT-R148 a FLT-R151 en ✅ con sus pruebas. Las pruebas: pendiente de la verificación final. La entrega N+1, que borra `equipment_types.blocks_availability`, sigue por hacer («En dos entregas», abajo). El responsable decidió el 19/11/2026:
+- `VEHICLEEQUIPMENTREQUIREMENT_OUTDATED` responde `422`, por su sufijo, como todo `_OUTDATED`, y no `409`.
+- Requisitos de equipamiento es una tabla simple en un panel, con el arreglo entero, y no la lista de `mm-data-manager` de Tipos de documento. Sus interruptores guardan su fila al cambiar.
+- El menú la llama «Requisitos de equipos», más corto que su título, para que el enlace activo quepa en su resaltado.
+- Las imágenes de referencia que cambian solo por D-260 se regeneran en la rama, revisadas una por una: Tipos de equipamiento, la nueva de Requisitos de equipamiento, Estados y motivos, la habilitación de una unidad y Catálogos en escritorio, con su enlace nuevo. También la de Colaboradores en tableta, que D-261 dejó pendiente, en su propio commit.
+
+Se precisaron, al construirla:
+- `AutomaticReturns`, una pieza nueva de `application/internal/commandservices`, toma de `VehicleMovements` el regreso automático —qué unidades se mueven solas, la puerta que lo retiene y el aviso de la primera corrida después del vencimiento—, porque `VehicleMovements` suma el paso por «Pierde un requisito» y pasaba del tamaño de una pieza. `VehicleMovements` sigue escribiendo cada paso, también el del regreso. `VehicleMovementsBreachWarningTests` pasa a ser `AutomaticReturnsBreachWarningTests`.
+- Las reglas de catálogo de `requires_security_equipment` no tienen la excepción que la puerta hace con el regreso desde Contrato firmado: Disponible no lleva esa marca mientras «Firma de contrato» devuelva sola la unidad. Las pruebas que declaraban un camino que mueve solas las unidades hacia Activo, que V142 marca, las llevan ahora a Mecánica, en el backend, o a Custodia, en el e2e.
+- Lo que el modelo trae de fábrica tampoco se pide como equipo de seguridad, como no se exige. Hoy solo la pantalla viene de fábrica y solo el GPS es de seguridad, así que no cambia nada en la práctica.
+- `UpdateVehicleStatusResource` recibe las dos marcas opcionales: la que no viaja conserva la del estado, así el frontend anterior sigue editando estados entre el despliegue del backend y el del frontend.
+- La fila del paso por «Pierde un requisito» vence según la tolerancia del camino, como cualquier otra; la semilla no se la da, así que no vence. Si el catálogo marcara En habilitación y la unidad no pasara su puerta, la escritura respondería ese rechazo y descartaría lo escrito: es el único caso que se revierte en vez de no escribir. En su propio camino, `PIERDE_REQUISITO` responde el `409 STATUSCHANGEREASON_CODE_CONFLICT` de siempre, no `STATUSCHANGEREASON_CODE_RESERVED`.
+- El diálogo del ingreso no avisa que la unidad pasa a En habilitación, como pedía «Frontend»: su fecha es obligatoria y la pantalla nunca vacía el ingreso, que solo la API admite. Avisan el retiro de un equipo y «Editar hitos».
+- Después de un retiro, vuelve a leer la unidad la página de la habilitación y no `vehicle-equipments.store.ts`, porque un store no inyecta otro; `vehicle-enablement.store.ts` la vuelve a leer después de vaciar las placas.
+- El historial nombra el requisito perdido con los tipos de equipo que lee `VehicleCatalogFacade.loadEquipmentTypes()`, un miembro nuevo, una sola vez y solo cuando la página tiene una fila así.
+- `VehicleStatus.ENABLING_CODE` reemplaza la constante propia de `MigrationTargetPolicy`, y `StatusChangeReason.REQUIREMENT_LOSS_CODE` se suma a los códigos de los caminos que lee el programa.
+- La prueba 5 de `enablement.live.spec.ts` se reescribió como pide «e2e y e2e-live» y no se corrió.
+
 **Qué y por qué aquí.** D-260 (diccionario §14; FLT-R148 a FLT-R151 de `contextos/fleet.md`) cambia lo que hace el sistema:
 - qué equipo es requisito pasa a una configuración de `fleet`;
 - en Disponible, perder un requisito lleva la unidad a En habilitación en la misma operación;
