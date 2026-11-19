@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.65 · **Actualizado:** 19/11/2026
+**Versión:** 1.66 · **Actualizado:** 19/11/2026
 
 Diccionario de datos del ERP Millennium Mobility: la estructura de datos vigente, tabla por tabla, con sus reglas, y las decisiones que la rigen (§14).
 
@@ -231,7 +231,7 @@ Un contador por cada tabla que muestra un documento generado, para saber si sus 
 - **La aplicación solo lee esta tabla.** La cuenta de la aplicación tiene `SELECT` y nada más; la escribe solo la función. `hand-over-database.sql` le quita `INSERT` y `UPDATE` al entregar una base.
 - **Las filas no se borran**, como en el resto del sistema. Las casillas se siembran al versionar la tabla y solo suben.
 - **Una tabla nueva que muestra un documento se versiona en su migración:** siembra sus 64 casillas (`generate_series(0, 63)`) y crea sus dos disparadores. Sin ellas, su primera escritura y su versión fallan diciéndolo.
-- **Las tablas versionadas** son las 49 que leen los documentos de hoy: `vehicles`, `vehicle_statuses`, `vehicle_status_history`, `vehicle_mileage_readings` y `funds` (`fleet`); `users`, `user_roles`, `roles` y `user_access_suspensions` (`iam`); `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `tax_id_types` y `addresses` (`location`); `companies`, `branches`, `commercial_brands`, `locations` y `employees` (`organization`); `suppliers`, `supplier_contacts`, `purchase_order_types`, `purchase_order_templates`, `purchase_order_template_document_types`, `purchase_order_template_documents`, `purchase_orders` y `purchase_order_items` (`procurement`); y `vehicle_types`, `vehicle_brands`, `vehicle_models`, `colors`, `equipment_types` y `equipment_type_vehicle_types` (`vehiclecatalog`); `exchange_rates` (`location`); `purchase_invoices`, `purchase_invoice_items`, `credit_notes`, `credit_note_items`, `supplier_payments` y `payment_applications` (`procurement`); `vehicle_document_types`, `vehicle_documents`, `vehicle_equipments`, `vehicle_keys`, `vehicle_tax_declarations` y `vehicle_fund_assignments` (`fleet`, D-237); `company_bank_accounts` y `employee_tenure_periods` (`organization`, D-241). `payment_allocations`, `status_change_reasons`, `import_batches`, `sign_in_throttles`, `password_reset_tokens`, `account_activation_codes`, `notifications`, `notification_attempts`, `supplier_balance_uses`, `equipment_models` y `fleet_equipments` no se versionan: ningún documento las muestra.
+- **Las tablas versionadas** son las 50 que leen los documentos de hoy: `vehicles`, `vehicle_statuses`, `vehicle_status_history`, `vehicle_mileage_readings` y `funds` (`fleet`); `users`, `user_roles`, `roles` y `user_access_suspensions` (`iam`); `currencies`, `countries`, `geo_division_levels`, `geo_divisions`, `tax_id_types` y `addresses` (`location`); `companies`, `branches`, `commercial_brands`, `locations` y `employees` (`organization`); `suppliers`, `supplier_contacts`, `purchase_order_types`, `purchase_order_templates`, `purchase_order_template_document_types`, `purchase_order_template_documents`, `purchase_orders` y `purchase_order_items` (`procurement`); y `vehicle_types`, `vehicle_brands`, `vehicle_models`, `colors`, `equipment_types` y `equipment_type_vehicle_types` (`vehiclecatalog`); `exchange_rates` (`location`); `purchase_invoices`, `purchase_invoice_items`, `credit_notes`, `credit_note_items`, `supplier_payments` y `payment_applications` (`procurement`); `vehicle_document_types`, `vehicle_documents`, `vehicle_equipments`, `vehicle_keys`, `vehicle_tax_declarations` y `vehicle_fund_assignments` (`fleet`, D-237); `company_bank_accounts` y `employee_tenure_periods` (`organization`, D-241); y `vehicle_equipment_requirements` (`fleet`, D-260), porque la exportación de la habilitación muestra lo que se exige. `payment_allocations`, `status_change_reasons`, `import_batches`, `sign_in_throttles`, `password_reset_tokens`, `account_activation_codes`, `notifications`, `notification_attempts`, `supplier_balance_uses`, `equipment_brands`, `equipment_models` y `fleet_equipments` no se versionan: ningún documento las muestra.
 - **Un riesgo que queda, acotado.** Dos transacciones que escriben las mismas dos tablas en orden opuesto se interbloquean en los contadores cuando cada una sorteó la casilla que tiene la otra en la otra tabla: alrededor de una vez en 4 096. PostgreSQL aborta a una de las dos (`40P01`), y la aplicación la reintenta una sola vez (D-128).
 
 #### `notifications` — La bandeja de salida
@@ -304,7 +304,7 @@ Cada bloque pertenece a un contexto delimitado, que es la unidad de código: `lo
 | 2 | Seguridad: `users`, `user_access_suspensions`, `sign_in_throttles`, `password_reset_tokens`, `account_activation_codes`, `roles`, `permissions`, `role_permissions`, `permission_incompatibilities` | — (`roles.company_id` necesita el 3, y se agrega con la matriz de permisos, D-81, D-98) | **Cerrado** |
 | 3 | Empresas: `companies`, `company_bank_accounts`, `commercial_brands`, `branches`, `locations` | 1, 2 | **Cerrado** |
 | 3b | Colaboradores y accesos: `employees`, `employee_tenure_periods`, `user_roles`, `employee_account_link_events`, `advisor_assignments` | 2, 3 | **Cerrado** |
-| 4 | Catálogos de flota: `vehicle_types`, `vehicle_brands`, `vehicle_models`, `colors`, `equipment_types`, `equipment_type_vehicle_types`, `equipment_models` | 3 | **Cerrado** |
+| 4 | Catálogos de flota: `vehicle_types`, `vehicle_brands`, `vehicle_models`, `colors`, `equipment_types`, `equipment_type_vehicle_types`, `equipment_brands`, `equipment_models` | 3 | **Cerrado** |
 | 5 | Terceros: `suppliers` | 3 | **Cerrado** — forma parte del bloque 7 |
 | 6 | Vehículo, estados y transiciones | 4 | **Cerrado** |
 | 7 | Compras: proveedores, tipos y plantillas de orden, órdenes, facturas, líneas por VIN, notas de crédito | 6 | **Cerrado** |
@@ -327,12 +327,12 @@ El código se construye en este orden. Respeta las dependencias del cuadro anter
 | 2 | 3 · Empresas | `organization` | Empresas con sus cuentas bancarias, marcas comerciales, sedes y ubicaciones | Razón social y RUC de la empresa, sedes con su código de establecimiento, marcas comerciales | **Construido** | — |
 | 3 | 3b · Colaboradores y accesos, y el resto del bloque 2 | `organization`, `iam` | Colaboradores con su salida, su regreso y la historia de sus ingresos (D-241); dar acceso; asignaciones por empresa, sede y marca con su caducidad; bloqueos de cuenta en dos líneas de tiempo; la separación de funciones entre quien registra colaboradores y quien da acceso (D-57) y la frontera entre empresas en la base (D-66) | Colaboradores reales | **Construido** | `advisor_assignments`, con el bloque 12 (ajuste 2) |
 | 3b | 2 · La matriz de permisos | `iam`, `shared` | `permissions`, `role_permissions`, `permission_incompatibilities`, la categoría de cada permiso, `roles.company_id` e `is_active`; Seguridad › Roles y permisos, con la matriz y la copia de un rol (D-117 a D-124, D-126) | La matriz de permisos por rol (§5.6) | **Construido** | — |
-| 4 | 4 · Catálogos de flota | `vehiclecatalog` | Tipos de vehículo, marcas y modelos, colores, equipamiento con sus modelos y a qué tipos aplica | Modelos reales, conciliados entre los dos catálogos que advierte §7.3 | **Construido el código; en curso los datos** | Los modelos reales conciliados (§7.3), antes de registrar facturas reales y de la carga inicial |
+| 4 | 4 · Catálogos de flota | `vehiclecatalog` | Tipos de vehículo, marcas y modelos, colores, equipamiento con sus marcas, sus modelos y a qué tipos aplica | Modelos reales, conciliados entre los dos catálogos que advierte §7.3 | **Construido el código; en curso los datos** | Los modelos reales conciliados (§7.3), antes de registrar facturas reales y de la carga inicial |
 | 5 | 6 · Vehículo y estados | `fleet` | Estados, caminos y motivos con su tolerancia, vehículos, historial de estados, kilometraje | Las tolerancias de los caminos, que entrega el negocio | **Construido** | Las tolerancias de los caminos que todavía no la tienen (§8.3, D-240): llegan por migración cuando el negocio las entregue, antes de cargar unidades reales |
 | 6 | 11 · Bitácora de cambios | `audit` | `change_logs` | — | **Construido** (D-129, D-262) | — |
 | 7 | 7 · Compras, que incluye el 5 | `procurement` | Proveedores con su ficha y sus contactos, tipos, plantillas y órdenes; facturas y notas de crédito | Proveedores | **Construido** | Leer la factura desde su XML sigue candidato (D-157); el compromiso con el cliente de leerla así está por aclarar |
 | 8 | 8 · Pagos | `procurement` | Pagos, a qué se aplican y qué unidades cubren, el saldo a favor y el rastro de las notas que usa (D-247 a D-249) | — | **Construido** | Si Millennium es agente de retención, que confirma contabilidad (§14): hasta entonces la retención de un pago es opcional y escrita (D-196) |
-| 9 | 9 · Habilitación | `fleet`, `imports` | Documentos y sus tipos, equipamiento instalado e inventario de equipamiento (D-254), llaves, impuesto vehicular, cargas de archivos | Los archivos reales de cada carga | **Construido**; las cargas de archivos no se usan todavía | El ensayo de las cargas con los archivos reales, antes de usarlas (§11.8). Qué pasa un equipo del inventario a Instalado y lo retira (D-254, abierta) |
+| 9 | 9 · Habilitación | `fleet`, `imports` | Documentos y sus tipos, equipamiento instalado e inventario de equipamiento (D-254), qué equipo exige la habilitación (D-260), llaves, impuesto vehicular, cargas de archivos | Los archivos reales de cada carga | **Construido**; las cargas de archivos no se usan todavía | El ensayo de las cargas con los archivos reales, antes de usarlas (§11.8). Qué pasa un equipo del inventario a Instalado y lo retira (D-254, abierta) |
 | 10 | 10 · Fondos | `fleet` | Fondos, cesiones a mano y la carga del archivo de garantía mobiliaria | El archivo real de la garantía | **Construido** | El ensayo de la carga con un archivo real, como las demás (§11.8) |
 | 11 | Reportes | `reporting`, modelo de lectura | Indicadores calculados (§10.5) y el exportable de stock | — | **Construido** (D-232) | — |
 | — | 12 · Ventas y contratos | — | Contratos y asesoras | — | Fuera del alcance actual | — |
@@ -2108,10 +2108,10 @@ Lo que se instala en la unidad: GPS, pantalla multimedia y lo que venga.
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
-| `code` | VARCHAR(20) UNIQUE | No | Código corto: `GPS`, `PANTALLA` | Lo usan las reglas de habilitación, que reconocen el GPS y la pantalla por su código; por eso esos dos no se corrigen. El de otro equipo se corrige mientras ninguna instalación lo use (D-48, D-74) |
+| `code` | VARCHAR(20) UNIQUE | No | Código corto: `GPS`, `PANTALLA` | La pantalla de fábrica, la telemetría del GPS, la carga inicial y los reportes reconocen el GPS y la pantalla por su código; por eso esos dos no se corrigen. Qué equipo exige la habilitación no lo dice el código: lo dice la configuración de `fleet` (§11.4, D-260). El de otro equipo se corrige mientras ninguna instalación lo use (D-48, D-74) |
 | `name` | VARCHAR(60) | No | Nombre del equipo | — |
-| `blocks_availability` | BOOLEAN | No | Si sin este equipo la unidad no puede pasar a disponible | El GPS bloquea; la pantalla solo en los modelos que la necesitan. Escrito así, cambiar esa política es marcar una casilla y no modificar el programa. D-260 pasa esta marca a una configuración de `fleet`, por construir |
-| `requires_serial` | BOOLEAN | No | Si al instalarlo hay que registrar un número de serie o identificador | El GPS tiene un identificador que después hace falta para ubicar la unidad. Sin este dato, quedaría al criterio de quien carga |
+| `blocks_availability` | BOOLEAN | No | Si sin este equipo la unidad no podía pasar a disponible. Ya no se lee: lo dice la configuración de `fleet`, `vehicle_equipment_requirements` (§11.4, D-260) | V142 la leyó por última vez, para sembrar esa configuración con lo mismo que exigía. El catálogo ya no la mapea, así que un tipo nuevo la deja en su `DEFAULT FALSE`, y la columna se borra en la entrega siguiente (D-260) |
+| `requires_serial` | BOOLEAN | No | Si al instalarlo hay que registrar un número de serie o identificador | El GPS tiene un identificador que después hace falta para ubicar la unidad. Sin este dato, quedaría al criterio de quien carga. Se conserva: el serial lo exige solo el tipo que lo pide, salvo en la carga inicial (D-206; decisión del responsable del 19/11/2026, la 10 del plan de migración) |
 | `requires_telematics` | BOOLEAN | No | Si el equipo lleva IMEI y tarjeta SIM. Por defecto `FALSE`; V132 lo marca en el GPS (D-254) | Un equipo de un tipo telemático no entra al inventario sin su serial, un IMEI de 15 dígitos y un ICCID de 19 o 20 (§11.4). Escrito como bandera, un rastreador nuevo no pide cambiar el programa. Editar un tipo sin mandarlo conserva el guardado |
 | `has_installations` | BOOLEAN | No | Si alguna unidad ya lo tuvo instalado. Por defecto `FALSE` | Lo marca `fleet` en la primera instalación, como `vehicle_models.has_units` (D-107), y desde entonces su código queda fijo (D-48, D-185): así `vehiclecatalog` no cuenta las filas de una tabla de otro contexto |
 | `is_active` | BOOLEAN | No | Si se sigue instalando | — |
@@ -2132,40 +2132,53 @@ Lo que se instala en la unidad: GPS, pantalla multimedia y lo que venga.
 | GPS | Auto, Moto, Trimoto |
 | Pantalla | Auto |
 
-**Relaciones.** Se relaciona con `vehicle_types`. Le apuntan las instalaciones de cada unidad (§11.4), sus modelos (`equipment_models`, más abajo) y los equipos del inventario (`fleet_equipments`, §11.4) (D-254).
+**Relaciones.** Se relaciona con `vehicle_types`. Le apuntan las instalaciones de cada unidad (§11.4), sus modelos (`equipment_models`, más abajo) y los equipos del inventario (`fleet_equipments`, §11.4) (D-254), y su fila de lo que exige la habilitación (`vehicle_equipment_requirements`, §11.4, D-260).
 
 **Ejemplo**
 
-| id | code | name | blocks_availability | requires_serial | Aplica a |
-|---|---|---|---|---|---|
-| 1 | `GPS` | Dispositivo GPS | Sí | Sí | Auto, moto, trimoto |
-| 2 | `PANTALLA` | Pantalla multimedia | Solo si el modelo la requiere | No | Auto |
+| id | code | name | requires_serial | Aplica a |
+|---|---|---|---|---|
+| 1 | `GPS` | Dispositivo GPS | Sí | Auto, moto, trimoto |
+| 2 | `PANTALLA` | Pantalla multimedia | No | Auto |
 
 **Reglas de negocio**
 
-- Sin GPS instalado, la unidad no pasa a disponible. Es una de las tres condiciones que el cliente enumeró.
+- Sin GPS instalado, la unidad no pasa a disponible. Es una de las tres condiciones que el cliente enumeró. Lo dice la configuración de `fleet`, que la semilla carga así (§11.4, D-260).
 - La pantalla solo bloquea en los modelos que no la traen de fábrica. En motos y trimotos no corresponde.
 - Un equipo no se instala en un tipo de vehículo al que no aplica. Solo cuenta la aplicabilidad activa: una desactivada es como si no existiera, salvo para la historia.
 - Un equipo aplica al menos a un tipo de vehículo. Para que deje de instalarse en todos se desactiva el equipo (`is_active`); no se le retiran todos los tipos. Así su retiro se dice en un solo lugar. Cuenta también un tipo de vehículo desactivado: sus unidades ya registradas pueden seguir necesitando el equipo —por ejemplo, un reemplazo de GPS— aunque ya no se registren nuevas (§7.1). Lo valida la aplicación; la base no lo protege.
 
-**La pantalla usa dos datos que responden preguntas distintas y conviene no confundir.** La aplicabilidad dice si el equipo *tiene sentido* en ese tipo de vehículo; `has_factory_screen` dice si ese modelo *ya la trae puesta*. Una moto no es un auto sin pantalla: es un vehículo donde la pregunta no corresponde. La regla, escrita una sola vez:
+**La pantalla usa tres datos que responden preguntas distintas y conviene no confundir.** La aplicabilidad dice si el equipo *tiene sentido* en ese tipo de vehículo; `has_factory_screen` dice si ese modelo *ya la trae puesta*; y la configuración de `fleet` dice si *se exige* (§11.4, D-260). Una moto no es un auto sin pantalla: es un vehículo donde la pregunta no corresponde. Los dos primeros son del catálogo, que los responde juntos —el equipo que aplica a cada modelo y el que trae de fábrica—, y `fleet` los cruza con el tercero en un solo lugar. La regla, escrita una sola vez:
 
-> Una unidad requiere instalación de pantalla si el equipo aplica a su tipo de vehículo **y** su modelo no la trae de fábrica. En cualquier otro caso, no corresponde.
+> Una unidad requiere instalación de pantalla si el equipo aplica a su tipo de vehículo, la configuración la exige **y** su modelo no la trae de fábrica. En cualquier otro caso, no corresponde.
 
-Si esa regla se implementa en dos lugares —uno mirando el tipo y otro mirando el modelo— tarde o temprano dirán cosas distintas.
+Si esa regla se implementa en dos lugares —uno mirando el tipo y otro mirando el modelo— tarde o temprano dirán cosas distintas. Lo que el modelo trae de fábrica tampoco se pide como equipo de seguridad: ya está en la unidad (§11.9).
+
+#### `equipment_brands` — Marcas de equipamiento
+
+Quien fabrica un equipo: TELTONIKA, QUECLINK. Agrupa los modelos de equipamiento, como `vehicle_brands` los de vehículo (§7.2). La crea V141, como catálogo general: sin `company_id`, sin Row Level Security y sin autor (D-15, D-42).
+
+| Variable | Tipo | Nulo | Descripción | Por qué importa |
+|---|---|---|---|---|
+| `name` | VARCHAR(80) UNIQUE | No | Nombre de la marca, recortado y en mayúsculas | `Teltonika` y `TELTONIKA` son la misma marca; no queda vacío |
+| `is_active` | BOOLEAN | No | Si se sigue eligiendo. Por defecto `TRUE` | Una marca inactiva no recibe modelos nuevos ni reactiva uno, y un equipo nuevo del inventario no elige un modelo suyo (`EQUIPMENTBRAND_INACTIVE`); lo que ya la tiene la conserva |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | — |
+
+Se lee con `catalogos.ver` y se escribe con los tres permisos de equipamiento de catálogos (D-130), desde «Gestionar marcas» de Catálogos › Equipamiento. No se borra (§2.5): se desactiva y se reactiva, y la aplicación lee, inserta y actualiza. No se versiona: ningún documento la muestra (§2.7). V141 creó la marca `GENERICO` solo si ya había modelos, y se los asignó.
 
 #### `equipment_models` — Modelos de equipamiento (D-254)
 
-El modelo comercial de cada tipo de equipamiento: «Fleet 790» o «FMB920» del GPS. Lo crea V131, como catálogo general: sin `company_id`, sin Row Level Security y sin autor (D-15, D-42).
+El modelo comercial de cada tipo de equipamiento, de una marca: «Fleet 790» o «FMB920» del GPS. Lo crea V131, como catálogo general: sin `company_id`, sin Row Level Security y sin autor (D-15, D-42); V141 le suma su marca.
 
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
 | `equipment_type_id` | BIGINT FK → `equipment_types` | No | El tipo al que pertenece | Un equipo del inventario lleva un modelo de su mismo tipo (`EQUIPMENT_MODEL_TYPE_MISMATCH`) |
-| `name` | VARCHAR(60) | No | Nombre comercial | Único en su tipo, sin distinguir mayúsculas ni los espacios de los bordes |
-| `is_active` | BOOLEAN | No | Si se sigue eligiendo | Un modelo inactivo no se elige para un equipo nuevo (`EQUIPMENT_MODEL_INACTIVE`); los equipos que ya lo tienen lo conservan |
+| `equipment_brand_id` | BIGINT FK → `equipment_brands` | No | La marca a la que pertenece | Se elige entre las activas al registrar el modelo y no cambia: la edición recibe solo el nombre |
+| `name` | VARCHAR(60) | No | Nombre comercial | Único en su tipo y su marca, sin distinguir mayúsculas ni los espacios de los bordes |
+| `is_active` | BOOLEAN | No | Si se sigue eligiendo | Un modelo inactivo no se elige para un equipo nuevo (`EQUIPMENT_MODEL_INACTIVE`); los equipos que ya lo tienen lo conservan. Se reactiva solo con su tipo y su marca activos |
 | `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | — |
 
-Se lee con `catalogos.ver` y se escribe con los tres permisos de equipamiento de catálogos: `catalogos.crear_equipamiento`, `catalogos.editar_equipamiento` y `catalogos.desactivar_equipamiento` (D-130). No se borra (§2.5): se desactiva y se reactiva. Se mantiene desde Catálogos › Equipamiento, en el tipo al que pertenece.
+Se lee con `catalogos.ver` y se escribe con los tres permisos de equipamiento de catálogos: `catalogos.crear_equipamiento`, `catalogos.editar_equipamiento` y `catalogos.desactivar_equipamiento` (D-130). No se borra (§2.5): se desactiva y se reactiva. Se mantiene desde Catálogos › Equipamiento, bajo un tipo y una marca activos.
 
 ### 7.6 La placa no tiene tabla propia
 
@@ -2260,6 +2273,8 @@ Los nueve estados del flujograma, los dos que sumó el leasing (D-219, D-220), E
 | `generates_revenue` | BOOLEAN | No | Si la unidad genera ingresos estando en este estado | Es lo que permite calcular el porcentaje de activación de flota, que es el indicador principal del tablero |
 | `is_initial` | BOOLEAN | No | Si una unidad recién registrada nace en este estado | Hoy es "En habilitación". Marcarlo evita que el estado inicial quede escrito en el programa |
 | `requires_enablement` | BOOLEAN | No | Si entrar a mano a este estado exige la habilitación completa. Por defecto `FALSE` | La semilla lo marca en Disponible, que el flujograma define como «unidades listas para entrega a cliente». Escrito como dato, la puerta no depende del camino por el que se llega (D-164). En Disponible queda fijo: no se desmarca (D-170). La semilla también lo marca en Contrato firmado, donde se puede desmarcar (D-184) |
+| `requires_security_equipment` | BOOLEAN | No | Si entrar a mano a este estado exige instalados los equipos de seguridad de la unidad. Por defecto `FALSE` | La semilla lo marca en Contrato firmado y en Activo (V142): una unidad con un cliente no se queda sin el GPS, que permite vigilarla, cortarle el motor y recuperarla (D-260). Se marca al editar el estado, como `requires_enablement` |
+| `blocks_equipment_changes` | BOOLEAN | No | Si en este estado se congela el equipamiento de la unidad. Por defecto `FALSE` | La semilla lo marca en Robado (V142): nadie de la empresa tiene la unidad, así que no se instala, reemplaza ni retira ningún equipo (D-260). Se marca al editar el estado |
 | `is_active` | BOOLEAN | No | Si se sigue usando | Permite retirar un estado sin tocar el historial de las unidades que pasaron por él |
 
 **Relaciones.** Le apuntan `vehicles` (estado actual), `status_change_reasons` como origen y destino, y `vehicle_status_history`.
@@ -2282,6 +2297,8 @@ Los nueve estados del flujograma, los dos que sumó el leasing (D-219, D-220), E
 | 12 | `EN_TRASPASO` | En traspaso | terminal | No |
 
 **La puerta de Disponible** (D-164). Un cambio de estado a mano hacia un estado con `requires_enablement` —por «Habilitación completa» o por «Reacondicionada»— exige que el estado de habilitación sea *Listo para entrega* (§11.9); si no lo es, se rechaza nombrando lo que falta. El regreso automático de Contrato firmado a las 48 h no la aplica mientras ese estado la exige: deshace una entrega que no ocurrió, y la unidad no pudo perder un requisito. Si se desmarca (D-184), el regreso deja ahí la unidad a la que le falta algo. Salir de Puesta a punto hacia un estado marcado exige además la revisión física de la unidad (D-217). Ningún otro camino mueve sola una unidad a un estado marcado, y el estado inicial no se marca: así la puerta no se apaga desde el catálogo (D-170). Pasa la puerta la unidad a la que no le falta nada —sin ninguna de las filas 1 a 4 de §11.9—, esté *Listo para entrega* o *Entregado*, así que una unidad reacondicionada vuelve a Disponible (D-183). **La puerta se sostiene** (D-184): en un estado marcado no se retira un requisito sin reemplazo —el GPS, la pantalla que corresponde, las placas físicas o el ingreso—; un equipo se reemplaza, y si no hay repuesto, la unidad sale primero de Disponible por el camino «Pierde un requisito», hacia En habilitación, que trae la semilla con `stock.habilitar`. **D-260 la cambia, por construir:** en Disponible, perder un requisito se registra y lleva la unidad a En habilitación en la misma operación; en Contrato firmado se sigue sosteniendo; y una unidad con un cliente no se queda sin su GPS.
+
+**Los equipos de seguridad** (D-260). A un estado con `requires_security_equipment` se entra solo a mano, y entrar a mano exige instalados los equipos de seguridad que aplican a la unidad —los que la configuración de `fleet` marca con `secures_unit`, salvo el que su modelo trae de fábrica (§11.9)—: si falta uno, se rechaza nombrándolo (`422 VEHICLE_SECURITY_EQUIPMENT_MISSING`), después de la puerta de la habilitación, y la ficha muestra retenido el camino hacia ese estado mientras falte. Lo piden, entre otros, «Mantenimiento finalizado», «Reparación finalizada» y «Cliente regulariza», que devuelven la unidad a Activo. El alta, la carga inicial y el regreso automático no son una entrada a mano y no lo revisan, así que el catálogo no deja que una unidad llegue a un estado marcado de otro modo: el estado inicial no se marca, ni un estado marcado pasa a ser el inicial (`VEHICLESTATUS_SECURITY_INITIAL`); un estado no se marca mientras un camino abierto mueve solas las unidades a él (`VEHICLESTATUS_SECURITY_AUTO_TARGET`, que nombra esos caminos); y un camino abierto que mueve solas las unidades no lleva a un estado marcado (§8.3). A diferencia de la puerta, el regreso desde Contrato firmado no es una excepción: mientras «Firma de contrato» devuelva sola la unidad a Disponible, Disponible no se marca. **Por construir** (D-260): en un estado marcado un equipo de seguridad se reemplaza y no se retira sin reemplazo, y en uno con `blocks_equipment_changes` no se instala, reemplaza ni retira ningún equipo.
 
 **En traspaso** (D-239). Es el tiempo en que la notaría inscribe el traspaso de una unidad cuyo contrato terminó o que se vendió directo. Es de familia `terminal` y sin ingresos: no cuenta en el porcentaje de activación ni como paralizada (§10.5). Su código queda fijo desde la semilla, como el de `INACTIVO`, porque lo leen las reglas del traspaso. Ni En traspaso ni Inactivo se desactivan: por ellos una unidad sale de la flota y se traspasa, y desactivarlos responde `422 VEHICLESTATUS_TRANSFER_RETIREMENT_NOT_ALLOWED` (`VehicleStatus.changeStatus`). Se entra desde Activo, por «Contrato completado» o «Venta directa», y desde Disponible, por «Venta directa»; se sale solo a Inactivo, por «Traspaso inscrito», con el traspaso ya registrado (§8.1, §8.3). Su tolerancia es lo que tarda la notaría, con «avisar» (D-240); sus caminos no la tienen hasta que el negocio la fije. Lo siembra V123, de `fleet`: activo, no inicial y sin la puerta de la habilitación.
 
@@ -2347,6 +2364,7 @@ Las filas de Mecánica muestran para qué sirve la tabla: mismo camino, distinta
 - Todo cambio registra fecha, hora, usuario y motivo. Es la exigencia del flujograma y no admite excepción.
 - El tiempo límite se cuenta desde el momento del cambio, y la unidad aparece en la lista de vencidas al pasarse.
 - La única transición que ocurre sola es la que tiene configurado un estado de destino al vencerse. Todas las demás las hace una persona.
+- **Ningún camino que mueve sola la unidad lleva a un estado con `requires_security_equipment`** (D-260): a ese estado se entra solo a mano, que revisa los equipos de seguridad (§8.2). Un camino así no se guarda, no se edita abierto ni se reabre (`422 STATUSCHANGEREASON_AUTO_TARGET_SECURED`, que nombra el estado), espere donde espere la unidad: la excepción que la puerta hace con el regreso desde Contrato firmado no vale aquí. Hoy el único camino que mueve solo, «Firma de contrato», devuelve la unidad a Disponible, que no lleva la marca.
 - **El regreso automático tiene su propio motivo** (D-110). Al guardar un camino de A a B que, al vencerse, mueve sola la unidad a C, el sistema asegura en la misma operación un motivo automático del camino de B a C: código `REGRESO_AUTOMATICO`, nombre «Regreso automático por vencimiento», abierto, sin permiso propio, sin tolerancia y con `is_automatic` verdadero. Si ese camino ya tiene uno, lo reutiliza: hay uno solo por camino. Con el ejemplo de arriba, la Firma de contrato, de Disponible a Contrato firmado, crea el motivo automático de Contrato firmado a Disponible.
 - Un motivo automático no se ofrece a las personas: no figura entre los caminos que se pueden recorrer al mover una unidad, y elegirlo se rechaza. Tampoco se edita ni se cierra por la API: lo mantiene el sistema.
 - Un motivo no se borra: se desactiva, para que el historial siga siendo explicable.
@@ -3299,7 +3317,7 @@ Cada equipo físico —un GPS, una pantalla— en el almacén de una empresa, an
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
 | `company_id` | BIGINT FK → `companies` | No | Empresa dueña, la de su ubicación | Para su política de RLS |
-| `location_id` | BIGINT FK → `locations` | No | Dónde está | Solo cambia mientras está Disponible |
+| `location_id` | BIGINT FK → `locations` | No | Dónde está: cualquier ubicación de su empresa, no solo la de una sede (decisión del responsable del 19/11/2026, la 10 del plan de migración) | Solo cambia mientras está Disponible |
 | `supplier_id` | BIGINT | Sí | A quién se compró | Es un proveedor de la misma empresa: la llave foránea es `(supplier_id, company_id)`, como la de un pago, y el servicio responde `EQUIPMENT_SUPPLIER_OTHER_COMPANY` |
 | `equipment_type_id` | BIGINT FK → `equipment_types` | No | Qué equipo es | Sus banderas deciden qué identificadores exige |
 | `equipment_model_id` | BIGINT FK → `equipment_models` | No | Su modelo, del mismo tipo | — |
@@ -3320,6 +3338,35 @@ Cada equipo físico —un GPS, una pantalla— en el almacén de una empresa, an
 - Registrar un equipo no instala nada: no fija el código de su tipo, que se fija con su primera instalación (§7.5, D-185).
 - Sus rechazos propios responden 422 (`EQUIPMENT_TELEMATICS_REQUIRED`, `EQUIPMENT_SERIAL_REQUIRED`, `EQUIPMENT_IMEI_INVALID`, `EQUIPMENT_ICCID_INVALID`, …), y no hay `DELETE`: un equipo sale del inventario por Baja.
 - «Instalar equipo» de la habilitación no lo usa: la instalación guarda su serial escrito a mano (arriba). Cómo se enlazan está abierto (§14).
+
+#### `vehicle_equipment_requirements` — Qué equipo exige la habilitación (D-260)
+
+Lo que `fleet` dice de cada tipo de equipo: si sin él la unidad no pasa a Disponible —la fila 3 de §11.9— y si es un equipo de seguridad, el que una unidad con un cliente no pierde. Es la otra mitad de los requisitos: la primera son los tipos de documento que bloquean (§11.2). Se mantiene en Catálogos › Requisitos de equipamiento. La crea V142, como catálogo general, igual que `vehicle_document_types`: sin `company_id`, sin Row Level Security y con fechas sin autor (D-42, D-73); como `equipment_types`, no es por país.
+
+| Variable | Tipo | Nulo | Descripción | Por qué importa |
+|---|---|---|---|---|
+| `equipment_type_id` | BIGINT FK → `equipment_types` UNIQUE | No | El tipo de equipo, activo o no | Una fila por tipo a lo sumo. El tipo de una fila no cambia: la fila se corrige |
+| `blocks_availability` | BOOLEAN | No | Si sin este equipo la unidad no pasa a Disponible | Se exige a la unidad a la que el equipo aplica, salvo que su modelo lo traiga de fábrica (§7.5, §11.9). Escrito así, cambiar la política es marcar una casilla y no modificar el programa |
+| `secures_unit` | BOOLEAN | No | Si es un equipo de seguridad | Lo que permite vigilar la unidad, cortarle el motor y recuperarla. Entrar a mano a un estado con `requires_security_equipment` lo exige instalado (§8.2) |
+| `created_at` / `updated_at` | TIMESTAMPTZ | No | Fechas de registro y última modificación | `updated_at` es lo que la marca siguiente lleva de vuelta: una fila que cambió desde que se leyó no se pisa (`422 VEHICLEEQUIPMENTREQUIREMENT_OUTDATED`) |
+
+**Restricciones.** `vehicle_equipment_requirements_public_id_uq`; `vehicle_equipment_requirements_equipment_type_uq`, una fila por tipo; y la llave foránea a `equipment_types`.
+
+**La semilla** (V142). Una fila por cada tipo, activo o no, que tenía `equipment_types.blocks_availability` o es el GPS: `blocks_availability` copió esa columna y `secures_unit` es verdadero solo en el GPS. Así se exige lo mismo que antes, y ninguna unidad cambió de estado de habilitación.
+
+| tipo | se exige para Disponible | de seguridad |
+|---|---|---|
+| GPS | Sí | Sí |
+| Pantalla | Sí, salvo en el modelo que la trae de fábrica | No |
+
+**Reglas de negocio**
+
+- **Un tipo sin fila no se exige ni es de seguridad.** El catálogo de equipos nunca escribe aquí: un tipo nuevo nace sin requisito hasta que el superadministrador lo marca.
+- La leen los siete roles, con `catalogos.ver`, y la marca quien tiene `catalogos.editar_tipos_documento` —con la semilla, solo el superadministrador—, el mismo permiso que marca los tipos de documento que bloquean (§5.6). Marcar un tipo sin fila la crea.
+- La cuenta de la aplicación lee, inserta y actualiza, y nunca borra: una fila se corrige.
+- Dos marcas del mismo tipo no se pisan: la fila se bloquea por su tipo antes de decidir, y cada marca lleva el `updatedAt` que se leyó, nulo si el tipo no tenía fila. Dos primeras marcas a la vez no tienen fila que bloquear: la unicidad detiene la segunda, que responde lo mismo.
+- **Marcar un equipo no mueve las unidades** que ya están en Disponible: la puerta se aplica al entrar.
+- Es una tabla versionada (§2.7): la exportación de la habilitación muestra lo que se exige.
 
 ### 11.5 `vehicle_keys` — Llaves
 
@@ -3505,7 +3552,7 @@ No es un campo: se evalúa en orden y devuelve el primer estado que aplique.
 |---|---|---|---|
 | 1 | No ha ingresado físicamente | Fuera de tienda | `FUERA_DE_TIENDA` |
 | 2 | Le falta un documento vigente de un tipo que bloquea la disponibilidad; hoy, solo el documento de identificación vehicular | Sin documento vehicular, con el nombre del que falta | `SIN_DOCUMENTO` |
-| 3 | Le falta instalado un equipo de un tipo que bloquea y aplica a su tipo de vehículo; la pantalla, solo si su modelo no la trae de fábrica. Hoy, la pantalla y el GPS | Sin pantalla, Sin GPS: con el nombre de los que faltan | `SIN_EQUIPO` |
+| 3 | Le falta instalado un equipo que aplica a su tipo de vehículo y que la configuración de `fleet` exige para Disponible (§11.4, D-260); la pantalla, solo si su modelo no la trae de fábrica. Hoy, la pantalla y el GPS | Sin pantalla, Sin GPS: con el nombre de los que faltan | `SIN_EQUIPO` |
 | 4 | No tiene sus placas físicas (`plates_received_date`), que exigen la placa registrada | Sin placas | `SIN_PLACAS` |
 | 5 | Cumple todo y su entrega no sigue vigente: nunca se entregó, o entró a Puesta a punto después (D-216) | Listo para entrega | `LISTO_PARA_ENTREGA` |
 | 6 | Cumple todo y su entrega sigue vigente: su último paso a Activo es posterior a su último paso a Puesta a punto | Entregado | `ENTREGADO` |
@@ -3515,7 +3562,9 @@ No es un campo: se evalúa en orden y devuelve el primer estado que aplique.
 **Reglas de negocio**
 
 - Se recalcula en cuanto cambia cualquiera de sus condiciones. No se guarda ni se edita a mano.
-- Las condiciones que impiden vender son las que el cliente enumeró: estar en la empresa, tener las placas puestas y tener GPS, más la pantalla en los autos que la requieren y el documento vehicular (guía funcional, §6). Los documentos no bloquean, salvo el vehicular. Marcar otro tipo de documento o de equipo como bloqueante lo suma a la fila 2 o a la 3 sin programar (D-139, D-165).
+- Las condiciones que impiden vender son las que el cliente enumeró: estar en la empresa, tener las placas puestas y tener GPS, más la pantalla en los autos que la requieren y el documento vehicular (guía funcional, §6). Los documentos no bloquean, salvo el vehicular. Marcar otro tipo de documento como bloqueante, o otro tipo de equipo en la configuración de `fleet`, lo suma a la fila 2 o a la 3 sin programar (D-139, D-165, D-260).
+- **Lo que se exige sale de la configuración** (D-260). El catálogo dice qué equipo aplica al modelo de la unidad —activo, con su aplicabilidad activa— y cuál trae de fábrica (§7.5); `vehicle_equipment_requirements` dice cuál se exige y cuál es de seguridad (§11.4). `fleet` los cruza en un solo lugar, y todo lo que lee lo que se exige le pregunta a él. Un equipo se exige si aplica, su fila tiene `blocks_availability` y el modelo no lo trae de fábrica; un tipo sin fila no se exige.
+- **Los equipos de seguridad** son los que aplican y cuya fila tiene `secures_unit`; hoy, el GPS. No son una fila de este estado: los pide la entrada a mano a un estado con `requires_security_equipment` (§8.2). **Lo que el modelo trae de fábrica no se exige ni se pide como equipo de seguridad**, porque ya está en la unidad: hoy, la pantalla de un modelo con `has_factory_screen`.
 - Un documento vigente de un tipo que bloquea cuenta aunque haya vencido: el vencimiento se ve en la pantalla de Habilitación (D-167, D-188). Hoy no cambia nada, porque la TIVE no vence.
 - **Cada estado tiene un código estable** (D-171), con el que se filtra y se exporta; el detalle dice qué falta: el nombre del documento o de los equipos.
 - **El estado gobierna la entrada a Disponible** (D-164, D-183): un cambio a mano hacia un estado con `requires_enablement` exige que no falte nada —ninguna de las filas 1 a 4—, esté la unidad *Listo para entrega* o *Entregado*.
@@ -3709,9 +3758,7 @@ Cada una dice con quién queda y, cuando lo tiene, su momento.
   - si «línea de negocio», en la frase de la serie de una orden («la serie distingue la marca y la línea de negocio», D-140), nombra la marca comercial o el tipo de orden (D-252).
 - **Con el responsable, el inventario de equipamiento (D-254)**, antes de que la habilitación lo use:
   - cómo se enlaza con «Instalar equipo» (§11.4): si la instalación elige un equipo Disponible de la empresa y lo pasa a Instalado, con `current_vehicle_id`; qué pasa con el serial escrito a mano de `vehicle_equipments`; y qué hace el retiro con el equipo;
-  - si el serial, el IMEI y el ICCID son únicos en todo el sistema, como hoy, o en cada empresa: hoy un serial de otra empresa se rechaza con `409` aunque la cuenta no vea ese equipo;
-  - dónde se guarda un equipo del inventario, en una sede o en cualquier ubicación: decide si la migración V140 de la rama `refactor/remove-equipment-type-flags`, que lleva `fleet_equipments.location_id` a las sedes, se corrige o se descarta;
-  - si todo equipo instalado exige su serial: la misma rama retira `requires_serial` y lo exige siempre, salvo en la carga inicial.
+  - si el serial, el IMEI y el ICCID son únicos en todo el sistema, como hoy, o en cada empresa: hoy un serial de otra empresa se rechaza con `409` aunque la cuenta no vea ese equipo.
 - **Con el responsable, el GPS al terminar el contrato (D-260):** si al traspasar la unidad al cliente el GPS se retira y vuelve al inventario, o se va con la unidad. Se decide antes de construir los traspasos del bloque 12; hasta entonces, en En traspaso el retiro se permite y no se exige.
 - **El aviso de renovación de los documentos del vehículo:** a quién llega, con cuánta anticipación y por qué medio, cuando lo envíe `notifications` (D-143, D-167). Mientras tanto, el aviso es la pantalla Logística › Habilitación.
 - **Datos que entrega el negocio:** las tolerancias de los caminos de estado (D-240), que pide la especificación de tolerancias de los caminos del 09/11/2026; hasta entonces los caminos no tienen tolerancia. Y los datos maestros reales —razón social y documento tributario de la empresa, sedes con su código de establecimiento, marcas, proveedores y colaboradores—.
