@@ -144,11 +144,11 @@ Lo que lee y después cambia una empresa, una sede, una marca o una cuenta banca
 | El cambio de estado (F3) | La unidad | El estado actual, la anulación, el traspaso y, solo si el destino tiene puerta o exige los equipos de seguridad, los hechos de la habilitación, leídos una sola vez para las dos revisiones: lo que falta y los equipos abiertos de la unidad |
 | La edición de la unidad (F2) | La unidad | Si tiene una línea de factura vigente (el año queda fijo) y si ingresó (no queda sin ubicación) |
 | El ingreso en lote | Todas las unidades del lote, en una sentencia, por `id` ascendente | Las unidades, sus ubicaciones actuales y la ubicación de destino |
-| El ingreso de una unidad y los hitos | La unidad | Su `updatedAt`, su estado, su placa y el inicio más antiguo de sus equipos |
+| El ingreso de una unidad y los hitos | La unidad | Su `updatedAt`, su estado, su placa y el inicio más antiguo de sus equipos. Si la escritura vacía el ingreso o las placas físicas en Disponible, además el camino «Pierde un requisito» y En habilitación, antes de escribir; y escribe el paso de la unidad —ella y su fila del historial— en la misma transacción, sin otro candado (D-260) |
 | La primera placa | La unidad | Su título y su TIVE vigente; la unicidad en el país, con una elevación que solo responde sí o no |
 | Un documento | La unidad; después el documento vigente de ese tipo | El tipo y si el modelo es a gas |
-| Instalar un equipo | La unidad | Su ingreso, sus equipos abiertos del tipo, el tipo de equipo y la moneda del costo, esta en modo compartido (`CurrencyUsage`) |
-| Reemplazar, retirar, registrar el costo o completar el serial de un equipo | La unidad del equipo; después el equipo | Su estado, sus requisitos y el período del equipo |
+| Instalar un equipo | La unidad | Su estado, primero, por si congela el equipamiento (D-260); después su ingreso, sus equipos abiertos del tipo, el tipo de equipo y la moneda del costo, esta en modo compartido (`CurrencyUsage`) |
+| Reemplazar, retirar, registrar el costo o completar el serial de un equipo | La unidad del equipo; después el equipo | El período del equipo. Al reemplazar, el estado de la unidad, que lo detiene solo si congela el equipamiento. Al retirar, el estado con sus tres marcas y, solo si exige la habilitación o los equipos de seguridad, lo que el modelo exige y lo que es de seguridad; en Disponible, además el camino «Pierde un requisito» y En habilitación, antes de escribir, y escribe el paso de la unidad en la misma transacción, sin otro candado (D-260). Registrar el costo y completar el serial no leen el estado |
 | Una llave | La unidad; en la edición, después la llave | — |
 | Anular una unidad | La unidad | Su valor, sus contratos y su cesión abierta: la cesión se lee bajo el mismo candado que toman ceder y cerrar |
 | Crear o reactivar un fondo | El fondo; la empresa en modo compartido, después del fondo | Si la empresa está activa (D-84, D-94) |
@@ -163,7 +163,7 @@ Lo que lee y después cambia una empresa, una sede, una marca o una cuenta banca
 
 **Lo que resulta de ese orden**
 
-- Si una persona mueve la unidad a Disponible mientras otra retira su GPS, una espera a la otra: si el retiro confirma primero, el cambio recibe `VEHICLE_ENABLEMENT_INCOMPLETE`; si el cambio confirma primero, el retiro recibe `VEHICLE_ENABLEMENT_HELD_BY_STATUS`. Ningún orden deja una unidad Disponible sin GPS (`EnablementConcurrencyTests`).
+- Si una persona mueve la unidad a Disponible mientras otra retira su GPS, una espera a la otra: si el retiro confirma primero, el cambio recibe `VEHICLE_ENABLEMENT_INCOMPLETE`; si el cambio confirma primero, el retiro confirma después y lleva la unidad a En habilitación por «Pierde un requisito», en su misma transacción (D-260). Ningún orden deja una unidad Disponible sin GPS (`EnablementConcurrencyTests`).
 - Las escrituras de la habilitación que se suman o se cierran —subir un documento, instalar, reemplazar y retirar un equipo, registrar la placa y el ingreso en lote— no llevan `updatedAt`: las serializa el candado de la unidad, y `_ALREADY_REMOVED`, `_ALREADY_ARRIVED` y `_PLATE_ALREADY_REGISTERED` dicen que otro llegó antes. Las ediciones —el ingreso de una unidad, los hitos y una llave— llevan además el `updatedAt` leído (`VEHICLE_OUTDATED`, `VEHICLEKEY_OUTDATED`).
 - Una cesión a mano de las unidades de una carga de garantía espera a la carga, porque bloquea la unidad primero, y ve lo que la carga escribió (FLT-R117).
 - Toda escritura de cesiones lee su fondo en modo compartido, también la carga de garantía: así la corrección del código del fondo, que lo bloquea para actualizar, sabe si alguna cesión lo usa.
