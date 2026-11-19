@@ -287,6 +287,18 @@ Toda tabla con `company_id`, y `companies` por su propio `id`, tiene Row Level S
 
 El filtro de la aplicación sigue siendo obligatorio: cada consulta filtra por el alcance de quien llama. La base es la defensa de abajo, para que una consulta que olvidó su filtro devuelva menos filas, nunca las de otra empresa (reglas 5.1 a 5.3 y 5.7 de la skill `backend-module`). Las instrucciones para correr la aplicación y las pruebas con las dos cuentas están en el README del backend.
 
+## Una columna con un dato personal: cifrada en la aplicación
+
+El documento y el teléfono de un colaborador (D-261) se guardan cifrados, con una clave que la base nunca ve. Es el modelo para el próximo dato personal que haga falta proteger:
+
+- **El dominio no se entera.** El agregado guarda el valor como texto. Un `AttributeConverter` de `infrastructure`, que Spring crea con la clave (`SpringBeanContainer`), cifra al escribir y descifra al leer; la columna es `BYTEA` y se llama `<campo>_ciphertext`.
+- **Cifrado autenticado y propio de cada valor.** AES-256-GCM con un nonce al azar por valor y el propósito de la columna como dato asociado (`employees.document_number`): el mismo valor nunca repite sus bytes, y los de una columna no se descifran en otra. Los bytes empiezan con una versión, para poder cambiar de clave o de algoritmo.
+- **Lo que la base compara va en una huella.** Un valor cifrado no se compara ni se ordena en SQL. Si hace falta unicidad o búsqueda, se guarda además un HMAC-SHA256 de su forma normalizada (`<campo>_digest`), con otra clave derivada del mismo secreto, y la restricción `UNIQUE` y la búsqueda van sobre la huella: solo encuentra el valor completo. El adaptador del repositorio la escribe en cada guardado y la calcula igual al buscar. No se ordena por la columna.
+- **Nunca `pgcrypto`.** Llevaría la clave al servidor de la base en cada sentencia, que es justo de quien se protege el dato.
+- **Pasar una columna existente a cifrada** son tres migraciones: una que agrega las columnas nuevas, una de Java que cifra las filas existentes con el bean de la clave y vacía la columna en claro, bajo `LOCK TABLE … SHARE ROW EXCLUSIVE`, y una que exige las nuevas y prohíbe volver a escribir en claro con un `CHECK`. La columna vieja se borra en una entrega posterior (condición de instancia única del plan de migración).
+- **La clave no se rota reemplazándola**: sin la clave con que se cifró, el dato es ilegible. Rotarla pide volver a cifrar cada fila y recalcular su huella.
+- **Las pruebas** escriben y leen esas columnas con la misma clave de desarrollo (`EmployeePersonalDataForTests`).
+
 ## Por qué también los catálogos
 
 Un catálogo no tiene reglas que proteger, y el patrón completo duplica campos: un camino corto —el modelo como entidad de JPA y el repositorio que extiende `JpaRepository`— ahorraría una entidad y un ensamblador por tabla. No se usa, porque el dominio quedaría atado a la persistencia: el modelo llevaría anotaciones de JPA y la interfaz del repositorio dependería de Spring Data, con métodos como `delete` que el dominio no debe tener. Separar las capas no causa el riesgo de perder `created_at`; lo causa reconstruir la fila al guardar, y eso se evita cargándola (arriba). Con esa regla, el costo de separar es una entidad y un ensamblador por tabla, a cambio de un dominio que se prueba sin nada alrededor y de una regla sin excepciones.
