@@ -34,7 +34,7 @@ El reparto del bloque 3b lo fija el diccionario (D-92): `user_roles`, `user_acce
 - **Los colaboradores**, también el vínculo con su cuenta, y **el perfil** son de `organization` (§5.3, D-4, D-10). `iam` vincula y desvincula pidiéndoselo por su fachada, y la comparación de documentos de D-82 la hace `organization` ([organization.md](organization.md)).
 - **La fecha de salida y la de regreso** son datos del colaborador, de `organization`. `iam` decide quién puede registrarlas, le pide a `organization` que las registre y cambia la cuenta en la misma transacción (mapa §11, decisión 2, opción A).
 - **La frontera entre empresas en la base** (Row Level Security) es de `shared`; `iam` aporta el alcance que la alimenta (IAM-R48). **Dónde actúa un permiso** lo decide cada contexto con ese alcance (D-99).
-- **La bitácora de cambios** (§13.1) es de `shared` (D-129): `iam` solo le dice quién es cada autor, y no registra en ella los cambios de las cuentas.
+- **La bitácora de cambios** (§13.1) es de `audit` (D-129, D-262): `iam` solo le dice quién es cada autor, y no registra en ella los cambios de las cuentas.
 - **Los clientes** no tendrán cuenta aquí: la aplicación de clientes tendrá su propia tabla de identidades (§5.1).
 - **Los correos del enlace y del código** los guarda y los envía `notifications` (D-242): `iam` decide a quién, con qué y hasta cuándo ([notifications.md](notifications.md)).
 
@@ -423,7 +423,7 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 
 ## 5. Relación con otros contextos
 
-**Lo que ofrece: `IamContextFacade`.** La usan `fleet` —la opción B de la decisión 6 del mapa, elegida en el código y pendiente de validar por el responsable ([fleet.md](fleet.md), sección 5)— y el adaptador con que `iam` nombra a los autores de la bitácora (abajo).
+**Lo que ofrece: `IamContextFacade`.** La usan `fleet` —la opción B de la decisión 6 del mapa, resuelta el 19/11/2026 ([fleet.md](fleet.md), sección 5)— y el adaptador con que `iam` nombra a los autores de la bitácora (abajo).
 
 | Miembro | Qué responde | Quién lo usa y para qué |
 |---|---|---|
@@ -431,7 +431,7 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | `fetchSystemAccountId` | La cuenta `SYSTEM` (D-42) | `fleet`: firmar el regreso automático al vencer una tolerancia |
 | `fetchPermissionByCode`, `fetchPermissionReferencesByIds` | Un permiso del catálogo por su código, o varios por su identificador | `fleet`: el permiso que exige cada camino de estado (D-100) |
 
-**Los puertos de `shared` que implementa.** `organization` y `location` no dependen de `iam`: lo que todos necesitan de la cuenta de la petición lo reciben por puertos del núcleo.
+**Los puertos que implementa.** `organization` y `location` no dependen de `iam`: lo que todos necesitan de la cuenta de la petición lo reciben por puertos del núcleo, de `shared`, y la bitácora y las cargas nombran a sus autores por el de `audit` (`audit::acl`, D-262).
 
 | Puerto | Para qué |
 |---|---|
@@ -439,7 +439,7 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | `CurrentAccessScope` | Qué empresas alcanza la cuenta de la petición y dónde actúa cada permiso: `may`, `actsOn`, `actsOnWholeCompany`, `actsWhere`, `actsEverywhere` y `companyReach`, y lo mismo por marca (D-99, D-102, D-122). Cada contexto decide con él cada lectura y cada escritura (IAM-R65) |
 | `ProtectedAccounts` | Decirle a `organization` qué cuentas de una lista son protegidas y si quien llama actúa sobre lo reservado, para que cada fila de Colaboradores ofrezca solo lo que el backend permitiría (IAM-R51, IAM-R71). Solo salen identificadores y booleanos |
 | `PendingAccountActivations` | Decirle a `organization` qué cuentas de una lista esperan su activación, para ofrecer en su fila el código y el correo en lugar del restablecimiento (IAM-R102, D-259). Solo salen identificadores |
-| `AuditActorLookupPort` | Nombrar en lote a quien hizo algo, por `fetchAccountReferencesByIds`, y a nadie para una cuenta sin colaborador (D-129): la bitácora de cambios (§13.1), las tasas de cambio, las facturas, notas de crédito y pagos, y las cargas de archivos |
+| `AuditActorLookupPort`, de `audit` | Nombrar en lote a quien hizo algo, por `fetchAccountReferencesByIds`, y a nadie para una cuenta sin colaborador (D-129): la bitácora de cambios (§13.1), las tasas de cambio, las facturas, notas de crédito y pagos, y las cargas de archivos |
 
 **Las elevaciones a `SYSTEM`** son pocas y explícitas, y cada una devuelve solo el dato que necesita, nunca un agregado: el arranque, la caducidad, el conteo de superadministradores, la salida, las cuentas protegidas de una lista (IAM-R51), los titulares de un rol que se guarda (IAM-R70) y los documentos de la cuenta que se activa (IAM-R100).
 
@@ -511,7 +511,5 @@ En sentido contrario, `iam` lee de `organization`, sin importarla, las empresas,
 ## 7. Preguntas abiertas
 
 **2.** **¿Cómo obtiene el registro público, sin sesión, las sedes y los tipos de documento?** [Convenciones de la API](../convenciones-de-la-api-millennium-mobility.md), §14.16. Fuera del paso 3 (D-83): antes de encender el registro público en un entorno.
-
-**3.** **¿Cómo se muestran las referencias a cuentas fuera de `iam`?** [Mapa de contextos](../mapa-de-contextos-millennium-mobility.md), §11, decisión 6. D-129 la resuelve para la bitácora y las cargas de archivos; para `fleet` sigue la opción B, elegida en el código y pendiente de validar por el responsable. Mientras tanto, la historia de roles muestra el correo de cada autor (IAM-R57).
 
 **6.** **¿Un restablecimiento vuelve a cero el contador del inicio de sesión de la cuenta?** Sección 6 a.

@@ -268,7 +268,7 @@ Capas y marcas según el [README de esta carpeta](README.md).
 
 ## 5. Relación con otros contextos
 
-`location` no depende de ningún contexto de negocio: sus cinco exportaciones —monedas, países, divisiones, tipos de documento y tasas— las pide al módulo `documents` (D-125), y la versión de sus datos sale de los contadores de `data_versions` (D-128). Los demás lo usan por su fachada, nunca por sus tablas (§3).
+`location` no depende de ningún contexto de negocio: sus cinco exportaciones —monedas, países, divisiones, tipos de documento y tasas— las pide al módulo `documents` (D-125), la corrección de una tasa la anota en la bitácora del módulo `audit` (D-262), y la versión de sus datos sale de los contadores de `data_versions` (D-128). Los demás lo usan por su fachada, nunca por sus tablas (§3).
 
 **La fachada `LocationContextFacade`** (detalle en mapa §5.1). La usan `organization`, `procurement` y `fleet`.
 
@@ -292,7 +292,7 @@ La división por su identificador público, que mapa §5.1 deja como propuesta, 
 
 **La tasa de un documento** (D-151, D-152). La factura de compra y el pago a proveedor proponen la tasa del país de su empresa, del tipo que ese país usa para sus compras (LOC-R53), la más reciente de la fecha del documento o anterior (LOC-R54), y la copian; la nota de crédito copia la de la factura que descuenta. Si en un día hábil falta la tasa de la fecha del documento, el formulario lo avisa y abre ahí el registro de la tasa, con las reglas de F7.
 
-**La bitácora.** La corrección de una tasa escribe en la bitácora de `shared`, y la lista nombra a quien corrigió por el puerto que implementa `iam`, entre los colaboradores que ve quien lee, sin que `location` dependa de `iam` ni de `organization`.
+**La bitácora.** La corrección de una tasa escribe en la bitácora de `audit` (`audit::acl`, D-262), y la lista nombra a quien corrigió por el puerto que implementa `iam`, entre los colaboradores que ve quien lee, sin que `location` dependa de `iam` ni de `organization`.
 
 **Frontend.** `LocationFacade` ofrece a los demás contextos opciones mínimas de países, monedas y tipos de documento, la tasa propuesta de un documento y la regla del dígito de control del backend, para avisar antes de enviar (LOC-R35). Presta una sola pieza de pantalla, el campo de dirección, que produce su valor; guardarla le toca al dueño (empresa, sede, ubicación y proveedor).
 

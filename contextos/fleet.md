@@ -55,8 +55,8 @@ Las reglas leen algunos estados por su código: `ACTIVO` es la entrega (§11.9),
 | El estado de pago de la unidad, los montos de su pago, la inicial congelada, lo pendiente, lo que pasó a saldo y en qué pagos se usó cada nota | `procurement`, que los calcula y los responde por `UnitPurchases`; `fleet` muestra el estado sin montos con `stock.ver`, cuenta la brecha de días y sirve los montos con `stock.ver_costos` (D-199, D-212, D-248, D-249) | La unidad no conoce pagos (mapa §6.1). La brecha no se guarda: se recalcula en cada lectura (FLT-R131) |
 | El proveedor de la unidad | `procurement` | Es un dato de la compra, no de la unidad (§8, introducción) |
 | Una columna con el kilometraje de la unidad | Nadie: no existe | El kilometraje de la unidad es su última lectura (D-165, FLT-R31) |
-| Quién corrigió una placa, un VIN, un hito o el costo de una instalación, y por qué | `shared` (`change_logs`, §13.1) | `fleet` escribe la fila en la misma transacción que el cambio (FLT-R03, FLT-R90) |
-| El registro de las cargas de archivos y la pantalla Logística › Cargas de archivos | `shared` (D-200) | Cada carga de `fleet` registra su lote por la fachada de `shared`; la carga inicial la orquesta `procurement` (F13 a F15) |
+| Quién corrigió una placa, un VIN, un hito o el costo de una instalación, y por qué | `audit` (`change_logs`, §13.1; D-262) | `fleet` escribe la fila en la misma transacción que el cambio (FLT-R03, FLT-R90) |
+| El registro de las cargas de archivos y la pantalla Logística › Cargas de archivos | `imports` (D-200, D-262) | Cada carga de `fleet` registra su lote por `imports::acl`; la carga inicial la orquesta `procurement` (F13 a F15) |
 | El número que la unidad tenía en el Excel | `fleet`, solo por la carga inicial (D-18) | La API no lo recibe ni lo genera (FLT-R11, FLT-R125) |
 | Los indicadores de la flota y el Excel de stock | `reporting` (D-232) | Los arma la capa de lectura con lo que `fleet` le responde por su fachada, sin reescribir sus reglas (sección 5) |
 | La marca del vehículo (Chevrolet, TVS), el modelo, el color, el tipo de equipamiento y su modelo | `vehiclecatalog` (§7) | La unidad y el equipo apuntan a ellos; no los modifican |
@@ -528,7 +528,7 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | FLT-R37 | Los permisos `stock` y `catalogos` de los estados y sus marcas siguen la matriz de §5.6; `stock.entregar` lo tienen también el asesor de ventas, que actúa en su sede (D-238) | §5.6, D-95, D-238 | Base, Servicio | `PermissionsMigrationTests`, `AuthenticatedUserIntegrationTests`, `RolesIntegrationTests`, `VehicleAllowedActionsTests`, `e2e/permission-matrix.spec.ts` | ✅ |
 | FLT-R38 | La frontera entre empresas la defiende también la base: una unidad la ven y la escriben solo quienes alcanzan su empresa; el historial y las lecturas, por su propia empresa, la de su unidad | §2.5, D-66, D-111 | Base | `FleetRowLevelSecurityTests`, `RowLevelSecurityMigrationTests` | ✅ |
 | FLT-R39 | La unidad registra cuándo y quién la creó y la cambió; un proceso automático firma como `SYSTEM` de forma explícita. Los estados y los caminos no llevan columnas de registro | D-42, §8.1, §8.2, §8.3 | Servicio | `VehicleAuditTests`, `VehicleStatusAuditTests`, `StatusChangeReasonAuditTests`, `VehicleTests`, `VehicleStatusTransitionTests` | ✅ |
-| FLT-R40 | Una cuenta sale del servidor como su identificador público y el nombre de su colaborador, nunca por su número interno; la cuenta automática se llama `SYSTEM` | §2.4; mapa, decisión 6 (**propuesta**, pendiente de validar) | Servicio | `IamContextFacadeTests`, `vehicle-profile-view.spec.ts` | ✅ |
+| FLT-R40 | Una cuenta sale del servidor como su identificador público y el nombre de su colaborador, nunca por su número interno; la cuenta automática se llama `SYSTEM` | §2.4; mapa, decisión 6 (opción B) | Servicio | `IamContextFacadeTests`, `vehicle-profile-view.spec.ts` | ✅ |
 | FLT-R41 | Las fechas se muestran en la zona del país de la empresa de la unidad, como `dd/mm/aaaa hh:mm`, también si la empresa dejó la sesión; una lectura propone hoy y ahora en esa zona | §2.6, D-40 | Frontend | `vehicle-profile-view.spec.ts`, `register-mileage-dialog.spec.ts`, `e2e/fleet.spec.ts` | ✅ |
 | FLT-R42 | Un camino de alta lleva al estado inicial, donde nace una unidad registrada; tampoco se reabre si la marca de inicial pasó a otro estado. El destino de un camino no cambia al editarlo. Los caminos «Migración inicial» son la excepción (FLT-R120) | §8.2, §8.3 | Servicio, Frontend | `VehicleStatusCatalogTests`, `status-change-reason-form-dialog.spec.ts`, `e2e/fleet.spec.ts` | ✅ |
 | FLT-R43 | Un camino que mueve sola la unidad al vencerse tiene, en el camino de regreso, su motivo automático reservado: `REGRESO_AUTOMATICO`, «Regreso automático por vencimiento», abierto, sin permiso ni tolerancia. Lo crea el sistema y uno solo por camino; nadie lo elige, lo edita ni lo cierra | §8.3, D-110 | Base, Servicio, Frontend | `AutomaticReturnReasonTests`, `StatusChangeReasonTests`, `StatusChangeReasonAuditTests`, `StatusChangeReasonRacedPathCodeTests`, `status-change-reasons.store.spec.ts`, `change-vehicle-status-dialog.spec.ts`, `vehicle-statuses-view.spec.ts`, `e2e/fleet.spec.ts` | ✅ |
@@ -644,7 +644,7 @@ Los números FLT-R119, FLT-R128 y FLT-R129 no se usaron.
 
 ## 5. Relación con otros contextos
 
-**Las dependencias.** `fleet` usa a `organization`, `vehiclecatalog`, `iam`, `documents` y `location` por sus fachadas, y a `shared`; `ModularityTests` lo verifica. Depender de `iam` es la opción B de la decisión 6 del mapa, pendiente de validar (sección 6 a). Ninguna forma un ciclo: `iam`, `location` y `vehiclecatalog` no llaman a `fleet`, y las dos escrituras que `fleet` pide a `vehiclecatalog` —el modelo con unidades y el tipo de equipo con instalaciones (D-107, D-185)— van en el mismo sentido que las lecturas ([vehiclecatalog.md](vehiclecatalog.md), sección 5).
+**Las dependencias.** `fleet` usa a `organization`, `vehiclecatalog`, `iam`, `documents`, `location`, `audit` e `imports` por sus fachadas, y a `shared`; `ModularityTests` lo verifica. Depender de `iam` es la opción B de la decisión 6 del mapa, resuelta el 19/11/2026 (sección 6 a). Ninguna forma un ciclo: `iam`, `location`, `vehiclecatalog`, `audit` e `imports` no llaman a `fleet`, y las dos escrituras que `fleet` pide a `vehiclecatalog` —el modelo con unidades y el tipo de equipo con instalaciones (D-107, D-185)— van en el mismo sentido que las lecturas ([vehiclecatalog.md](vehiclecatalog.md), sección 5).
 
 **Lo que ofrece: `FleetContextFacade`.** La llaman `procurement`, para sus facturas, sus notas de crédito y la carga inicial, y `reporting`, para la capa de lectura. `procurement` nunca escribe en `vehicles`.
 
@@ -666,7 +666,7 @@ En el frontend, `FleetFacade` ofrece a `change-log` el resumen de una unidad, a 
 - **`UnitContracts`**, que implementará ventas: si una unidad tiene contratos. Mientras no exista, se lee del historial de la unidad; cuando exista, se juntan las dos respuestas (D-250, FLT-R48).
 - **`EquipmentSuppliers`**, que implementa `procurement`: el proveedor de un equipo del inventario de equipamiento.
 
-**Los puertos que implementa.** `CurrencyUsage`, de `location`: si alguna instalación, de cualquier empresa, tiene un costo en una moneda, para que sus decimales queden fijos (D-146, FLT-R79). Y el de `shared` que marca los campos confidenciales de la bitácora: el costo y la moneda de una instalación (FLT-R90).
+**Los puertos que implementa.** `CurrencyUsage`, de `location`: si alguna instalación, de cualquier empresa, tiene un costo en una moneda, para que sus decimales queden fijos (D-146, FLT-R79). Y el de `audit` que marca los campos confidenciales de la bitácora: el costo y la moneda de una instalación (FLT-R90).
 
 **Lo que usa de otros contextos**, por sus fachadas:
 
@@ -677,19 +677,21 @@ En el frontend, `FleetFacade` ofrece a `change-log` el resumen de una unidad, a 
 | `location` | El país de un tipo de documento, por su código ISO (D-13), y la moneda del costo de un equipo, con sus decimales |
 | `iam` | Quién hizo cada cosa, como identificador público y nombre (FLT-R40); la cuenta `SYSTEM` que firma el regreso automático (D-42); el permiso que exige cada camino (D-100); y, en el frontend, los permisos de la sesión y la zona de cada empresa |
 | `documents` | Las exportaciones del Inventario, de la lista de habilitación y de los tipos de documento (D-125), y los archivos de los documentos de las unidades (D-189) |
-| `shared` | El alcance de quien llama (D-99, D-101, D-102), el registro de cargas (F13, F14), la bitácora, el proceso programado en una sola instancia y el reintento de un interbloqueo (D-128) |
+| `audit` | La bitácora (D-129, D-262) |
+| `imports` | El registro de cargas, con su lector y su escritor de libros (F13, F14; D-200, D-262) |
+| `shared` | El alcance de quien llama (D-99, D-101, D-102), el proceso programado en una sola instancia y el reintento de un interbloqueo (D-128) |
 
 ---
 
 ## 6. Estado y pendientes para cerrar
 
-**Estado.** Todo lo que describe este documento está construido. Siguen abiertos las decisiones de a, las propuestas para el diccionario (b), los pendientes de c —entre ellos las tolerancias de los caminos y el ensayo de las cargas con los archivos reales—, las diferencias con las convenciones (d) y las preguntas de la sección 7.
+**Estado.** Todo lo que describe este documento está construido. Siguen abiertos las propuestas para el diccionario (b), los pendientes de c —entre ellos las tolerancias de los caminos y el ensayo de las cargas con los archivos reales—, las diferencias con las convenciones (d) y las preguntas de la sección 7.
 
 ### a) Decisiones
 
 Las decisiones que este contexto aplica están en el diccionario, y cada regla de la sección 4 nombra las suyas. Quedan aquí las del responsable que el diccionario no registra:
 
-1. **Las referencias a cuentas** (mapa, decisión 6): opción B para `fleet`, que depende de `iam` y recibe de cada cuenta su identificador público y el nombre de la persona. La opción A, la capa de lectura, queda para la bitácora y el registro de cargas, de `shared`. El mapa la registra como **propuesta pendiente de validar** (sección c).
+1. **Las referencias a cuentas** (mapa, decisión 6, resuelta el 19/11/2026 con la opción B): `fleet` depende de `iam` y recibe de cada cuenta su identificador público y el nombre de la persona. La bitácora (`audit`) y el registro de cargas (`imports`) las nombran por el puerto `AuditActorLookupPort`, que implementa `iam`.
 2. **El regreso automático** es un proceso programado que firma como `SYSTEM` (FLT-R24).
 3. **El número del Excel** llega solo con la carga inicial (FLT-R11, FLT-R125).
 
@@ -714,7 +716,6 @@ Lo que el código hace y el diccionario no dice, o dice de otra manera. Si el re
 
 | Qué | Quién y cuándo |
 |---|---|
-| Validar la redacción de la decisión 6 en el mapa (opción B para `fleet` y `procurement`, opción A para `shared`) | El responsable |
 | Las propuestas de la sección b | El responsable del diccionario |
 | Las tolerancias de los caminos que no la tienen, entre ellos los cuatro de En traspaso (D-240). Una tolerancia vale para los movimientos siguientes, así que conviene fijarlas antes de cargar unidades reales | El negocio responde la [especificación de las tolerancias](../especificacion-tolerancias-de-los-caminos-2026-11-09.md); después, una migración de `fleet` las fija |
 | La lista de modelos conciliada de `vehiclecatalog` (§7.3), que necesitan la carga inicial y las facturas reales | El negocio |
@@ -749,7 +750,6 @@ Lo que no coincide lo decide el responsable, ajustando las convenciones o el có
 | ¿Qué hace la nota de crédito con las unidades que `annulReturnedUnits` deja retenidas? La fachada responde, por unidad, si se anuló o quedó retenida por un contrato o una cesión abierta (FLT-R94), pero `procurement` descarta la respuesta, así que nadie se entera al registrar la nota | El responsable: que la nota diga las retenidas, o que el valor de retorno salga de la fachada |
 | ¿El serial, el IMEI y el ICCID de un equipo son únicos en todo el sistema, como hoy, o en cada empresa? Hoy un serial de otra empresa se rechaza con `409` aunque la cuenta no vea ese equipo | El responsable (diccionario §14, D-254) |
 | ¿Cómo sale del Inventario una unidad que se entregó a un cliente, volvió (Puesta a punto) y después el proveedor se la llevó? No se anula, porque tuvo un contrato (D-250), y queda «Devuelta al proveedor» en Puesta a punto, sin un camino que la saque de la flota | El responsable, si aparece: un camino de salida a Inactivo por devolución al proveedor, o la anulación de una unidad sin contrato vigente cuando exista ventas |
-| ¿Cómo se muestran las referencias a cuentas fuera de `iam`? | Mapa, decisión 6 (opción B en el código, propuesta pendiente de validar) |
 | ¿La sustitución de odómetro es una lectura marcada o un hecho con su ruta y sus datos? | Convenciones §14.22; sección 6 b, propuesta 1 |
 | ¿Un hecho nuevo responde `201` con `Location`? Hoy los de `fleet`, como los demás, responden `201` sin él, o con el de su colección | Convenciones §14.9; sección 6 d |
 | ¿Cómo se corrige una lectura escrita de más? Una lectura no se edita, y la correcta, al ser menor, solo entra como sustitución de odómetro | Diccionario §8.5; **(propuesta)** llevarla a §8.6 |

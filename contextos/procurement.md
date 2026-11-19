@@ -37,11 +37,11 @@
 | El modelo de una línea | `vehiclecatalog` | La línea guarda el identificador |
 | La unidad, su VIN, su anulación y «Devuelta al proveedor» | `fleet` | La factura le pide dar de alta o vincular sus unidades, y la nota, anular las devueltas; compras nunca escribe en `vehicles` (D-153, D-191, D-250; PRC-R43, PRC-R80) |
 | El costo de compra, el estado de pago y la brecha de días en la ficha de la unidad | `fleet`, que los pregunta a compras | Compras los calcula y los responde por un puerto (sección 5; PRC-R90, PRC-R121, PRC-R123) |
-| La bitácora y la historia de una aplicación que pasó de la orden | `shared`, `change_logs` (§13.1) | Compras deja sus filas y lee su propia historia (PRC-R126) |
+| La bitácora y la historia de una aplicación que pasó de la orden | `audit`, `change_logs` (§13.1; D-262) | Compras deja sus filas y lee su propia historia (PRC-R126) |
 | La tasa de cambio de una factura o un pago | `location`, `exchange_rates` (§4.8) | La factura y el pago la copian; una corrección posterior no la cambia (D-151, D-152, D-210) |
 | Los tipos de documento del vehículo | `fleet` (§11.2, D-139) | Los tipos de archivo de la plantilla son solo de la plantilla |
 | La cuenta de la que sale un pago | `organization`, `company_bank_accounts` (§6.2.1, D-214) | El pago guarda solo su identificador y la muestra por sus últimos dígitos (PRC-R162 a PRC-R164) |
-| El lote de la carga inicial y su informe | `shared`, `import_batches` (D-200) | La carga lo registra por la fachada de `shared`; las unidades y su habilitación las escribe `fleet` |
+| El lote de la carga inicial y su informe | `imports`, `import_batches` (D-200, D-262) | La carga lo registra por `imports::acl`; las unidades y su habilitación las escribe `fleet` |
 
 **Palabras con un significado preciso aquí**
 
@@ -639,7 +639,7 @@ Ninguna aplicación ni imputación queda en cero, y una que supera lo que se deb
 
 ## 5. Relación con otros contextos
 
-Ningún contexto depende de `procurement`: lo que `fleet`, `location`, `organization` y `shared` saben de compras lo preguntan por puertos que declaran ellos y que `procurement` implementa. En el frontend, la carga inicial se abre desde Logística › Cargas de archivos, de `imports`, por `ProcurementFacade.openInitialMigrationImport`.
+Ningún contexto depende de `procurement`: lo que `fleet`, `location`, `organization` y `audit` saben de compras lo preguntan por puertos que declaran ellos y que `procurement` implementa. En el frontend, la carga inicial se abre desde Logística › Cargas de archivos, de `imports`, por `ProcurementFacade.openInitialMigrationImport`.
 
 **Lo que necesita de otros**
 
@@ -650,7 +650,8 @@ Ningún contexto depende de `procurement`: lo que `fleet`, `location`, `organiza
 | `vehiclecatalog` | La marca y el nombre del modelo de una línea, los modelos y los colores en lote, y los que una unidad nueva puede tomar, para la plantilla y la importación de las líneas (PRC-R155 a PRC-R157; [vehiclecatalog.md](vehiclecatalog.md)) |
 | `documents` | Los archivos que no vencen —de la plantilla, el PDF enviado, los de facturas, notas y pagos—, con su descarte al revertir (PRC-R57, PRC-R83); y los documentos generados: el PDF del borrador, las exportaciones y la plantilla de las líneas de una factura (D-106) |
 | `fleet` | Qué es cada VIN de una factura, bloqueando las unidades de la empresa; el alta y el vínculo de sus unidades, en la transacción de la factura; la anulación de las unidades que una nota devuelve y el candado de las de una nota que se anula; las unidades de las líneas y de las imputaciones, para su VIN, su marca y su modelo; y, para la carga inicial, lo que es cada VIN migrado y el alta de sus unidades con su habilitación (PRC-R43, PRC-R44, PRC-R80, PRC-R85; [fleet.md](fleet.md), FLT-R52, FLT-R94, FLT-R95, FLT-R120 a FLT-R127, FLT-R139) |
-| `shared` | La bitácora, en la transacción de cada escritura delicada; la historia de sus propias aplicaciones, para decir de qué orden pasó cada una, sin el alcance de `bitacora.ver` (PRC-R126); y el lote de la carga inicial |
+| `audit` | La bitácora, en la transacción de cada escritura delicada; y la historia de sus propias aplicaciones, para decir de qué orden pasó cada una, sin el alcance de `bitacora.ver` (PRC-R126) |
+| `imports` | El lote de la carga inicial, con su libro y su informe (D-200, D-262) |
 | `iam` | El alcance de cada permiso por empresa —en toda ella o en una marca—, que el frontend usa para ofrecer las escrituras; el backend decide (PRC-R11, PRC-R35, PRC-R47, PRC-R82, PRC-R102; [iam.md](iam.md)) |
 
 **Los puertos que `procurement` implementa**
@@ -661,7 +662,7 @@ Ningún contexto depende de `procurement`: lo que `fleet`, `location`, `organiza
 | `UnitPurchases` | `fleet` | Bajo el alcance de quien llama: qué unidades tienen una línea vigente; si el valor de una es cero; su costo de compra, con su pago; qué unidades devolvió una nota sin que otra factura vigente las vuelva a vincular; y el estado de pago y la fecha base de cada unidad, sin montos. La capa de lectura no lo lee (D-203) (PRC-R62, PRC-R90, PRC-R91, PRC-R121, PRC-R123; [fleet.md](fleet.md), FLT-R53, FLT-R96, FLT-R130 a FLT-R132) |
 | `EquipmentSuppliers` | `fleet` | El proveedor de un equipo del inventario de equipamiento, con su empresa, su razón social y si está activo ([fleet.md](fleet.md)) |
 | `BankAccountPayments` | `organization` | Si una cuenta bancaria tiene pagos, también anulados ([organization.md](organization.md); PRC-R164) |
-| `ConfidentialChangeLogFieldsPort` | `shared` | Los campos de compras cuyos valores la bitácora oculta: el teléfono de Atención de una plantilla y el monto de una aplicación, que se ve solo con `pagos.ver` en la empresa de la fila (PRC-R126) |
+| `ConfidentialChangeLogFieldsPort` | `audit` | Los campos de compras cuyos valores la bitácora oculta: el teléfono de Atención de una plantilla y el monto de una aplicación, que se ve solo con `pagos.ver` en la empresa de la fila (PRC-R126) |
 
 Dentro del contexto, la anulación de una factura cuenta sus dependientes —las notas vigentes y los pagos aplicados (PRC-R87, PRC-R128)—, y la anulación de una nota y su ficha preguntan a los pagos por el saldo y su rastro (PRC-R86, PRC-R135, PRC-R177).
 
