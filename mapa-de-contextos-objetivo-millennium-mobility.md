@@ -116,7 +116,7 @@ En un monolito modular ninguna frontera exige otra base de datos ni otro desplie
 ### 3.9 `organization` — Organización
 
 - **Responsabilidad.** Empresas, marcas comerciales, sedes, ubicaciones, las cuentas bancarias de la empresa y los colaboradores con su historial de ingresos, **incluidas su salida y su regreso**, que hoy ordena `iam`.
-- **Declara puertos.** `EmployeeAccountConsequences`, que implementa `iam`: bloquear la cuenta, la guardia del último superadministrador y las consecuencias de la salida y el regreso sobre la cuenta. Las negativas de la operación son de `organization`. Y `BankAccountUsage`, que implementan `procurement` y, después, `collections`: si una cuenta está en uso, para que no cambie su número ni su moneda (ORG-R65).
+- **Declara puertos.** `EmployeeAccountConsequences`, que implementa `iam`: bloquear la cuenta, la guardia del último superadministrador y las consecuencias de la salida y el regreso sobre la cuenta. Las negativas de la operación son de `organization`. Y `BankAccountUsage`, que implementan `procurement` y, después, `collections`: si una cuenta está en uso, para que no cambie su número ni su moneda (ORG-R65). Integrada en la fase 6 (19/11/2026): el puerto se llamaba `BankAccountPayments`, y las cuentas no cambiaron de contexto.
 - **Implementa puertos.** `AuditCompanyLookupPort` de `audit`: la empresa y su zona, para la bitácora y las cargas.
 - **Por qué.** El caso de uso pertenece al contexto dueño del término (cap. 4 y 14), y el cambio entra por la raíz `Employee` (cap. 6). Las cuentas bancarias se quedan: son de lo que la empresa tiene, y las van a usar los pagos y los cobros, dos contextos hermanos y opuestos; cada uno responde por un puerto, como `CurrencyUsage` (cap. 14 y 16).
 
@@ -204,7 +204,7 @@ La aplicación del cliente: su cronograma, sus pagos, los documentos de su unida
 | `documents`, `notifications` | Quien los use | *Cohesive Mechanisms* | Documentos y avisos |
 | `audit`, `imports` | Quien los use | *Generic Subdomains*, contratos de plataforma | Bitácora y registro de cargas |
 
-Ninguna relación cierra un ciclo: cuando un contexto de una capa inferior necesita saber algo de uno superior, lo pide por un puerto que declara él y que implementa el otro, el patrón que ya usan `UnitPurchases`, `CurrencyUsage` y `BankAccountPayments`, que pasa a llamarse `BankAccountUsage`. La consistencia sincrónica entre agregados de dos contextos —la cesión y la anulación, la salida y la cuenta, el dispositivo y su instalación— es una excepción deliberada al consejo del cap. 6: la justifica una invariante que no admite una ventana, y la permite una sola base con un orden fijo de candados.
+Ninguna relación cierra un ciclo: cuando un contexto de una capa inferior necesita saber algo de uno superior, lo pide por un puerto que declara él y que implementa el otro, el patrón que ya usan `UnitPurchases`, `CurrencyUsage` y `BankAccountUsage`. La consistencia sincrónica entre agregados de dos contextos —la cesión y la anulación, la salida y la cuenta, el dispositivo y su instalación— es una excepción deliberada al consejo del cap. 6: la justifica una invariante que no admite una ventana, y la permite una sola base con un orden fijo de candados.
 
 ---
 

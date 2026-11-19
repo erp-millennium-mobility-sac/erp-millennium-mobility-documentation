@@ -1243,6 +1243,12 @@ El dueño del costo es `procurement`, y debe publicarlo él (*Open Host Service*
 
 ### Fase 6 — Las cuentas bancarias se quedan en `organization`, con un puerto por consumidor
 
+**Hecha el 19/11/2026** (backend y documentación en `refactor/phase-6`, sobre la fase 1), como la describe esta sección: `BankAccountUsage`, `BankAccountUsageFacts` y `SupplierPaymentBankAccountUsageAdapter` reemplazan a los nombres anteriores, sin cambiar el contrato ni el frontend. Las pruebas que lista, con `CurrencyUsageWiringTests`, pasan: 110 en 15 clases, sin fallos, y `BankAccountLockTests` pasa igual en tres corridas seguidas sobre la misma base. Se corren además las demás pruebas de arquitectura de §2 y el arranque del contexto. Se precisaron cuatro cosas:
+- `BankAccountLockTests` vive en `procurement/infrastructure/persistence`, junto a `CurrencyDecimalPlacesLockTests`, porque registra pagos, y `organization` no depende de `procurement` tampoco en sus pruebas. Cada corrida trae una cuenta nueva sin pagos, como las unidades de `InvoiceRaces`; la carrera del pago que llega primero son dos pruebas, la de la corrección y la de la desactivación.
+- La corrección y el cambio de estado toman la cuenta `FOR NO KEY UPDATE`, no `FOR UPDATE` como decía la sección de pruebas, que ya lo dice así.
+- ORG-R65 pasa a «un registro de otro contexto —hoy un pago—», como pide la documentación de esta fase; «Lo que no cambia» lo nombraba también entre los textos que se generalizan con `collections`, y ya no.
+- La prueba de arranque compara la clase de cada bean sin su proxy (`AopUtils.getTargetClass`), como `CurrencyUsageWiringTests`.
+
 **Por qué no se mueven.**
 - **Un concepto que van a usar dos contextos hermanos va aguas arriba** (cap. 14). Hoy las cuentas de la empresa solo las usan los pagos a proveedores, pero el bloque 12 trae `collections`, y el mapa objetivo (§3.4) le da la conciliación bancaria y los pagos recibidos. Una cuenta de la empresa también recibe cobros. Si las cuentas fueran de `procurement` (cuentas por pagar), `collections` (cuentas por cobrar) tendría que depender de él para un concepto que no es de pagos, y el mapa (§3.4 y §6) dice que esos dos modelos son opuestos.
 - **Son datos de lo que la empresa tiene, no de una operación** (cap. 15). Su lugar es `organization`, en la capa de potencial (mapa objetivo §5), donde ya están la empresa, sus marcas y sus sedes. La cuenta no lleva saldos ni movimientos (D-214).
@@ -1294,7 +1300,7 @@ Lo protege una prueba de arranque, no una cuenta de beans:
 - `BankAccountPaymentsWiringTests`, de `procurement/infrastructure/organization`, pasa a `BankAccountUsageWiringTests`, en el mismo paquete.
 - Exige que la lista **contenga** a `SupplierPaymentBankAccountUsageAdapter`. Hoy exige que sea el único elemento (`singleElement`) y después llama a `payments.getFirst()`: cuando llegue el bean de `collections`, lo primero falla y lo segundo puede probar otro bean.
 - Que sin cuentas no se pregunte lo garantiza el envoltorio (`BankAccountPaymentFacts`, que sale antes con un pedido vacío), no el adaptador: lo prueba `BankAccountUsageFactsTests`, y la prueba de arranque deja de llamar al adaptador.
-- Es la prueba que §5 pide a un puerto que se responde con una lista de beans. `CurrencyUsage`, el modelo de este puerto, la tiene a medias: `PurchaseInvoiceUnitPurchasesAdapterTests` exige solo `PurchaseInvoiceCurrencyUsageAdapter`, uno de sus cuatro implementadores. Esa brecha es de §5, no de esta fase.
+- Es la prueba que §5 pide a un puerto que se responde con una lista de beans. `CurrencyUsage`, el modelo de este puerto, la tiene desde la fase 0: `CurrencyUsageWiringTests` exige sus cuatro implementadores.
 
 #### Lo que no cambia
 
@@ -1305,8 +1311,7 @@ Lo protege una prueba de arranque, no una cuenta de beans:
 - **El contrato:** el campo `hasPayments` de la cuenta, los códigos `BANKACCOUNT_*`, las claves de los mensajes y sus textos. Cuando exista `collections`, las convenciones deciden si `hasPayments` se renombra o se suma `inUse`. Con eso se generalizan los textos que hoy dicen «pagos»:
   - el mensaje de `BANKACCOUNT_IN_USE` en `BankAccountErrors` y en los dos bundles («La cuenta tiene pagos: su número y su moneda ya no cambian»);
   - `bank-accounts.errors.in-use` en `es.json` del frontend;
-  - la descripción OpenAPI de `hasPayments` en `BankAccountResource`;
-  - el texto de ORG-R65.
+  - la descripción OpenAPI de `hasPayments` en `BankAccountResource`.
 - **La regla del número completo (ORG-R66):**
   - el número lo lee solo quien gestiona las cuentas de esa empresa, con uno de sus tres permisos en toda ella;
   - los demás leen los últimos cuatro, y no buscan ni ordenan por el número;
@@ -1323,7 +1328,7 @@ Lo protege una prueba de arranque, no una cuenta de beans:
   - `BankAccountUsageFactsTests`, sin Spring: con dos beans de prueba, une sus respuestas; sin beans, ninguna cuenta está en uso; sin cuentas, no pregunta;
   - `BankAccountLockTests`, con las dos carreras de la cuenta. Hoy ninguna prueba cubre su candado compartido:
     - un pago con transferencia que todavía no confirma hace esperar la corrección del número de su cuenta, que después responde `BANKACCOUNT_IN_USE`, y una desactivación de la cuenta espera al pago;
-    - al revés, un pago que llega mientras se desactiva su cuenta espera a la desactivación y responde `SUPPLIERPAYMENT_BANK_ACCOUNT_INACTIVE`, sin guardar nada: la corrección y el cambio de estado toman la cuenta `FOR UPDATE`, y el pago la lee `FOR SHARE`.
+    - al revés, un pago que llega mientras se desactiva su cuenta espera a la desactivación y responde `SUPPLIERPAYMENT_BANK_ACCOUNT_INACTIVE`, sin guardar nada: la corrección y el cambio de estado toman la cuenta `FOR NO KEY UPDATE`, y el pago la lee `FOR SHARE`.
 - **Se corren:**
   - `BankAccountTests`, `BankAccountAuditTests`, `BankAccountRowLevelSecurityTests` y `BankAccountsIntegrationTests`;
   - `SupplierPaymentAccountsIntegrationTests` (`hasPayments` y `BANKACCOUNT_IN_USE`), `SupplierPaymentsIntegrationTests`, `SupplierPaymentsExportIntegrationTests` y `SupplierPaymentLockTests`;
