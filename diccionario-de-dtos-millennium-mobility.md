@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.69 · **Actualizado:** 19/11/2026
+**Versión:** 1.69 · **Actualizado:** 20/11/2026
 
 Diccionario de datos del ERP Millennium Mobility: la estructura de datos vigente, tabla por tabla, con sus reglas, y las decisiones que la rigen (§14).
 
