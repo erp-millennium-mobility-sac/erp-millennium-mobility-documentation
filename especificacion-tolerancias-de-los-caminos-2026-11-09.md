@@ -1,6 +1,6 @@
 # Especificación: Tolerancias de los caminos de estado
 
-**Decisión abierta:** D-240 del diccionario, a la espera del negocio. La tolerancia de cada camino —sus horas y qué pasa al vencerse— se fija por migración, con los valores que entrega el negocio, para que toda base nueva nazca con ellas; después el superadministrador las ajusta en Catálogos › Estados y motivos. Este documento es el cuestionario: lo que rige hoy, lo que falta responder y una propuesta para corregir. Lee de §8.2 y §8.3 del diccionario, de D-239 y D-240, y de las migraciones de `fleet` que siembran los caminos: V47, V51, V96, V112, V117, V123 y V130. Los caminos, sus motivos y sus permisos están también en [contextos/fleet.md](contextos/fleet.md), F3.
+**Decisión tomada:** D-240 del diccionario. El 19/11/2026 el responsable aceptó todas las propuestas de §6: sin tolerancia los caminos que llegan a Activo y a Inactivo, «avisar» todos los demás con las horas de esa tabla, y las cuatro de §4 sin cambios. Las fija una migración de `fleet`, aparte, justo después de D-260, que está por construir; valen para los movimientos que vengan después de ella, y después el superadministrador las ajusta en Catálogos › Estados y motivos. Hasta entonces, los caminos de la tabla 3 siguen sin tolerancia. Las columnas «a llenar» de las tablas 3 y 4 quedan como estaban: lo decidido es §6. Este documento fue el cuestionario: lo que rige hoy, lo que había que responder y la propuesta que se aceptó. Lee de §8.2 y §8.3 del diccionario, de D-239 y D-240, y de las migraciones de `fleet` que siembran los caminos: V47, V51, V96, V112, V117, V123 y V130. Los caminos, sus motivos y sus permisos están también en [contextos/fleet.md](contextos/fleet.md), F3.
 
 ## 1. Para quién es y qué se pide
 
@@ -95,7 +95,7 @@ En total hay 46 caminos abiertos: los 37 de la tabla 3, los 4 de la tabla 4 y lo
 
 ## 6. Propuesta para corregir
 
-**Es una propuesta, no una decisión.** Se armó con la escala de las tolerancias que ya existen (72 h, 480 h y 720 h) para que el negocio corrija números en lugar de inventarlos. Cada fila se puede aceptar, cambiar o dejar sin tolerancia. Ninguna migración la aplica: cuando el negocio responda, una migración de `fleet` fija lo aceptado.
+**El responsable la aceptó entera el 19/11/2026 (D-240).** Se armó con la escala de las tolerancias que ya existen (72 h, 480 h y 720 h) para que el negocio corrigiera números en lugar de inventarlos. Ninguna migración la aplica todavía: una migración de `fleet`, aparte, la fija justo después de D-260.
 
 **Siete filas quedan sin tolerancia por diseño**, como explica §2: las que llegan a Activo (3, 19, 21 y 24), porque la unidad está generando ingresos con su cliente, y las que llegan a Inactivo (30, 32 y 37), porque es final. Las demás «avisan»: ninguna puede «mover sola» a Disponible (D-164, D-170), y fuera de la firma de contrato no hay otro regreso que tenga sentido automático.
 
