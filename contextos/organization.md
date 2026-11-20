@@ -293,18 +293,18 @@ Es una operación de `iam` ([iam.md](iam.md), F11), con `POST /employees/{id}/ac
 
 De `location` usa: el país y la moneda por su código, con sus nombres y zonas en lote; las reglas de un tipo de documento, con el dígito de control que calcula `location` (D-75); y crear, corregir, reemplazar y leer en lote las direcciones, en el país que fija el dueño.
 
-**Lo que ofrece: `OrganizationContextFacade`**, a `iam`, `fleet` y `procurement`:
+**Lo que ofrece: `OrganizationContextFacade`**, a `iam`, `fleet`, `financing` y `procurement`:
 
 | Para qué | Miembros | Quién los usa |
 |---|---|---|
-| Saber si existe una empresa: la de las cuentas de una empresa, la de un rol propio, que tiene que estar activa (D-98), y la de una unidad o de un documento de compra | `fetchCompanySummaryByPublicId` | `iam`, `fleet`, `procurement` |
+| Saber si existe una empresa: la de las cuentas de una empresa, la de un rol propio, que tiene que estar activa (D-98), y la de una unidad, de un fondo o de un documento de compra | `fetchCompanySummaryByPublicId` | `iam`, `fleet`, `financing`, `procurement` |
 | El colaborador que recibe acceso, sale, regresa o se desvincula, bloqueado hasta que termina la operación | `fetchEmployeeSummaryForUpdate` | `iam` |
 | En qué empresas tiene colaboradores una cuenta, y dónde tiene uno activo, para una cuenta o en lote | `fetchEmployeeSummariesByUserId`, `fetchActiveEmployeeCompanyIdsByUserId`, `fetchActiveEmployeeCompanyIdsByUserIds` | `iam` |
 | Los titulares de la cuenta de un correo (D-82) | `fetchAccountHoldersByUserId` | `iam` |
 | Vincular un colaborador a una cuenta nueva o a la de la misma persona, y deshacer el vínculo (D-82) | `linkUserToEmployee`, `linkExistingUserToEmployee`, `unlinkUserFromEmployee` | `iam` |
 | Registrar la salida y el regreso con sus reglas (F7) | `terminateEmployee`, `reactivateEmployee` | `iam` |
-| Resolver el alcance de una asignación, la marca de una unidad o de un fondo, o la empresa y la marca de una orden: la empresa, y la sede y la marca de esa empresa, activas (D-84; ORG-R56) | `resolveScope` | `iam`, `fleet`, `procurement` |
-| Nombres en lote para las listas, las empresas activas, la zona de cada empresa y las cuentas con colaborador en una empresa | `fetchCompanyReferencesByIds`, `fetchCommercialBrandReferencesByIds` y `fetchCompanyTimeZonesByIds` (los tres); `fetchBranchReferencesByIds`, `fetchActiveCompanyReferences`, `fetchLinkedEmployeePublicIdsByCompanyId` (`iam`) | `iam`, `fleet`, `procurement` |
+| Resolver el alcance de una asignación, la marca de una unidad, la empresa de un fondo, o la empresa y la marca de una orden: la empresa, y la sede y la marca de esa empresa, activas (D-84; ORG-R56) | `resolveScope` | `iam`, `fleet`, `financing`, `procurement` |
+| Nombres en lote para las listas, las empresas activas, la zona de cada empresa y las cuentas con colaborador en una empresa | `fetchCompanyReferencesByIds`, `fetchCommercialBrandReferencesByIds` y `fetchCompanyTimeZonesByIds` (los tres; `financing`, el primero y el último); `fetchBranchReferencesByIds`, `fetchActiveCompanyReferences`, `fetchLinkedEmployeePublicIdsByCompanyId` (`iam`) | `iam`, `fleet`, `financing`, `procurement` |
 | El nombre del colaborador de cada cuenta de una lista, el de uno activo si lo hay (mapa, decisión 6) | `fetchEmployeeNamesByUserIds` | `iam` |
 | La marca comercial de un filtro, dentro de las empresas que quien llama lee (D-99) | `fetchCommercialBrandReferenceByPublicId` | `fleet`, `procurement` |
 | La ubicación donde se pone una unidad, una o en lote, dentro de las empresas que quien llama lee (D-99) | `fetchLocationReferenceByPublicId`, `fetchLocationReferencesByIds` | `fleet` |

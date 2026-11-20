@@ -27,7 +27,7 @@
 
 ### F1 · Registrar un cambio
 
-- **Quién:** el servicio de un contexto que modifica un registro cuyo cambio la bitácora guarda: `location` (la corrección de una tasa de cambio), `fleet` (placas, VIN, hitos, traspasos, cesiones, la carga de la garantía) y `procurement` (proveedores, plantillas, anulaciones, aplicaciones de pago).
+- **Quién:** el servicio de un contexto que modifica un registro cuyo cambio la bitácora guarda: `location` (la corrección de una tasa de cambio), `fleet` (placas, VIN, hitos, traspasos), `financing` (el cierre de una cesión, a mano o por la carga de la garantía) y `procurement` (proveedores, plantillas, anulaciones, aplicaciones de pago).
 - **Pasos:** el contexto pide `recordChange` o `recordChanges` por `audit::acl`, con la tabla, el identificador interno y el público del registro, su empresa y su marca, el campo, los dos valores, si el cambio es delicado y el motivo.
 - **Qué revisa el sistema:** que la entidad y el campo no vayan vacíos y que la marca sea de la empresa (AUD-R03, AUD-R07); que un cambio delicado traiga su motivo (AUD-R04).
 - **Si falla:** la anotación vuelve como error y el contexto descarta sus escrituras: el cambio y su fila se guardan juntos o no se guarda ninguno.

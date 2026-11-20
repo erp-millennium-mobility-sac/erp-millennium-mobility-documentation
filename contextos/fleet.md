@@ -8,7 +8,7 @@
 
 ## 1. Qué es y qué no es
 
-`fleet` responde qué unidades tiene cada empresa, en qué estado de su ciclo de vida está cada una, por qué llegó a él, cuánto tiempo se tolera que siga ahí, cuánto marca su odómetro y qué le falta para poder entregarse. Es el centro del modelo (§8): las compras, la habilitación, los fondos y, más adelante, los contratos cuelgan del vehículo. Usa a `organization`, `vehiclecatalog`, `equipment`, `iam`, `location` y `documents` por sus fachadas, y `procurement` y `reporting` lo usan por la suya (sección 5).
+`fleet` responde qué unidades tiene cada empresa, en qué estado de su ciclo de vida está cada una, por qué llegó a él, cuánto tiempo se tolera que siga ahí, cuánto marca su odómetro y qué le falta para poder entregarse. Es el centro del modelo (§8): las compras, la habilitación, los fondos y, más adelante, los contratos cuelgan del vehículo. Usa a `organization`, `vehiclecatalog`, `equipment`, `iam`, `location` y `documents` por sus fachadas, y `procurement`, `financing` y `reporting` lo usan por la suya (sección 5).
 
 **Las tablas que posee** (diccionario §8, §11 y §12). Las columnas están en el diccionario; las que el código agregó y el diccionario todavía no tiene están en la sección 6 b.
 
@@ -25,8 +25,6 @@
 | `vehicle_equipment_requirements` | Qué equipo exige la habilitación y cuál es de seguridad, por tipo de equipo (FLT-R148) | §11.4 |
 | `vehicle_keys` | Las llaves de cada unidad | §11.5 |
 | `vehicle_tax_declarations` | Las declaraciones del impuesto vehicular que trae el archivo del SAT | §11.7 |
-| `funds` | Los fondos de cada empresa | §12.1 |
-| `vehicle_fund_assignments` | Las cesiones de cada unidad a un fondo, con la carga que las abrió, si fue una | §12.2 |
 
 **Los doce estados** (los trae la semilla; su código no cambia, FLT-R14):
 
@@ -58,7 +56,8 @@ Las reglas leen algunos estados por su código: `ACTIVO` es la entrega (§11.9),
 | El proveedor de la unidad | `procurement` | Es un dato de la compra, no de la unidad (§8, introducción) |
 | Una columna con el kilometraje de la unidad | Nadie: no existe | El kilometraje de la unidad es su última lectura (D-165, FLT-R31) |
 | Quién corrigió una placa, un VIN, un hito o el costo de una instalación, y por qué | `audit` (`change_logs`, §13.1; D-262) | `fleet` escribe la fila en la misma transacción que el cambio (FLT-R03, FLT-R90) |
-| El registro de las cargas de archivos y la pantalla Logística › Cargas de archivos | `imports` (D-200, D-262) | Cada carga de `fleet` registra su lote por `imports::acl`; la carga inicial la orquesta `procurement` (F13 a F15) |
+| El registro de las cargas de archivos y la pantalla Logística › Cargas de archivos | `imports` (D-200, D-262) | Cada carga de `fleet` registra su lote por `imports::acl`; la carga inicial la orquesta `procurement` (F13 y F15) |
+| Los fondos, las cesiones de las unidades a ellos y la carga de la lista de garantía mobiliaria | `financing` (§12; D-279) | `financing` lee y bloquea la unidad por la fachada de `fleet`, con el candado de toda escritura de la unidad (FLT-R84), y `fleet` pregunta por su puerto `UnitFundAssignments` si una unidad tiene una cesión abierta (FLT-R54) y si la sesión puede cederla. Ver [financing.md](financing.md) |
 | El número que la unidad tenía en el Excel | `fleet`, solo por la carga inicial (D-18) | La API no lo recibe ni lo genera (FLT-R11, FLT-R125) |
 | Los indicadores de la flota y el Excel de stock | `reporting` (D-232) | Los arma la capa de lectura con lo que `fleet` le responde por su fachada, sin reescribir sus reglas (sección 5) |
 | La marca del vehículo (Chevrolet, TVS), el modelo y el color | `vehiclecatalog` (§7) | La unidad apunta a ellos; no los modifica |
@@ -102,7 +101,7 @@ Las reglas leen algunos estados por su código: `ACTIVO` es la entrega (§11.9),
 
 ## 2. Ciclo de vida de cada agregado
 
-Nada de `fleet` se borra: ni las unidades, ni los estados, ni los caminos, ni el historial, ni las lecturas, ni los documentos, los equipos, las llaves, las declaraciones, los fondos o las cesiones. La API no tiene `DELETE` (convenciones §3.1) y la cuenta de la aplicación no puede borrar (FLT-R09).
+Nada de `fleet` se borra: ni las unidades, ni los estados, ni los caminos, ni el historial, ni las lecturas, ni los documentos, los equipos, las llaves o las declaraciones. La API no tiene `DELETE` (convenciones §3.1) y la cuenta de la aplicación no puede borrar (FLT-R09).
 
 ### Unidad
 
@@ -152,23 +151,9 @@ Nada de `fleet` se borra: ni las unidades, ni los estados, ni los caminos, ni el
 | Retiro | Una lectura escrita de más se anula con su motivo, por quien tiene `stock.anular_lectura_kilometraje` donde está la unidad: sigue en la lista, tachada, y sale de la serie y del kilometraje de la unidad (FLT-R156) |
 | Nunca | Se edita ni se borra (FLT-R26); entra menor que la lectura anterior sin ser una sustitución, ni mayor que la siguiente (FLT-R28, FLT-R29); se anula dejando la lectura siguiente por debajo de la anterior (FLT-R156) |
 
-### Fondo
+### Fondo y cesión de una unidad a un fondo
 
-| Momento | Qué pasa |
-|---|---|
-| Alta | Lo crea quien tiene `fondos.crear_fondos` en una asignación de toda la empresa y sin marca, y además `fondos.ver` en la empresa: un fondo es de todas las marcas de su empresa, como un proveedor (D-134). No se crea bajo una empresa inactiva (D-84) |
-| Qué cambia | Con `fondos.editar_fondos`, en la misma clase de asignación: el nombre, el tipo y el código, este mientras ninguna cesión lo usa (`422 FUND_CODE_LOCKED`, §2.4, D-134). Editar un fondo que quien llama no lee responde `404`: escribir exige leer |
-| Retiro | Se desactiva y se reactiva con `fondos.desactivar_fondos`; no se reactiva bajo una empresa inactiva (D-94) |
-| Nunca | Se borra |
-
-### Cesión de una unidad a un fondo
-
-| Momento | Qué pasa |
-|---|---|
-| Alta | La registra quien tiene `fondos.registrar_cesion` sobre toda la empresa o sobre la marca de la unidad, nunca sobre su sede: ceder es un acto financiero de la empresa, y un rol de sede ve la unidad y sus cesiones pero no la cede (D-134, excepción a D-101). El fondo es de la empresa de la unidad (D-133) y se lee con `fondos.ver` o `fondos.registrar_cesion` en su empresa; uno que no se ve responde `404` antes de comparar empresas. La cesión abre un período `[inicio, fin)` desde un día conocido; una unidad no tiene dos cesiones que se crucen (§12.2). La ficha ofrece ceder con el permiso donde actúa, `fondos.ver` en la empresa —porque el fondo se elige de su lista— y sin una cesión abierta ni con fin posterior a hoy en la zona de la empresa. También la abre la carga de garantía, que la nombra (F14, FLT-R118) |
-| Qué cambia | Solo su cierre: con la fecha de fin que elige quien la cierra, excluida y posterior al inicio, o con la fecha de la lista de garantía que ya no la nombra (F14, FLT-R112). Su autor es la cuenta de la sesión |
-| Quién la ve | Quien ve la unidad con `stock.ver`, marca incluida (D-102); `fondos.ver` solo no basta. Una unidad que no se ve responde `404` antes de cualquier `403`. El fin se muestra como se guarda, excluido, como el ejemplo de §12.2 |
-| Nunca | Se borra; se abre o se cierra en una unidad anulada (FLT-R49); deja anular una unidad mientras está abierta (FLT-R54) |
+Son del contexto `financing` desde la fase 4 del plan de migración (D-279): su ciclo de vida y sus reglas están en [financing.md](financing.md). `fleet` le da la unidad y su candado por su fachada, y su anulación pregunta por el puerto `UnitFundAssignments` si la unidad tiene una cesión abierta (FLT-R54).
 
 ### Equipo del inventario de equipamiento
 
@@ -192,9 +177,9 @@ Lo que la configuración de `fleet` dice de un tipo de equipo del catálogo de e
 
 En cada flujo, «el sistema revisa» es lo que el backend comprueba, en ese orden. Toda ruta exige un permiso del catálogo (§5.6, D-95), y el servicio decide dónde actúa con la asignación que lo trae (D-99): una unidad que la cuenta no ve con `stock.ver` no existe para ella (`404`), y una que ve pero sobre la que su permiso no actúa responde `403`. El stock se ve en toda la empresa (D-14); un rol de sede actúa solo sobre las unidades de la ubicación propia de su sede (D-101), y una asignación limitada a una marca, solo sobre las de esa marca (D-102) (FLT-R33 a FLT-R35). Escribir exige leer. Una unidad anulada no admite ninguna escritura (FLT-R49). La ficha y la habilitación de la unidad dicen qué puede hacer la sesión en ella, y la pantalla ofrece solo eso; el backend lo vuelve a revisar en cada operación (FLT-R36, FLT-R87).
 
-**Las pantallas** están en procesos y pantallas: Logística › Inventario y la ficha de cada unidad, Logística › Habilitación y la habilitación de cada unidad, Catálogos › Estados y motivos, Catálogos › Tipos de documento, Catálogos › Requisitos de equipos y Configuración › Fondos. Cada una se abre por el permiso que usa (procesos, apartado 3.1): las de Logística, con `stock.ver`; los tres catálogos, con `catalogos.ver`, porque escribir exige leer (D-141); Fondos, con `fondos.ver`.
+**Las pantallas** están en procesos y pantallas: Logística › Inventario y la ficha de cada unidad, Logística › Habilitación y la habilitación de cada unidad, Catálogos › Estados y motivos, Catálogos › Tipos de documento y Catálogos › Requisitos de equipos. Cada una se abre por el permiso que usa (procesos, apartado 3.1): las de Logística, con `stock.ver`; los tres catálogos, con `catalogos.ver`, porque escribir exige leer (D-141). Configuración › Fondos es de `financing` ([financing.md](financing.md)).
 
-**Los candados.** El orden de los candados de la habilitación, del cambio de estado, de las cesiones y de las cargas está en los [patrones de persistencia](../patrones-de-persistencia-millennium-mobility.md).
+**Los candados.** El orden de los candados de la habilitación, del cambio de estado, de la anulación y de las cargas está en los [patrones de persistencia](../patrones-de-persistencia-millennium-mobility.md).
 
 ### F1 · Registrar una unidad
 
@@ -333,7 +318,7 @@ El sistema revisa: que el código del estado no se repita, y el del motivo no se
 
 1. **Buscar y filtrar.** Busca por parte del VIN, de la placa o del número de motor, sin distinguir mayúsculas ni tildes (D-142). Filtra por empresa, marca comercial, estado, motivo del último cambio y estado por el que pasó alguna vez (FLT-R137), solo vencidas —las unidades cuya tolerancia del último cambio ya pasó, digan lo que digan al vencerse (FLT-R23)—, factura vigente (FLT-R51), ubicación y modelo.
 2. **La lista** nombra cada unidad por su VIN, porque toda unidad lo tiene y la placa llega al final de la habilitación, y marca la unidad sin factura vigente (FLT-R51) y la devuelta al proveedor (FLT-R98).
-3. **La ficha** muestra los datos de la unidad, con su marca, su modelo y su color, activos o no (FLT-R145); su estado de pago y su brecha de días (FLT-R131); su estado de habilitación, que lleva a su página; su kilometraje (FLT-R31); su propietaria (FLT-R140); y quién la registró, por su nombre (FLT-R40), con las fechas en la zona del país de su empresa (FLT-R41). Debajo, su historial de estados y sus lecturas, de lo más nuevo a lo más viejo, y sus cesiones.
+3. **La ficha** muestra los datos de la unidad, con su marca, su modelo y su color, activos o no (FLT-R145); su estado de pago y su brecha de días (FLT-R131); su estado de habilitación, que lleva a su página; su kilometraje (FLT-R31); su propietaria (FLT-R140); y quién la registró, por su nombre (FLT-R40), con las fechas en la zona del país de su empresa (FLT-R41). Debajo, su historial de estados y sus lecturas, de lo más nuevo a lo más viejo, y sus cesiones a fondos, que da `financing` ([financing.md](financing.md), F2).
 4. **Exportar** el Inventario a Excel, con la búsqueda, los filtros y el orden de la pantalla (FLT-R47; convenciones §8.1).
 
 El sistema revisa: la lista trae solo las unidades de las empresas donde `stock.ver` actúa y, dentro de cada una, las de las marcas de las asignaciones que lo traen; un rol de sede ve toda su empresa (FLT-R33, FLT-R35). Un filtro que nombra algo fuera del alcance o que no existe da una lista vacía, nunca una pista de lo que hay en otra parte.
@@ -448,14 +433,14 @@ La semilla trae el GPS con las dos marcas y la pantalla con la primera, lo mismo
 
 ### F13 a F15 · Las cargas de archivos
 
-Tres cargas tocan las unidades (D-200 a D-202): el impuesto vehicular y la garantía mobiliaria, de `fleet`, y la carga inicial, que orquesta `procurement` y que escribe las unidades por la fachada de `fleet` (sección 5). Ningún archivo auxiliar crea unidades: solo la carga inicial las da de alta (§11.8). Cada carga registra su lote por la fachada de `shared`, en su misma transacción, con su archivo, sus conteos y su informe de errores. El registro, la pantalla Logística › Cargas de archivos (con `habilitacion.ver_cargas`), la lectura y la forma del archivo y el orden de las respuestas son de `shared` (diccionario §11.8; convenciones §2.2 y §7.2). Lo que `fleet` aplica:
+Tres cargas tocan las unidades (D-200 a D-202): el impuesto vehicular, de `fleet`; la lista de garantía mobiliaria, de `financing` desde la fase 4 del plan de migración (D-279; [financing.md](financing.md), F3); y la carga inicial, que orquesta `procurement` y que escribe las unidades por la fachada de `fleet` (sección 5). Ningún archivo auxiliar crea unidades: solo la carga inicial las da de alta (§11.8). Cada carga registra su lote por `imports::acl`, en su misma transacción, con su archivo, sus conteos y su informe de errores. El registro, la pantalla Logística › Cargas de archivos (con `habilitacion.ver_cargas`), la lectura y la forma del archivo y el orden de las respuestas son de `imports` (diccionario §11.8; convenciones §2.2 y §7.2). Lo que aplican las tres:
 
 - **Una carga a la vez** de cada tipo por empresa: la segunda responde `409 IMPORTBATCH_CONFLICT` sin esperar. Dos empresas no se esperan.
 - **Los topes:** 5 000 filas por archivo en el SAT y en la garantía; 400 en la carga inicial (D-231). Del SAT y de la garantía se leen las columnas que se usan, encontradas por su encabezado, y las demás se ignoran.
 - **Los conteos**, iguales en las tres: entraron, si la fila escribió algo; sin cambios, si todo lo que pide ya estaba; fallaron, si está en el informe. El informe devuelve las filas que fallaron tal como llegaron, con su fallo en español; corregidas, se vuelven a subir. Una carga en la que todas las filas fallan se registra igual: el lote existe y su informe dice por qué.
 - **Escribir exige leer:** cada carga pide también `habilitacion.ver_cargas`, y actúa sobre toda la empresa y todas sus marcas, sin sede (D-134).
 
-Hasta perfilar un archivo real del SAT y otro de la garantía, sus encabezados son provisionales (sección 6 c).
+Hasta perfilar un archivo real del SAT, sus encabezados son provisionales (sección 6 c); los de la garantía, en [financing.md](financing.md).
 
 ### F13 · Cargar el archivo del impuesto vehicular (SAT)
 
@@ -480,28 +465,7 @@ La última es la de la carga más reciente: las cargas de una empresa no se cruz
 
 ### F14 · Cargar la lista de garantía mobiliaria
 
-**Quién:** `fondos.cargar_archivo_garantia` y `habilitacion.ver_cargas` en toda la empresa y en todas sus marcas, y `fondos.ver` en la empresa (FLT-R116): en la semilla, superadministrador, administrador de empresa y Contabilidad. Desde Logística › Cargas de archivos (`POST /fund-assignment-imports`).
-
-**Qué es el archivo.** La lista de las placas que un fondo tiene en garantía a una fecha: una fotografía (guía, §8.2). La fotografía no reemplaza la historia (D-30, §12.2): la carga la traduce en cesiones que se abren y se cierran, y solo actualiza unidades que existen (FLT-R110).
-
-1. Elige el fondo, entre los activos de la empresa, y la fecha de la lista, hoy en la zona de la empresa por omisión, nunca futura (FLT-R115).
-2. El sistema revisa la empresa, los permisos, el fondo y la fecha, toma el candado de la carga y bloquea las unidades de la empresa con las placas del archivo y las que tienen una cesión abierta al fondo: una cesión a mano de esas unidades espera (FLT-R117). Lee las cesiones de esas unidades, de cualquier fondo, y decide:
-
-| Caso | Efecto |
-|---|---|
-| Placa de la lista sin cesión abierta | Abre una cesión al fondo desde la fecha de la lista, con su carga y la cuenta de la sesión como autor (FLT-R111, FLT-R118) |
-| Placa de la lista con la cesión abierta a este fondo | Sin cambios (FLT-R111) |
-| Placa de la lista con una cesión abierta a otro fondo, o cuya cesión nueva se cruzaría con una que ya existe | Falla la fila y no cambia nada de esa unidad: una unidad no está en dos fondos a la vez, y la lista de un fondo no decide sobre otro (FLT-R113) |
-| Placa que no es de una unidad de la empresa, o unidad anulada | Falla la fila (FLT-R103) |
-| Placa repetida en el archivo | Fallan todas sus filas, y su cesión no se cierra (FLT-R105) |
-| Cesión abierta al fondo de una unidad con placa que no está en la lista, también una registrada a mano (D-209) | Se cierra con la fecha de la lista, excluida como todo fin de período (§2.6), con su fila en la bitácora y el motivo de la carga (FLT-R112) |
-| Ese cierre no queda posterior al inicio de la cesión | No se cierra, y se informa (FLT-R113) |
-| Cesión abierta al fondo de una unidad sin placa | No se cierra: la lista se cruza por placa y esa unidad no puede figurar. Se informa como «sin placa» (FLT-R112) |
-
-3. **Los cierres se confirman** (FLT-R114). Si la carga cerraría al menos una cesión y el pedido no lo confirma, responde lo que haría —cuántas abre, cierra, deja igual, fallan y quedan sin placa— y no escribe nada; la pantalla lo pregunta y reenvía el mismo archivo confirmado. Así una lista equivocada no cierra cesiones sin que nadie lo vea.
-4. Registra el lote, abre las cesiones nuevas con su carga y cierra las que corresponden. El informe se escribe siempre: lleva el fondo, la fecha de la lista y cada cesión que la lista cerró o no pudo cerrar (FLT-R113).
-
-**Resultado:** las cesiones de la ficha de la unidad dicen qué carga abrió cada una, enlazada a su ficha para quien tiene `habilitacion.ver_cargas`.
+Es de `financing` desde la fase 4 del plan de migración (D-279): [financing.md](financing.md), F3. Sus reglas conservan sus números, FLT-R110 a FLT-R118, y están allí.
 
 ### F15 · Las unidades de la carga inicial
 
@@ -572,13 +536,13 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | FLT-R45 | El historial y las lecturas llevan la empresa de su unidad, copiada al escribirlos; como la empresa de una unidad no cambia, nunca discrepan | §8.4, §8.5, D-111 | Base, Dominio | `FleetRowLevelSecurityTests` | ✅ |
 | FLT-R46 | Los estados y los caminos se leen enteros, sin página; los caminos se filtran en el servidor por su origen, `?fromStatusId=` o `?origin=registration`, y los dos juntos se rechazan | D-113; convenciones §6.2, §14.23 | Servicio, Frontend | `VehicleStatusCatalogTests`, `status-change-reasons.store.spec.ts`, `vehicle-statuses-view.spec.ts`, `e2e/fleet.spec.ts` | ✅ |
 | FLT-R47 | El Inventario se exporta a Excel desde su propio endpoint, `GET /vehicles`, con la búsqueda, los filtros y el orden de la pantalla, y los nombres de sus referencias resueltos en lote por las fachadas | D-116, D-125, D-128; convenciones §8 | Servicio, Frontend | `VehicleInventoryExportTests`, `vehicles.store.spec.ts`, `vehicles-view.spec.ts`, `e2e/exports.spec.ts` | ✅ |
-| FLT-R48 | Una unidad se anula por acción explícita con `stock.anular_vehiculo`, solo si su valor es cero, no tiene contratos y no tiene una cesión abierta (FLT-R54). El contrato se lee también del historial de la unidad, mientras ventas no existe y después: lo tiene la que espera en Contrato firmado y la que entró alguna vez a Activo, aunque haya vuelto; no lo tiene la que solo pasó por Contrato firmado y volvió sola a Disponible. La misma guarda vale para la nota que devuelve la unidad (FLT-R94) y para `allowedActions.annul` | D-104, D-161, D-250, §9.6 | Dominio, Servicio | `VehicleTests`, `VehicleAnnulmentsIntegrationTests`, `FleetContextFacadeImplTests`, `UnitPurchaseFactsTests` | ✅ |
-| FLT-R49 | Una unidad anulada no admite ninguna escritura, sin excepción —tampoco ceder ni cerrar una cesión—, y su `allowedActions` no ofrece ninguna; el regreso automático la salta | D-104, D-182 | Servicio | `VehicleAnnulmentsIntegrationTests`, `vehicle-profile-view.spec.ts` | ✅ |
+| FLT-R48 | Una unidad se anula por acción explícita con `stock.anular_vehiculo`, solo si su valor es cero, no tiene contratos y no tiene una cesión abierta (FLT-R54). El contrato se lee también del historial de la unidad, mientras ventas no existe y después: lo tiene la que espera en Contrato firmado y la que entró alguna vez a Activo, aunque haya vuelto; no lo tiene la que solo pasó por Contrato firmado y volvió sola a Disponible. La misma guarda vale para la nota que devuelve la unidad (FLT-R94) y para `allowedActions.annul` | D-104, D-161, D-250, §9.6 | Dominio, Servicio | `VehicleTests`, `VehicleAnnulmentsIntegrationTests`, `FleetContextFacadeImplTests`, `UnitPurchaseFactsTests`, `FundAssignmentAllowedActionsTests` | ✅ |
+| FLT-R49 | Una unidad anulada no admite ninguna escritura, sin excepción —tampoco ceder ni cerrar una cesión, que `financing` rechaza (FIN-R20 de [financing.md](financing.md))—, y su `allowedActions` no ofrece ninguna; el regreso automático la salta | D-104, D-182 | Servicio | `VehicleAnnulmentsIntegrationTests`, `FundAssignmentAnnulmentRaceTests`, `vehicle-profile-view.spec.ts` | ✅ |
 | FLT-R50 | Una unidad con línea de factura vigente no cambia de año, y su modelo ya no cambia por ninguna ruta | D-160 | Servicio, Frontend | `VehiclesIntegrationTests`, `VehicleInvoiceFactsIntegrationTests`, `VehicleLockTests`, `vehicle-form-dialog.spec.ts` | ✅ |
 | FLT-R51 | Inventario muestra y filtra las unidades sin factura vigente, también en su exportación | D-175 | Servicio, Frontend | `VehicleInvoiceFactsIntegrationTests`, `VehicleInventoryExportTests`, `vehicles-view.spec.ts`, `e2e/purchase-invoices.spec.ts` | ✅ |
 | FLT-R52 | El alta y el vínculo por lote de una factura validan todo antes de escribir, exigen una transacción abierta, elevan el alcance una vez por llamada y bloquean las unidades existentes por `id`; las unidades que el candado responde se leen en una sola sentencia | PRC-R65 | Servicio | `FleetContextFacadeImplTests`, `FleetContextFacadeTransactionTests`, `PurchaseInvoiceRegistrationStatementsTests`, `FleetContextFacadeLockTests` | ✅ |
 | FLT-R53 | `fleet` no depende de `procurement`: lo que necesita de compras lo pregunta por `UnitPurchases`, y una sola implementación lo responde | Mapa §5, regla 1.1 | Servicio | `ModularityTests`, `UnitPurchasesWiringTests` | ✅ |
-| FLT-R54 | Una unidad con una cesión abierta a un fondo, sin fecha de fin, no se anula: primero se cierra la cesión. La cesión se lee bajo el candado de la unidad, el mismo que toman ceder y cerrar | D-182, §12.2 | Servicio, Frontend | `VehicleAnnulmentsIntegrationTests`, `VehicleAnnulmentLockTests`, `vehicle-profile-view.spec.ts`, `e2e/purchase-invoices.spec.ts` | ✅ |
+| FLT-R54 | Una unidad con una cesión abierta a un fondo, sin fecha de fin, no se anula: primero se cierra la cesión. La cesión se pregunta, bajo el candado de la unidad, el mismo que toman ceder y cerrar, por el puerto `UnitFundAssignments`, que responde `financing` con un solo bean | D-182, §12.2, D-279 | Servicio, Frontend | `VehicleAnnulmentsIntegrationTests`, `FundAssignmentAnnulmentRaceTests`, `UnitFundAssignmentsWiringTests` (`financing`), `vehicle-profile-view.spec.ts`, `e2e/purchase-invoices.spec.ts` | ✅ |
 | FLT-R55 | `requires_enablement` marca los estados a los que solo se entra con la habilitación completa; nace en falso. La semilla lo marca en Disponible, donde no se desmarca, y en Contrato firmado, donde sí; en cualquier estado salvo Disponible se marca y se desmarca con `catalogos.editar_estados`. El estado inicial no se marca ni un estado marcado pasa a inicial, y un estado no se marca mientras un camino abierto que espera en otro estado que Contrato firmado mueve solas unidades a él. Marcar un estado y guardar un camino hacia él no se cruzan | §8.2, D-164, D-170, D-184 | Base, Dominio, Servicio, Frontend | `VehicleStatusTests`, `VehicleStatusCatalogTests`, `EnablementGateMigrationTests`, `AutomaticReturnGateTests`, `StatusCatalogLockTests`, `vehicle-status-form-dialog.spec.ts`, `vehicle-statuses.store.spec.ts`, `e2e/fleet.spec.ts` | ✅ |
 | FLT-R56 | Un cambio de estado a mano hacia un estado con `requires_enablement` exige que a la unidad no le falte nada —ninguna de las filas 1 a 4—, esté Listo para entrega o Entregado, por cualquier camino —«Habilitación completa», «Reacondicionada», «Firma de contrato»—, y si no, se rechaza nombrando todo lo que falta. La puerta va después del permiso del camino, de la unidad anulada, de la revisión física y del traspaso | §8.2, §11.9, D-164, D-183 | Dominio, Servicio, Frontend | `VehicleTests`, `EnablementGateIntegrationTests`, `change-vehicle-status-dialog.spec.ts`, `vehicles.store.spec.ts`, `e2e/enablement.spec.ts` | ✅ |
 | FLT-R57 | El regreso automático de Contrato firmado a Disponible no pasa por la puerta mientras Contrato firmado tenga `requires_enablement`: deshace un contrato que no se entregó, y la marca sostuvo los requisitos mientras esperaba. Desmarcado, el proceso lee la habilitación y deja en Contrato firmado a la unidad a la que le falta algo. Ningún otro camino mueve sola una unidad a un estado con puerta: el catálogo no lo guarda, por el código `CONTRATO_FIRMADO`, y el proceso deja donde está a una unidad incompleta que un camino así movería. El aviso sale una vez por unidad retenida | D-164, D-110, D-184, D-170 | Dominio, Servicio, Frontend | `EnablementGateIntegrationTests`, `AutomaticReturnGateTests`, `AutomaticReturnGateRuleTests`, `AutomaticReturnsBreachWarningTests`, `status-change-reason-form-dialog.spec.ts`, `status-change-reasons.store.spec.ts`, `e2e/fleet.spec.ts` | ✅ |
@@ -627,22 +591,13 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | FLT-R100 | El archivo del SAT solo actualiza unidades de la empresa que ya existen, cruzadas por su placa normalizada; nunca crea una. Una placa sin unidad va al informe | §11.7, §11.8 | Servicio | `TaxDeclarationRowPolicyTests`, `FleetImportsIntegrationTests` | ✅ |
 | FLT-R101 | La declaración solo aplica a autos: el tipo del modelo es `AUTO` | §11.7; guía, columna 31 | Dominio | `TaxDeclarationRowPolicyTests` | ✅ |
 | FLT-R102 | Una unidad sin la TIVE vigente no tiene declaración | §11.7 | Dominio, Servicio | `TaxDeclarationRowPolicyTests` | ✅ |
-| FLT-R103 | Ninguna carga escribe sobre una unidad anulada | D-104, D-182, FLT-R49 | Dominio | `TaxDeclarationRowPolicyTests`, solo la del SAT; la de la garantía, sin prueba propia | ⚠️ |
+| FLT-R103 | Ninguna carga escribe sobre una unidad anulada | D-104, D-182, FLT-R49 | Dominio | `TaxDeclarationRowPolicyTests`, solo la del SAT; la de la garantía, de `financing`, sin prueba propia | ⚠️ |
 | FLT-R104 | Una declaración guarda el estado del archivo, recortado y en mayúsculas, y la fecha si viene, no futura; se escribe solo si difiere de la última de la unidad; una por unidad y carga; no se edita | §11.7, D-186 | Base, Dominio | `TaxDeclarationRowPolicyTests`, `FleetImportsIntegrationTests` | ✅ |
-| FLT-R105 | Una placa repetida en el archivo del SAT o de la garantía hace fallar todas sus filas | Guía, columna 31 («no se espera duplicidad») | Dominio | `TaxDeclarationRowPolicyTests`, `GuaranteeListPolicyTests`, `FleetImportsIntegrationTests` | ✅ |
+| FLT-R105 | Una placa repetida en el archivo del SAT o de la garantía hace fallar todas sus filas; cada carga la aplica en su contexto, la del SAT en `fleet` y la de la garantía en `financing` | Guía, columna 31 («no se espera duplicidad») | Dominio | `TaxDeclarationRowPolicyTests`, `FleetImportsIntegrationTests`, `GuaranteeListPolicyTests` (`financing`) | ✅ |
 | FLT-R106 | El estado SAT de una unidad se calcula: `NO_CORRESPONDE`, `SIN_TIVE`, `PENDIENTE` o `DECLARADA` con el estado y la fecha de su última declaración; no se guarda | §11.7, §2.2; guía, columnas 31 y 32 | Dominio, Servicio | `TaxDeclarationRowPolicyTests` | ✅ |
 | FLT-R107 | Las declaraciones llevan la empresa de su unidad, que la base defiende hacia la unidad y hacia la carga, y solo se insertan | §11.7, D-165, §2.5 | Base | `RowLevelSecurityMigrationTests`; la empresa hacia la unidad y la carga, sin prueba propia | ⚠️ |
 | FLT-R108 | Cargar el SAT exige `habilitacion.cargar_archivo_sat` y `habilitacion.ver_cargas` en toda la empresa y en todas sus marcas, y la empresa activa | §5.6, D-134, D-84 | Servicio | `FleetImportsIntegrationTests`, sin `habilitacion.ver_cargas`; la sede, la marca y la empresa inactiva, sin prueba propia | ⚠️ |
 | FLT-R109 | La declaración de una unidad dice de qué carga salió | §11.7 | Servicio | Sin prueba propia | ⚠️ |
-| FLT-R110 | La lista de garantía es la de un fondo a una fecha; solo actualiza unidades existentes y nunca crea una | §12.2, §11.8; guía, §8.2 | Servicio | `GuaranteeListPolicyTests`, `FleetImportsIntegrationTests` | ✅ |
-| FLT-R111 | Una placa sin cesión abierta abre una al fondo desde la fecha de la lista, con su carga; con la cesión abierta a ese fondo, queda sin cambios | §12.2, D-30 | Dominio | `GuaranteeListPolicyTests` | ✅ |
-| FLT-R112 | Una cesión abierta al fondo cuya unidad tiene placa y no figura en la lista se cierra en la fecha de la lista, con su fila en la bitácora; la historia se conserva. Vale también para las cesiones registradas a mano. La de una unidad sin placa no se cierra y se informa | §12.2, D-30, D-209, §13.1 | Dominio, Servicio | `GuaranteeListPolicyTests`, `FleetImportsIntegrationTests` | ✅ |
-| FLT-R113 | Una placa cedida a otro fondo, o cuya cesión nueva se cruzaría con otra, falla y no cambia nada de esa unidad; un cierre que no queda posterior al inicio no se hace y se informa. El fondo y la fecha de la lista quedan en el informe | §12.2, D-133, D-209 | Base, Dominio | `GuaranteeListPolicyTests` | ✅ |
-| FLT-R114 | Si la carga cerraría cesiones, exige la confirmación; sin ella responde los efectos y no escribe nada | D-30 | Servicio, Frontend | `FleetImportsIntegrationTests` | ✅ |
-| FLT-R115 | El fondo es de la empresa, activo y se lee en modo compartido, como toda escritura de cesiones; la fecha de la lista no es futura en la zona de la empresa | §12.1, §2.6 | Servicio | `FleetImportsIntegrationTests`, la fecha; el fondo inactivo y su lectura compartida, sin prueba propia | ⚠️ |
-| FLT-R116 | Cargar la garantía exige `fondos.cargar_archivo_garantia`, `fondos.ver` y `habilitacion.ver_cargas` en toda la empresa y en todas sus marcas | §5.6, D-134 | Servicio | Sin prueba propia de la garantía (`FleetImportsIntegrationTests` prueba la del SAT) | ⚠️ |
-| FLT-R117 | Las unidades se bloquean en orden de `id` antes de decidir: una cesión a mano en paralelo espera y ve lo que la carga escribió | Patrones de persistencia | Servicio | Sin prueba propia | ⚠️ |
-| FLT-R118 | Una cesión nombra la carga que la abrió, de su misma empresa; la de una cesión a mano queda vacía | §12.2, D-133 | Base, Servicio | Sin prueba propia | ⚠️ |
 | FLT-R120 | Los caminos «Migración inicial», hacia En habilitación, Disponible y Activo, llevan un código reservado: no cuentan para el camino de alta único ni para el estado inicial, no nombran permiso, y la API no deja usar ni cambiar su código | §8.3, D-202, D-229 | Base, Dominio, Servicio | `FileLoadsMigrationTests`, `InitialMigrationIntegrationTests` | ✅ |
 | FLT-R121 | La carga inicial sabe de cada VIN si es nuevo, ya migrado, registrado fuera de la migración o de otra empresa, sin revelar nada de la otra | D-153, D-201 | Servicio | `InitialMigrationIntegrationTests`; la unidad de otra empresa, sin prueba propia | ⚠️ |
 | FLT-R122 | El alta de las unidades de una factura migrada valida todas antes de escribir y escribe todas o ninguna, con su número del Excel y las reglas del alta (modelo, marca, tipo y color activos) | D-202, D-108, D-18 | Servicio | `InitialMigrationIntegrationTests` | ✅ |
@@ -681,15 +636,15 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | FLT-R157 | Un documento vigente que vence se avisa por correo a quien gestiona los documentos de la empresa de su unidad, con `habilitacion.gestionar_documentos`, 30 y 7 días antes de su vencimiento; `fleet` decide a quién y cuándo, y `notifications` lo envía. Vencimientos lo sigue mostrando. Se construye cuando haya un proveedor de correo | §11.3, D-143, D-167, D-272 | Servicio | — | ❌ Por construir |
 | FLT-R158 | Cada camino manual nace con la tolerancia que aceptó el responsable: «avisar» después de las horas de la especificación de las tolerancias, sin tolerancia los que llegan a Activo o a Inactivo, y las cuatro de antes sin cambios. V144 la fijó solo en los caminos que no tenían una, así que una que el superadministrador ya hubiera fijado se conserva | §8.3, D-240 | Base | `StatusPathTolerancesMigrationTests`, `LeasingCycleSeedTests`, `RequirementLossIntegrationTests` | ✅ |
 
-Los números FLT-R119, FLT-R128 y FLT-R129 no se usaron.
+Los números FLT-R119, FLT-R128 y FLT-R129 no se usaron. FLT-R110 a FLT-R118, las de la lista de garantía mobiliaria, están en [financing.md](financing.md), que es su contexto desde la fase 4 del plan de migración (D-279).
 
 ---
 
 ## 5. Relación con otros contextos
 
-**Las dependencias.** `fleet` usa a `organization`, `vehiclecatalog`, `equipment`, `iam`, `documents`, `location`, `audit` e `imports` por sus fachadas, y a `shared`; `ModularityTests` lo verifica. Depender de `iam` es la opción B de la decisión 6 del mapa, resuelta el 19/11/2026 (sección 6 a). Ninguna forma un ciclo: `iam`, `location`, `vehiclecatalog`, `equipment`, `audit` e `imports` no llaman a `fleet`, y las dos escrituras que `fleet` pide —el modelo con unidades, a `vehiclecatalog` (D-107), y el tipo de equipo con instalaciones, a `equipment` (D-185)— van en el mismo sentido que las lecturas ([vehiclecatalog.md](vehiclecatalog.md) y [equipment.md](equipment.md), sección 5). `equipment` sabe de las unidades por un puerto que `fleet` implementa, no por su fachada.
+**Las dependencias.** `fleet` usa a `organization`, `vehiclecatalog`, `equipment`, `iam`, `documents`, `location`, `audit` e `imports` por sus fachadas, y a `shared`; `ModularityTests` lo verifica. Depender de `iam` es la opción B de la decisión 6 del mapa, resuelta el 19/11/2026 (sección 6 a). Ninguna forma un ciclo: `iam`, `location`, `vehiclecatalog`, `equipment`, `audit` e `imports` no llaman a `fleet`, y las dos escrituras que `fleet` pide —el modelo con unidades, a `vehiclecatalog` (D-107), y el tipo de equipo con instalaciones, a `equipment` (D-185)— van en el mismo sentido que las lecturas ([vehiclecatalog.md](vehiclecatalog.md) y [equipment.md](equipment.md), sección 5). `equipment` sabe de las unidades por un puerto que `fleet` implementa, no por su fachada. Al revés con `financing`: la llama por su fachada, y `fleet` sabe de las cesiones por un puerto suyo que `financing` implementa (abajo), así que no depende de `financing`.
 
-**Lo que ofrece: `FleetContextFacade`.** La llaman `procurement`, para sus facturas, sus notas de crédito y la carga inicial, y `reporting`, para la capa de lectura. `procurement` nunca escribe en `vehicles`.
+**Lo que ofrece: `FleetContextFacade`.** La llaman `procurement`, para sus facturas, sus notas de crédito y la carga inicial; `financing`, para las unidades que cede, cuya cesión cierra o que la lista de garantía nombra; y `reporting`, para la capa de lectura. Ninguno escribe en `vehicles`.
 
 | Miembro | Quién y para qué |
 |---|---|
@@ -701,12 +656,17 @@ Los números FLT-R119, FLT-R128 y FLT-R129 no se usaron.
 | `matchMigratedUnits`, `resolveMigrationLocation`, `registerMigratedUnits` | `procurement`: la carga inicial (F15; FLT-R120 a FLT-R127, FLT-R139) |
 | `fetchReportFacts` | `reporting`: lo que las reglas de `fleet` dicen de las unidades no anuladas de una empresa —el código de su fila de habilitación y lo que falta, el momento de su primera entrega, si su entrega sigue vigente, su fecha base y su brecha de días— (D-232). No pide permiso: quien llama decide quién lee el reporte y qué marcas |
 | `fetchPurchaseCosts` | `reporting`: el costo de compra de cada unidad con línea vigente, para el Excel de stock (D-232) |
+| `lockVisibleUnitByPublicId`, `lockVisibleUnitById` | `financing`: la unidad que cede o cuya cesión cierra, con su empresa, su marca, su placa, su VIN y si está anulada, bloqueada con el candado de toda escritura de la unidad (FLT-R84) en la transacción de quien llama, y solo si la sesión la ve con `stock.ver`, marca incluida (D-102); si no, no la encuentra |
+| `fetchVisibleUnitByPublicId`, `fetchVisibleUnitById` | `financing`: la misma unidad sin candado, para listar sus cesiones y responder una escritura, también en la transacción de quien llama |
+| `lockUnitsOfCompanyByPlatesOrIds` | `financing`: las unidades de la empresa con las placas de una lista de garantía y las que tienen una cesión abierta al fondo, bloqueadas en una sentencia por `id` ascendente (FLT-R117, en [financing.md](financing.md)). No filtra por quien las ve: quien llama ya exigió su permiso en toda la empresa y en todas sus marcas |
+| `normalizePlate` | `financing`: la placa de una fila de la lista, con la regla de la placa de una unidad (FLT-R02), sin copiarla |
 
-En el frontend, `FleetFacade` ofrece a `change-log` el resumen de una unidad, a Logística › Cargas de archivos los diálogos de las cargas del SAT y de la garantía, y a `procurement` el ingreso de las unidades de una factura (F9).
+En el frontend, `FleetFacade` ofrece a `change-log` el resumen de una unidad, a Logística › Cargas de archivos el diálogo de la carga del SAT, y a `procurement` el ingreso de las unidades de una factura (F9). La ficha de la unidad dibuja su pestaña de cesiones con lo que le da `FinancingFacade` (opción A1 de la decisión 6 de la fase 0 del plan; [financing.md](financing.md), sección 5).
 
 **Los puertos que declara.** `fleet` no depende de `procurement` ni de ventas: lo que necesita de ellos lo pregunta por puertos propios, que otro contexto implementa.
 - **`UnitPurchases`**, que implementa `procurement` (FLT-R53): si una unidad tiene una línea de factura vigente, si su valor es cero, su costo de compra con sus notas y su pago, qué unidades devolvió una nota y siguen devueltas, y el estado de pago y la fecha base de cada unidad. Con él el año de una unidad facturada queda fijo, el Inventario filtra las unidades sin factura vigente, una unidad de valor cero se anula, la ficha sirve el costo, marca la unidad devuelta y cuenta la brecha (FLT-R50, FLT-R51, FLT-R96 a FLT-R98, FLT-R130 a FLT-R132, FLT-R146).
 - **`UnitContracts`**, que implementará ventas: si una unidad tiene contratos. Mientras no exista, se lee del historial de la unidad; cuando exista, se juntan las dos respuestas (D-250, FLT-R48).
+- **`UnitFundAssignments`**, que implementa `financing` (`VehicleFundAssignmentUnitFundAssignmentsAdapter`; FIN-R21 de [financing.md](financing.md)): si una unidad tiene una cesión abierta, que le impide anularse (FLT-R54), y si la sesión puede cederla ahora, que la ficha ofrece en `allowedActions.registerFundAssignment` (opción A de la decisión 5 de la fase 0 del plan). `fleet` inyecta un solo bean, obligatorio: sin él, una unidad cedida se anularía sin aviso (D-182).
 
 **Los puertos que implementa.** `CurrencyUsage`, de `location`: si alguna instalación, de cualquier empresa, tiene un costo en una moneda, para que sus decimales queden fijos (D-146, FLT-R79). El de `audit` que marca los campos confidenciales de la bitácora: el costo y la moneda de una instalación (FLT-R90). Y `EquipmentUnits`, de `equipment` (`VehicleEquipmentUnitsAdapter`): la unidad en que está instalado un equipo del inventario, con su identificador público y su placa, en lote y bajo el alcance de quien llama (EQP-R18, en [equipment.md](equipment.md)).
 
@@ -721,7 +681,7 @@ En el frontend, `FleetFacade` ofrece a `change-log` el resumen de una unidad, a 
 | `iam` | Quién hizo cada cosa, como identificador público y nombre (FLT-R40); la cuenta `SYSTEM` que firma el regreso automático (D-42); el permiso que exige cada camino (D-100); y, en el frontend, los permisos de la sesión y la zona de cada empresa |
 | `documents` | Las exportaciones del Inventario, de la lista de habilitación y de los tipos de documento (D-125), y los archivos de los documentos de las unidades (D-189) |
 | `audit` | La bitácora (D-129, D-262) |
-| `imports` | El registro de cargas, con su lector y su escritor de libros (F13, F14; D-200, D-262) |
+| `imports` | El registro de la carga del SAT, con su lector y su escritor de libros (F13; D-200, D-262) |
 | `shared` | El alcance de quien llama (D-99, D-101, D-102), el proceso programado en una sola instancia y el reintento de un interbloqueo (D-128) |
 
 ---
@@ -761,9 +721,9 @@ Lo que el código hace y el diccionario no dice, o dice de otra manera. Si el re
 | El inventario unido a la instalación, el destino de un equipo según el motivo del retiro y el rechazo de anular o pasar a Inactivo una unidad con equipos del inventario instalados (FLT-R152 a FLT-R154) | El equipo, con el módulo de monitoreo |
 | El aviso de renovación de los documentos por correo (FLT-R157) | El equipo, cuando haya un proveedor de correo ([notifications.md](notifications.md), F3) |
 | El catálogo maestro de modelos de `vehiclecatalog` (§7.3, D-273), que necesitan la carga inicial y las facturas reales | El equipo prepara la lista de diferencias de los dos catálogos entregados; el negocio elige el nombre de cada modelo y lo valida |
-| Perfilar un archivo real del SAT y una lista de garantía: sus encabezados son provisionales, y el perfil dice si el SAT trae una fila por placa y por año —entonces FLT-R105 pasaría a «vale la fila más reciente»— o si la lista de garantía trae el fondo o una fecha por placa | El negocio entrega los archivos |
+| Perfilar un archivo real del SAT: sus encabezados son provisionales, y el perfil dice si trae una fila por placa y por año —entonces FLT-R105 pasaría a «vale la fila más reciente»—. La lista de garantía, en [financing.md](financing.md) | El negocio entrega el archivo |
 | Ensayar las tres cargas con los archivos reales sobre una base de verificación | El equipo, antes de la única corrida de la carga inicial en producción |
-| Las reglas de las cargas sin prueba propia (FLT-R103, FLT-R107 a FLT-R109, FLT-R115 a FLT-R118, FLT-R121, FLT-R124 y FLT-R126, en ⚠️) | El equipo, antes de la corrida de la carga inicial en producción |
+| Las reglas de las cargas sin prueba propia (FLT-R103, FLT-R107 a FLT-R109, FLT-R121, FLT-R124 y FLT-R126, en ⚠️; las de la garantía, en [financing.md](financing.md)) | El equipo, antes de la corrida de la carga inicial en producción |
 | Deshacer una carga no existe; el lote guarda su archivo y sus filas lo nombran, así que se puede construir sin cambiar tablas | Sin paso asignado |
 | Un `REGRESO_AUTOMATICO` que declaró una persona responde el mismo texto que cualquier código repetido, que no dice que el choque está en el camino de regreso (propuesta 13) | Seguimiento del frontend, cuando el responsable decida la propuesta |
 | Una sesión limitada a una marca ve todas las marcas de la empresa al registrar una unidad, porque la sesión del frontend no lleva el alcance por marca; el backend la rechaza con `403` | Seguimiento del frontend |

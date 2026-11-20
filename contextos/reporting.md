@@ -97,7 +97,7 @@ Exige `stock.ver_costos` en la empresa: si no, `403 ACCESS_DENIED`. Las unidades
 | 25 a 27 | SOAT y sus fechas | Documento vigente |
 | 28 a 30 | PÓLIZA y sus fechas | Siempre vacías (§11.6) |
 | 31, 32 | SAT, FECHA DECLARACIÓN SAT | La última declaración cargada |
-| 33 | GARANTÍA MOBILIARIA | `SI` con cesión abierta |
+| 33 | GARANTÍA MOBILIARIA | `SI` con cesión abierta, leída de las cesiones de `financing` como modelo de lectura |
 | 34 | ORDEN DE COMPRA | La orden de la factura |
 | 37 | PRECIO DE FACTURA | Monto |
 | 38 a 40 | NC / ND, FECHA, VALOR | Notas vigentes: números unidos por `/`, la primera fecha, el total (monto) |
@@ -141,6 +141,7 @@ Las pruebas del backend son del módulo `reporting`, salvo `ModularityTests`, qu
 ## 5. Relación con otros contextos
 
 - **`fleet::acl`:** `FleetContextFacade.fetchReportFacts(companyId)`, los hechos de cada unidad de la empresa, y `fetchPurchaseCosts(vehicleIds)`, la compra de cada unidad, que `fleet` obtiene de `procurement` por el puerto `UnitPurchases` (sección 1).
+- **Las cesiones de `financing`:** la columna 33 lee `vehicle_fund_assignments` por SQL, como modelo de lectura (*Conformist*), porque `financing` no tiene fachada (D-279). `ReportsIntegrationTests` la prueba: `SI` con una cesión abierta, `NO` sin cesión o con la cesión cerrada.
 - **`documents::acl`:** el exportable de stock es un documento generado (D-106), con su tipo `stock` en `ReportingDocumentKinds` y la versión de sus datos por `ReportingDataVersions`.
 - **`shared`:** el alcance de quien llama (`CurrentAccessScope`) y los permisos de `PermissionCodes`.
 - **Frontend:** la pantalla usa `mm-company-filter` de `organization`, las marcas de la empresa por `OrganizationFacade` y los permisos de la sesión por `IamFacade` (`hasPermissionIn`).
