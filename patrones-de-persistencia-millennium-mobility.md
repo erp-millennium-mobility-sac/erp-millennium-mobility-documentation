@@ -141,7 +141,7 @@ Lo que lee y después cambia una empresa, una sede, una marca o una cuenta banca
 
 | Operación | Candados, en orden | Lo que lee después del candado |
 |---|---|---|
-| El cambio de estado (F3) | La unidad | El estado actual, la anulación, el traspaso y, solo si el destino tiene puerta o exige los equipos de seguridad, los hechos de la habilitación, leídos una sola vez para las dos revisiones: lo que falta y los equipos abiertos de la unidad |
+| El cambio de estado (F3) | La unidad | El estado actual, la anulación, el traspaso; solo por «Devolución al proveedor», si una nota vigente la devolvió, que responde compras por `UnitPurchases` y no se cruza con la nota, porque registrarla y anularla también bloquean la unidad (D-265); y, solo si el destino tiene puerta o exige los equipos de seguridad, los hechos de la habilitación, leídos una sola vez para las dos revisiones: lo que falta y los equipos abiertos de la unidad |
 | La edición de la unidad (F2) | La unidad | Si tiene una línea de factura vigente (el año queda fijo) y si ingresó (no queda sin ubicación) |
 | El ingreso en lote | Todas las unidades del lote, en una sentencia, por `id` ascendente | Las unidades, sus ubicaciones actuales y la ubicación de destino |
 | El ingreso de una unidad y los hitos | La unidad | Su `updatedAt`, su estado, su placa y el inicio más antiguo de sus equipos. Si la escritura vacía el ingreso o las placas físicas en Disponible, además el camino «Pierde un requisito» y En habilitación, antes de escribir; y escribe el paso de la unidad —ella y su fila del historial— en la misma transacción, sin otro candado (D-260) |
