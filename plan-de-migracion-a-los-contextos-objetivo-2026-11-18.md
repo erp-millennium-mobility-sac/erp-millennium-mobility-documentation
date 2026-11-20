@@ -426,7 +426,7 @@ Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migr
 
 #### En dos entregas
 
-1. **Entrega N:** todo lo anterior. `equipment_types` conserva `blocks_availability` y `requires_serial` con su `DEFAULT FALSE`, y el catálogo ya no las mapea: las altas no fallan, `ddl-auto: validate` no las exige y nada las lee.
+1. **Entrega N:** todo lo anterior. `equipment_types` conserva `blocks_availability` con su `DEFAULT FALSE`, y el catálogo ya no la mapea: las altas no fallan, `ddl-auto: validate` no la exige y nada la lee. `requires_serial` se queda, y el catálogo la sigue mapeando y leyendo (decisión 10).
 2. **Entrega N+1, antes de empezar la fase 2.** Se aplica cuando N ya está desplegada en `dev` (App Platform, `instance_count: 1`), su CI está en verde y ninguna copia anterior a N se conecta a esa base, tampoco una local con el `.env` remoto. Es la migración que borra las columnas (la tabla de migraciones, arriba). Se ajustan las pruebas que todavía las nombran. Si se atrasa hasta después de empezar la fase 2, la tabla ya es de `equipment` y la fase 2 la nombra.
 3. **Vuelta atrás:** D-260 se corrige hacia adelante. Revertir N deja de ser seguro en cuanto se integra: las marcas de equipo dejan `equipment_models.equipment_brand_id` en `NOT NULL`, que el código anterior no escribe, y se perdería lo cambiado en la configuración.
 
