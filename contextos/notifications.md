@@ -29,7 +29,7 @@ Es un módulo de la plataforma, como `documents` (D-125): lo usan varios context
 
 | Parece de `notifications` | Es de | Por qué |
 |---|---|---|
-| Decidir a quién llega un aviso y qué dice | El contexto que pide | Es una regla de su negocio: a quién llega el aviso de renovación lo decide `fleet` con la decisión abierta de §14; a quién llega el enlace o el código, `iam` |
+| Decidir a quién llega un aviso y qué dice | El contexto que pide | Es una regla de su negocio: a quién llega el aviso de renovación lo decide `fleet` (D-272); a quién llega el enlace o el código, `iam` |
 | El enlace para restablecer la contraseña y el código para activar una cuenta, con su vencimiento | `iam` (D-243, D-255) | `notifications` los recibe como parámetros sensibles y los olvida al enviarlos (NTF-R11) |
 | El tipo de cambio que publica la SBS | `location` (§4.8, D-103) | El dato es suyo; el adaptador va en su infraestructura |
 | La consulta de un RUC o un DNI | `organization` y `procurement` | Validan sus propios registros |
@@ -63,7 +63,7 @@ Cada intento queda en `notification_attempts` (NTF-R05).
 
 **F2. Despachar la bandeja de salida.** Un proceso programado, en una sola instancia y con el alcance `SYSTEM`: vence las pendientes cuyo momento pasó (NTF-R12); reclama hasta 20 por vez (NTF-R04); envía cada una fuera de toda transacción, así un proveedor lento no retiene candados ni conexiones; y anota cada respuesta (NTF-R05). El registro del servidor nombra una notificación por su identificador público y su tipo, nunca por su dirección ni sus parámetros. Un vigilante avisa cuando los fallos de la última hora pasan su umbral (NTF-R20).
 
-**F3. El aviso de renovación** (paso 9, previsto). Depende de la decisión abierta de §14: a quién llega, con cuánta anticipación y por qué medio. Mientras no haya envío de correos, la forma más simple es una lista de documentos por vencer en Habilitación, que no necesita este módulo.
+**F3. El aviso de renovación** (paso 9, decidido y por construir; D-167, D-272). Es un correo a quien gestiona los documentos de la empresa de la unidad (`habilitacion.gestionar_documentos`), 30 y 7 días antes de que un documento venza. `fleet` decide a quién y cuándo y lo pide por el contrato del módulo; se construye cuando haya un proveedor de correo. Mientras tanto, y también después, Logística › Habilitación muestra los documentos por vencer, sin este módulo.
 
 **F4. Un aviso a la aplicación del cliente** (previsto). Cuando exista esa aplicación, hoy fuera del alcance: push por Firebase Cloud Messaging a los dispositivos registrados de la cuenta del cliente.
 
@@ -71,7 +71,7 @@ Cada intento queda en `notification_attempts` (NTF-R05).
 
 **F6. Activar una cuenta con un código** (D-255, D-258). Un administrador da acceso a un colaborador con un correo sin cuenta, le corrige el correo o le reenvía el código, o la persona pide uno nuevo ([iam.md](iam.md), F5, F14, F15 y F16). `iam` genera el código y, en la misma transacción, pide el correo: tipo `iam.account-activation`, plantilla `account-activation`, la dirección de la cuenta, el código como parámetro sensible, el enlace a la pantalla de activación con la dirección ya escrita —que no es sensible, porque no abre nada sin el código— y el vencimiento del código (NTF-R12; [iam.md](iam.md), IAM-R90). Después de confirmar, el despachador lo envía (F2). El correo (NTF-R09) da el código, que sirve una sola vez, y cuándo vence, en la hora de Lima; avisa que hará falta el número del documento que registró la empresa; recuerda que nunca se pedirá el código por teléfono, chat ni correo, y pide ignorarlo si no se esperaba.
 
-**F7. Cambiar de proveedor de correo** (D-257). SendGrid y el relay SMTP de Google Workspace quedan configurados a la vez, con el mismo subdominio remitente, `notifications.millennium.ky`, autenticado en los dos: pasar de uno a otro es un solo valor del entorno (NTF-R18), que vuelve a desplegar en minutos. El subdominio no tiene casillas: el remitente es una dirección suya, y la respuesta va a una casilla real de `millennium.ky` (NTF-R15). Basta un proveedor real; los dos son la reserva recomendada. Los correos pendientes salen por el proveedor nuevo; los que ya quedaron `fallida` no se recuperan, porque sus valores sensibles se borraron (NTF-R11), y la persona pide otro código o enlace. La configuración de cada proveedor, el subdominio y el simulacro están en el README del backend, «Cambiar de proveedor de correo».
+**F7. Cambiar de proveedor de correo** (D-257). SendGrid y el relay SMTP de Google Workspace quedan configurados a la vez, con el mismo subdominio remitente, `notifications.millennium.ky`, autenticado en los dos: pasar de uno a otro es un solo valor del entorno (NTF-R18), que vuelve a desplegar en minutos. El subdominio no tiene casillas: el remitente es una dirección suya, y la respuesta va a una casilla real de `millennium.ky` (NTF-R15). Hay un solo remitente para todo el grupo, una sola dirección de respuesta y un solo logo, el de Millennium (D-272). Basta un proveedor real; los dos son la reserva recomendada. El simulacro del cambio se hace por primera vez en cuanto los dos estén configurados, y después cada 6 meses, en `dev`, a cargo del responsable técnico (D-272). Los correos pendientes salen por el proveedor nuevo; los que ya quedaron `fallida` no se recuperan, porque sus valores sensibles se borraron (NTF-R11), y la persona pide otro código o enlace. La configuración de cada proveedor, el subdominio y el simulacro están en el README del backend, «Cambiar de proveedor de correo».
 
 ## 4. Reglas de negocio
 
@@ -104,7 +104,7 @@ Capas y marcas según el [README de esta carpeta](README.md).
 
 **El contrato.** `NotificationService`, la interfaz pública del módulo (`notifications::acl`), con dos miembros: `requestEmail`, que guarda un correo en la transacción de quien pide (NTF-R01, NTF-R03), y `deliversEmail`, que dice si un correo de este entorno llega a la persona (NTF-R19).
 
-**Quién lo usa.** Solo `iam`, para el enlace (F1) y el código de activación (F6), y para saber si un correo llega antes de lo que solo funciona por correo ([iam.md](iam.md), IAM-R103). **Quién lo usará:** `fleet`, para el aviso de renovación si §14 decide un medio (F3); `procurement`, si el negocio pide que la orden enviada viaje por correo al proveedor.
+**Quién lo usa.** Solo `iam`, para el enlace (F1) y el código de activación (F6), y para saber si un correo llega antes de lo que solo funciona por correo ([iam.md](iam.md), IAM-R103). **Quién lo usará:** `fleet`, para el aviso de renovación, un correo decidido que se construye con el proveedor de correo (F3, D-272); `procurement`, si el negocio pide que la orden enviada viaje por correo al proveedor.
 
 **Lo que necesita de otros.** Solo `documents::acl`, para adjuntar un archivo guardado, como el PDF de una orden enviada; ningún correo de hoy adjunta nada. Del núcleo `shared`, el alcance `SYSTEM` (NTF-R10), la ejecución en una sola instancia y las plantillas HTML. Hacia afuera, un proveedor por su adaptador, que elige el entorno (NTF-R06).
 
@@ -119,9 +119,10 @@ Capas y marcas según el [README de esta carpeta](README.md).
 | La cuenta de cada proveedor: el subdominio de envío `notifications.millennium.ky`, autenticado en el proveedor de correo elegido (SPF, DKIM y DMARC); los números de Twilio por país y el proyecto de Firebase | El responsable. El correo, antes del primer envío real; los demás, antes del primer envío de su canal |
 | Un proveedor real de correo en el entorno desplegado, SendGrid o el relay SMTP de Google Workspace, con el subdominio autenticado para él. Sin él, ningún correo sale y lo que solo funciona por correo responde `503 EMAIL_DELIVERY_UNAVAILABLE` (NTF-R19; [iam.md](iam.md), sección 6 b, fila 16) | El responsable, en el proveedor elegido, en Cloudflare y en App Platform |
 | El segundo proveedor, como reserva recomendada y no como requisito (D-257; F7) | El responsable, en Google Workspace, en Cloudflare y en App Platform |
-| Un simulacro del cambio de proveedor, una vez configurados los dos (F7) | Recomendado, una vez configurado (sección 7) |
+| El simulacro del cambio de proveedor (F7, D-272) | El responsable técnico, en `dev`: el primero en cuanto SendGrid y el relay de Google Workspace estén configurados los dos, y después cada 6 meses |
+| El aviso de renovación de los documentos del vehículo: su plantilla y el pedido de `fleet` (F3, D-272) | Con el proveedor de correo |
 | Que la línea `ERROR` del vigilante llegue como alerta a alguien: reenviar los registros de App Platform a un servicio que avise (NTF-R20) | El responsable, en App Platform (D-258) |
-| Los webhooks de los proveedores, con su firma (NTF-R07), y con ellos los estados entregada y rebotada. Con `smtp` no hay webhook: un rebote llega como un correo a la cuenta que envía (D-257) | Cuando se decida qué hacer con un rebote |
+| Los webhooks de los proveedores, con su firma (NTF-R07), y con ellos los estados entregada y rebotada. Con `smtp` no hay webhook: un rebote llega como un correo a la cuenta que envía (D-257) | Cuando se configure el proveedor, SendGrid o SMTP: entonces se decide y se construye qué hacer con un rebote, antes de depender de que los avisos lleguen (D-272) |
 | La llave de idempotencia, si un caso necesita que un correo nunca salga dos veces (NTF-R04) | Candidata: cuando llegue ese caso |
 | El SMS y el push, con sus tablas, sus puertos y sus proveedores | Con su primer caso |
 
@@ -129,8 +130,7 @@ Capas y marcas según el [README de esta carpeta](README.md).
 
 | Pregunta | Dónde se lleva |
 |---|---|
-| ¿Un solo remitente para el grupo (`millennium.ky`) o uno por empresa o por marca comercial? | Decisión del responsable, antes del primer correo real. Hoy hay un solo remitente, en el subdominio `notifications.millennium.ky`, una sola dirección de respuesta y un solo logo, el de Millennium (D-257, F7) |
-| ¿A quién llega el aviso de renovación, con cuánta anticipación y por qué medio? | Diccionario §14, antes del paso 9 |
 | ¿Cómo se exponen los webhooks sin permiso? | Diccionario y convenciones de la API, al construirlos |
-| ¿Cuándo se hace el simulacro del cambio de proveedor (F7), y quién lo repite y cada cuánto? | Decisión del responsable, una vez configurados SendGrid y el relay de Google Workspace (D-257) |
-| ¿Qué se hace con los rebotes? SendGrid los informaría por su webhook, que no está construido (NTF-R07); por `smtp` llegan como correos a la cuenta que envía, y el sistema no se entera | Decisión del responsable, antes de depender de que los avisos lleguen (D-257); con ella, los webhooks |
+| ¿Qué se hace con los rebotes? SendGrid los informaría por su webhook, que no está construido (NTF-R07); por `smtp` llegan como correos a la cuenta que envía, y el sistema no se entera | Se decide y se construye cuando se configure el proveedor, SendGrid o SMTP, antes de depender de que los avisos lleguen (D-272); con ella, los webhooks |
+
+Las demás las respondió el responsable el 19/11/2026 (D-272): un solo remitente para todo el grupo, como hoy (F7); el aviso de renovación, un correo a quien gestiona los documentos de la empresa, 30 y 7 días antes (F3); y el simulacro, la primera vez con los dos proveedores configurados y después cada 6 meses (F7).

@@ -355,7 +355,7 @@ El sistema revisa: la lista trae solo las unidades de las empresas donde `stock.
 
 ### F8 a F12 · La habilitación
 
-Lo que hay que completar para que una unidad pueda entregarse (§11): que ingrese físicamente a una ubicación, se inmatricule, tenga su placa y sus placas físicas, sus documentos vigentes, su equipamiento instalado y sus llaves registradas. El estado de habilitación lo dice, y la puerta lo exige al entrar a Disponible y a los demás estados marcados (D-164, D-170). Las reglas son FLT-R55 a FLT-R93 y FLT-R148 a FLT-R151.
+Lo que hay que completar para que una unidad pueda entregarse (§11): que ingrese físicamente a una ubicación, se inmatricule, tenga su placa y sus placas físicas, sus documentos vigentes, su equipamiento instalado y sus llaves registradas. El estado de habilitación lo dice, y la puerta lo exige al entrar a Disponible y a los demás estados marcados (D-164, D-170). Las reglas son FLT-R55 a FLT-R93 y FLT-R148 a FLT-R151, y, por construir, FLT-R152 a FLT-R154 y FLT-R157.
 
 **El estado de habilitación** (§11.9, D-171, D-183). Se calcula en cada lectura y nunca se guarda: cambia solo cuando cambia una condición —un documento, un equipo, un hito o el catálogo— (FLT-R58, FLT-R91). Responde la primera de estas seis filas que aplica:
 
@@ -450,7 +450,7 @@ La semilla trae el GPS con las dos marcas y la pantalla con la primera, lo mismo
 **Quién:** los roles con `stock.ver`, en Logística › Habilitación.
 
 1. **Unidades** (`GET /vehicle-enablements`): las unidades no anuladas de una empresa que se ven con `stock.ver`, marca incluida (FLT-R61, FLT-R89), con su estado del ciclo de vida, su ubicación, su ingreso, su estado de habilitación con lo que falta y el próximo vencimiento de sus documentos vigentes. Se ordena por las filas de la habilitación y después por VIN; se busca, se filtra por empresa, marca comercial, código de habilitación, ubicación y, con `catalogos.ver`, modelo y documento; se pagina en el servidor y se exporta (FLT-R88; convenciones §8.1). El filtro por estado del ciclo de vida está en Inventario (FLT-R61).
-2. **Vencimientos** (`GET /vehicle-documents`, D-167): los documentos vigentes que vencen en los próximos días, contados desde hoy en la zona de la empresa, o los ya vencidos, de las unidades no anuladas que se ven (FLT-R88). No se exporta, y no hay aviso de renovación hasta que `notifications` lo construya (D-143, D-167).
+2. **Vencimientos** (`GET /vehicle-documents`, D-167): los documentos vigentes que vencen en los próximos días, contados desde hoy en la zona de la empresa, o los ya vencidos, de las unidades no anuladas que se ven (FLT-R88). No se exporta. El aviso de renovación por correo está decidido y por construir con el proveedor de correo (FLT-R157, D-272); la pantalla lo sigue mostrando.
 3. La ficha de la unidad muestra su estado de habilitación y lleva a su página.
 
 ### F13 a F15 · Las cargas de archivos
@@ -685,6 +685,7 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | FLT-R154 | Con el módulo de monitoreo, una unidad con equipos del inventario instalados no se anula ni pasa a Inactivo: se rechaza nombrando los equipos, y cada uno se retira antes, con el destino de su motivo (FLT-R153). Al traspasar la unidad al cliente, el GPS se retira antes de cerrar el traspaso y vuelve al inventario, disponible para otra unidad | §8.3, §11.4, D-264 | Dominio, Servicio | — | ❌ Por construir |
 | FLT-R155 | Una unidad que tuvo contrato y que una nota devolvió al proveedor sale de la flota por «Devolución al proveedor», de Puesta a punto a Inactivo, y conserva su historial: no se anula (FLT-R99). Lo siembra una migración de `fleet` justo después de D-260; llega a Inactivo, así que no tiene tolerancia | §8.3, D-265, D-250 | Base | — | ❌ Por construir |
 | FLT-R156 | Una lectura de kilometraje escrita de más se anula, con un motivo obligatorio, su propio permiso y su fila en la bitácora: la anulada no se borra ni se edita, y sale de la serie y del kilometraje de la unidad. Se construye antes del módulo de monitoreo, porque con el GPS un solo valor equivocado frenaría cada lectura siguiente con `MILEAGE_BELOW_PREVIOUS` | §8.5, §13.1, D-267 | Servicio | — | ❌ Por construir |
+| FLT-R157 | Un documento vigente que vence se avisa por correo a quien gestiona los documentos de la empresa de su unidad, con `habilitacion.gestionar_documentos`, 30 y 7 días antes de su vencimiento; `fleet` decide a quién y cuándo, y `notifications` lo envía. Vencimientos lo sigue mostrando. Se construye cuando haya un proveedor de correo | §11.3, D-143, D-167, D-272 | Servicio | — | ❌ Por construir |
 
 Los números FLT-R119, FLT-R128 y FLT-R129 no se usaron.
 
@@ -733,7 +734,7 @@ En el frontend, `FleetFacade` ofrece a `change-log` el resumen de una unidad, a 
 
 ## 6. Estado y pendientes para cerrar
 
-**Estado.** Todo lo que describe este documento está construido, salvo las reglas que su fila marca ❌ por construir: FLT-R152 a FLT-R156, que decidió el responsable el 19/11/2026 (D-263 a D-265 y D-267). Siguen abiertos las propuestas para el diccionario (b), los pendientes de c —entre ellos la migración de las tolerancias de los caminos y el ensayo de las cargas con los archivos reales— y las diferencias con las convenciones (d). No quedan preguntas abiertas (sección 7).
+**Estado.** Todo lo que describe este documento está construido, salvo las reglas que su fila marca ❌ por construir: FLT-R152 a FLT-R157, que decidió el responsable el 19/11/2026 (D-263 a D-265, D-267 y D-272). Siguen abiertos las propuestas para el diccionario (b), los pendientes de c —entre ellos la migración de las tolerancias de los caminos y el ensayo de las cargas con los archivos reales— y las diferencias con las convenciones (d). No quedan preguntas abiertas (sección 7).
 
 ### a) Decisiones
 
@@ -767,6 +768,7 @@ Lo que el código hace y el diccionario no dice, o dice de otra manera. Si el re
 | El camino «Devolución al proveedor», de Puesta a punto a Inactivo (FLT-R155) | El equipo, con su migración, justo después de D-260 |
 | La anulación de una lectura escrita de más (FLT-R156) | El equipo, antes del módulo de monitoreo |
 | El inventario unido a la instalación, el destino de un equipo según el motivo del retiro y el rechazo de anular o pasar a Inactivo una unidad con equipos del inventario instalados (FLT-R152 a FLT-R154) | El equipo, con el módulo de monitoreo |
+| El aviso de renovación de los documentos por correo (FLT-R157) | El equipo, cuando haya un proveedor de correo ([notifications.md](notifications.md), F3) |
 | El catálogo maestro de modelos de `vehiclecatalog` (§7.3, D-273), que necesitan la carga inicial y las facturas reales | El equipo prepara la lista de diferencias de los dos catálogos entregados; el negocio elige el nombre de cada modelo y lo valida |
 | Perfilar un archivo real del SAT y una lista de garantía: sus encabezados son provisionales, y el perfil dice si el SAT trae una fila por placa y por año —entonces FLT-R105 pasaría a «vale la fila más reciente»— o si la lista de garantía trae el fondo o una fecha por placa | El negocio entrega los archivos |
 | Ensayar las tres cargas con los archivos reales sobre una base de verificación | El equipo, antes de la única corrida de la carga inicial en producción |
