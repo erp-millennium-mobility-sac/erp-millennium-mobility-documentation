@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.70 · **Actualizado:** 20/11/2026
+**Versión:** 1.71 · **Actualizado:** 20/11/2026
 
 Diccionario de datos del ERP Millennium Mobility: la estructura de datos vigente, tabla por tabla, con sus reglas, y las decisiones que la rigen (§14).
 
@@ -3778,9 +3778,7 @@ Cada una dice con quién queda y, cuando lo tiene, su momento.
 
 Lo que el responsable ya decidió y todavía no está construido, en el orden en que se construye. Cada punto nombra su decisión o la sección de las convenciones de la API que lo fija; al construirse, sale de esta lista y su decisión deja de decir «por construir».
 
-- **Justo después de D-260:**
-  - el nombre `id` en lugar de `publicId` en la empresa, y los filtros `equipmentTypeId`, `equipmentBrandId` e `isActive` en lugar de `equipmentTypePublicId`, `equipmentBrandPublicId` y `active`, en un cambio propio del backend y del frontend (convenciones de la API, §14.8);
-  - los errores del marco: todo `400` como `VALIDATION_ERROR`, y `NOT_FOUND`, `METHOD_NOT_ALLOWED` y `UNSUPPORTED_MEDIA_TYPE` con su `message` traducido y las cabeceras del marco, como `Allow` en un `405` (convenciones de la API, §14.11).
+- **Justo después de D-260:** los errores del marco: todo `400` como `VALIDATION_ERROR`, y `NOT_FOUND`, `METHOD_NOT_ALLOWED` y `UNSUPPORTED_MEDIA_TYPE` con su `message` traducido y las cabeceras del marco, como `Allow` en un `405` (convenciones de la API, §14.11).
 - **Antes del módulo de monitoreo:** la anulación de una lectura de kilometraje escrita de más (D-267).
 - **Con el módulo de monitoreo:** el inventario unido a la instalación, con el enlace de los GPS ya instalados al ponerlo en marcha y el destino de cada dispositivo según el motivo del retiro, que suma el cuarto motivo «Sin falla» (D-263); y el rechazo de anular o pasar a Inactivo una unidad con dispositivos del inventario instalados, con el retiro del GPS antes de cerrar el traspaso (D-264).
 - **Con el proveedor de correo:** el aviso de renovación de los documentos del vehículo, el simulacro del cambio de proveedor y lo que se decida hacer con los rebotes (D-272).
