@@ -170,6 +170,13 @@ Lo que lee y después cambia una empresa, una sede, una marca o una cuenta banca
 - El proceso del regreso automático, si pierde un interbloqueo, repite una vez la corrida entera (`DeadlockRetry`, D-128); si otra instancia tiene su candado, salta la corrida, y la siguiente recoge lo que quede.
 - Dos altas con el mismo VIN, o dos placas iguales en el país, que pasan a la vez: la base detiene la segunda, y el servicio responde el mismo `409` que su propia revisión (FLT-R01, FLT-R02).
 
+### `equipment`
+
+Lo que lee y después cambia un equipo del inventario, un tipo o un modelo de equipamiento lo bloquea antes con `FOR NO KEY UPDATE`, y es su único candado: editar un equipo o cambiar su estado bloquea el equipo (`fleet_equipments`); editar un tipo o cambiar su estado, el tipo (`equipment_types`, VCT-R20), y editar un modelo o cambiar su estado, el modelo (`equipment_models`, VCT-R34). Registrar un equipo, un tipo, una marca o un modelo no bloquea nada: el único de la base detiene el segundo de dos iguales, y el servicio responde el mismo `409` que su propia revisión (EQP-R05, en [contextos/equipment.md](contextos/equipment.md)). Ninguno de esos candados cambió al pasar el inventario de `fleet` y el catálogo de `vehiclecatalog` a `equipment` (fase 2 del plan de migración, D-278).
+
+- **La primera instalación de un tipo** la avisa `fleet` por la fachada de `equipment`, con la unidad ya bloqueada: el orden es la unidad y después la fila del tipo, que la escritura de `has_installations` toma solo la primera vez. Una edición del tipo bloquea solo el tipo, nunca una unidad, así que los dos órdenes no se cruzan.
+- **Con el módulo de monitoreo** la instalación tomará la unidad, después la instalación y después los equipos del inventario, por `id` cuando un reemplazo toma dos; `equipment` nunca bloquea una unidad ni una instalación (plan, fase 2 §2.6).
+
 ### `procurement`
 
 Las notas de crédito extienden la secuencia de las facturas, y los pagos usan los mismos números (PRC-R14, PRC-R21, PRC-R24, PRC-R26, PRC-R60, PRC-R88 y PRC-R136, en [contextos/procurement.md](contextos/procurement.md)). Los proveedores, sus contactos, las plantillas y la emisión de una orden siguen lo dicho arriba; además, el número de una orden se asigna bajo el candado de su plantilla, y la anulación y el cumplimiento de una orden bloquean solo la orden y leen sus facturas y sus pagos sin candado.

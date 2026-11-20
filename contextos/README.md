@@ -17,8 +17,9 @@ Los demás documentos están ordenados por tema: los datos (diccionario), la API
 | [location.md](location.md) | `location`: monedas, países con su estructura territorial, divisiones y ubigeo, direcciones, tipos de documento tributario y tasas de cambio |
 | [iam.md](iam.md) | `iam`: cuentas, roles, permisos y sesiones; dar acceso con su código de activación, bloqueos y el enlace para restablecer la contraseña |
 | [organization.md](organization.md) | `organization`: empresas, marcas comerciales, sedes, ubicaciones, cuentas bancarias y colaboradores con su historial de ingresos |
-| [vehiclecatalog.md](vehiclecatalog.md) | `vehiclecatalog`: tipos de vehículo, marcas y modelos, colores, tipos, marcas y modelos de equipamiento |
-| [fleet.md](fleet.md) | `fleet`: el vehículo, sus estados, sus caminos y su kilometraje, la habilitación, los fondos y las cesiones |
+| [vehiclecatalog.md](vehiclecatalog.md) | `vehiclecatalog`: tipos de vehículo, marcas y modelos, y colores |
+| [equipment.md](equipment.md) | `equipment`: los tipos, las marcas y los modelos de equipamiento, con los tipos de vehículo a los que aplica cada tipo, y el inventario de los equipos físicos de cada empresa. Desde la fase 2 del plan de migración (D-278) |
+| [fleet.md](fleet.md) | `fleet`: el vehículo, sus estados, sus caminos y su kilometraje, la habilitación —con la instalación de los equipos y lo que exige de ellos—, los fondos y las cesiones |
 | [procurement.md](procurement.md) | `procurement`: proveedores, plantillas y órdenes de compra, facturas de compra, notas de crédito, pagos a proveedores y Por pagar |
 | [reporting.md](reporting.md) | `reporting`: la capa de lectura, los reportes de Logística y el exportable de stock (D-232) |
 | [notifications.md](notifications.md) | `notifications`: avisos por correo, SMS y push. Módulo de la plataforma; hoy, el correo del enlace para restablecer la contraseña y el del código para activar una cuenta (D-242, D-243, D-255) |
@@ -54,7 +55,7 @@ Copiar cualquiera de esas fuentes garantiza que este documento y la fuente termi
 
 ## Las reglas y sus identificadores
 
-Cada regla lleva un identificador estable con el prefijo del contexto (`LOC-`, `IAM-`, `ORG-`, `VCT-`, `FLT-`, `PRC-`, `RPT-`, `NTF-`, `AUD-` para `audit`, y `SHR-` para `imports`, cuyas reglas de las cargas de archivos están en el diccionario, §11.8, y conservan el prefijo de cuando eran de `shared`) y un número que no se reutiliza. Así una prueba, un commit o una revisión pueden citarla sin repetirla. Una regla que queda sin efecto conserva su número en una línea que dice qué la sustituye mientras algo la cite; si nadie la cita, se quita de la tabla.
+Cada regla lleva un identificador estable con el prefijo del contexto (`LOC-`, `IAM-`, `ORG-`, `VCT-`, `FLT-`, `PRC-`, `RPT-`, `NTF-`, `AUD-` para `audit`, `SHR-` para `imports`, cuyas reglas de las cargas de archivos están en el diccionario, §11.8, y conservan el prefijo de cuando eran de `shared`, y `EQP-` para `equipment`, que conserva además los `VCT-` de las reglas que vinieron de `vehiclecatalog`) y un número que no se reutiliza. Así una prueba, un commit o una revisión pueden citarla sin repetirla. Una regla que queda sin efecto conserva su número en una línea que dice qué la sustituye mientras algo la cite; si nadie la cita, se quita de la tabla.
 
 La tabla de reglas tiene las columnas `Id | Regla | Fuente | Capa | Prueba | Estado`:
 

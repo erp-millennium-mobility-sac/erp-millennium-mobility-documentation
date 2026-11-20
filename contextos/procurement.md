@@ -641,7 +641,7 @@ Ninguna aplicación ni imputación queda en cero, y una que supera lo que se deb
 
 ## 5. Relación con otros contextos
 
-Ningún contexto depende de `procurement`: lo que `fleet`, `location`, `organization` y `audit` saben de compras lo preguntan por puertos que declaran ellos y que `procurement` implementa. En el frontend, la carga inicial se abre desde Logística › Cargas de archivos, de `imports`, por `ProcurementFacade.openInitialMigrationImport`.
+Ningún contexto depende de `procurement`: lo que `fleet`, `equipment`, `location`, `organization` y `audit` saben de compras lo preguntan por puertos que declaran ellos y que `procurement` implementa. En el frontend, la carga inicial se abre desde Logística › Cargas de archivos, de `imports`, por `ProcurementFacade.openInitialMigrationImport`.
 
 **Lo que necesita de otros**
 
@@ -662,7 +662,7 @@ Ningún contexto depende de `procurement`: lo que `fleet`, `location`, `organiza
 |---|---|---|
 | `CurrencyUsage` | `location` | Si alguna orden, factura o pago, de cualquier estado, usa una moneda. Las notas no lo implementan: su moneda es la de sus facturas (PRC-R26, PRC-R61, PRC-R95, PRC-R137) |
 | `UnitPurchases` | `fleet` | Bajo el alcance de quien llama: qué unidades tienen una línea vigente; si el valor de una es cero; su costo de compra, con su pago; qué unidades devolvió una nota sin que otra factura vigente las vuelva a vincular; y el estado de pago y la fecha base de cada unidad, sin montos. La capa de lectura no lo lee (D-203) (PRC-R62, PRC-R90, PRC-R91, PRC-R121, PRC-R123; [fleet.md](fleet.md), FLT-R53, FLT-R96, FLT-R130 a FLT-R132) |
-| `EquipmentSuppliers` | `fleet` | El proveedor de un equipo del inventario de equipamiento, con su empresa, su razón social y si está activo ([fleet.md](fleet.md)) |
+| `EquipmentSuppliers` | `equipment` | El proveedor de un equipo del inventario de equipamiento, con su empresa, su razón social y si está activo, por su identificador público y en lote; responde un solo bean, el de `procurement` ([equipment.md](equipment.md), EQP-R18) |
 | `BankAccountUsage` | `organization` | Bajo el alcance de quien llama y en una sola lectura, cuáles de unas cuentas bancarias nombran sus pagos, también anulados. Cada pago lee su cuenta con candado compartido, por la fachada de `organization` ([organization.md](organization.md), sección 5; PRC-R163, PRC-R164) |
 | `ConfidentialChangeLogFieldsPort` | `audit` | Los campos de compras cuyos valores la bitácora oculta: el teléfono de Atención de una plantilla y el monto de una aplicación, que se ve solo con `pagos.ver` en la empresa de la fila (PRC-R126) |
 
