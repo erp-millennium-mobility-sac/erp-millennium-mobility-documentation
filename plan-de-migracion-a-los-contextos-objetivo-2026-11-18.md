@@ -51,7 +51,7 @@ Estas garantías hacen que cada fase sea un cambio de estructura y no de comport
 |---|---|---|---|---|---|
 | 0 | Preparación | — | 2–3 días | Bajo | — |
 | 1 | La bitácora y las cargas salen de `shared` | `audit`, `imports` | 3–4 días | Bajo | 0 |
-| Antes de 2 | D-260, sobre la rama `refactor/remove-equipment-type-flags` corregida: trabajo funcional, no una fase. Dos entregas: la primera con las marcas de equipo, D-260 y V140 si la decisión 10 la conserva; la segunda borra `blocks_availability` y, si la decisión 10 lo retira, `requires_serial` | `fleet`, `vehiclecatalog` | 6–9 días | Medio | 0, con la decisión 10 resuelta |
+| Antes de 2 | D-260, sobre la rama `refactor/remove-equipment-type-flags` corregida: trabajo funcional, no una fase. Dos entregas: la primera, hecha el 19/11/2026, con las marcas de equipo y D-260 (V141 y V142); la segunda borra `blocks_availability` (V143). La decisión 10 sacó la V140 de la rama y conservó `requires_serial` | `fleet`, `vehiclecatalog` | 6–9 días | Medio | 0, con la decisión 10 resuelta |
 | 2 | Equipamiento | `equipment`, `fleet`, `vehiclecatalog`, `procurement` | 10–14 días | Medio | 0 y el trabajo previo de D-260 |
 | 3b | Borrar el código de la carga inicial, en lugar de la fase 3 (decisión 4) | `procurement`, `fleet` | 1–2 días | Bajo | La puesta en marcha, cuando la carga inicial ya corrió en producción y se cerró |
 | 4 | Financiamiento | `financing`, `fleet` | 9–12 días | Medio | 1, con `imports::acl` completo |
@@ -260,12 +260,12 @@ La fase 2 solo mueve: si los requisitos se construyen después, se mueven dos ve
 #### La rama, corregida
 
 - **Sus migraciones se renumeran** (abajo). No corrieron en ningún entorno: `dev` despliega solo `develop`. Una base local que ya corrió V138 a V140 de la rama se recrea.
-- **V138 de la rama, que borra `blocks_availability` y `requires_serial`, se descarta.** La semilla de D-260 lee `blocks_availability`, así que las columnas salen en la entrega siguiente («En dos entregas», abajo); `requires_serial`, solo si la decisión 10 lo retira.
-- **V140** se conserva corregida o sale, según la decisión 10. Si sale, sale también su código: `fetchBranch` y `fetchBranchesByIds` del `ExternalOrganizationService` de `fleet`; `fetchBranchLocationReferenceByPublicId`, `fetchBranchLocationReferencesByIds` y `GetBranchAggregateByPublicIdQuery` de `organization`; y en el frontend `OrganizationFacade.loadCompanyBranches`, `BranchesStore.findBranches` y su uso en el inventario de equipos.
-- **`requires_serial`**, según la decisión 10. La rama no lo retira solo de V138, también del código: `VehicleEquipment.lacksSerial(serial)`, `VehicleEquipmentInstallations`, `EquipmentCommandServiceImpl`, `VehicleEnablementView.EquipmentRequirement` y su recurso, y en el frontend `vehicle-equipment-dialog`. Si se conserva, se revierte eso de `b9008e41` y `69f5e3d8`.
+- **V138 de la rama, que borra `blocks_availability` y `requires_serial`, se descarta.** La semilla de D-260 lee `blocks_availability`, así que esa columna sale en la entrega siguiente («En dos entregas», abajo); `requires_serial` se queda (decisión 10).
+- **V140 sale, y con ella su código** (decisión 10): `fetchBranch` y `fetchBranchesByIds` del `ExternalOrganizationService` de `fleet`; `fetchBranchLocationReferenceByPublicId`, `fetchBranchLocationReferencesByIds` y `GetBranchAggregateByPublicIdQuery` de `organization`; y en el frontend `OrganizationFacade.loadCompanyBranches`, `BranchesStore.findBranches` y su uso en el inventario de equipos.
+- **`requires_serial` se conserva** (decisión 10). La rama no lo retiraba solo de V138, también del código: `VehicleEquipment.lacksSerial(serial)`, `VehicleEquipmentInstallations`, `EquipmentCommandServiceImpl`, `VehicleEnablementView.EquipmentRequirement` y su recurso, y en el frontend `vehicle-equipment-dialog`; eso de `b9008e41` y `69f5e3d8` se revirtió.
 - **`EquipmentType.blocksEnablementAvailability()`**, que fija en el código el GPS y la pantalla (`PROGRAM_CODES`), se borra: lo decide la configuración de `fleet`.
 - **`blocksAvailability` vuelve al recurso de la habilitación.** La rama lo quita de `VehicleEnablementResource.EquipmentRequirement` y del frontend (`vehicle-enablement.entity.ts`, `vehicle-enablements-response.ts`, `enablement-catalog-sample.ts`), y `enablement-task-list.ts` pasa a mostrar siempre la pantalla de fábrica. Con D-260 la marca sale de la configuración: se restaura, `enablement-task-list.ts` vuelve a `factoryFitted && blocksAvailability`, y se suma `securesUnit`.
-- **Las claves que la rama deja huérfanas** se borran: `export.equipment-types.blocks-availability` de `messages*.properties` y `validation.equipment-type.blocks-availability.not-null` de `ValidationMessages*.properties`; las de `requires-serial`, con la decisión 10.
+- **Las claves que la rama deja huérfanas** se borran: `export.equipment-types.blocks-availability` de `messages*.properties` y `validation.equipment-type.blocks-availability.not-null` de `ValidationMessages*.properties`; las de `requires-serial` se quedan (decisión 10).
 - **Lo que le falta a la rama:** `EquipmentBrandAuditTests` (regla 4.8); el e2e de las marcas, porque la rama no toca `e2e/` (los mocks de `/equipment-brands` y el diálogo «Gestionar marcas»); y la documentación de las marcas (Documentación, abajo).
 
 #### Migraciones
@@ -276,8 +276,9 @@ Se numeran desde el siguiente número libre de `develop`: hoy V141, porque `deve
 |---|---|---|
 | N | V141 | Las marcas de equipo (V139 de la rama), sin cambios |
 | N | V142 | D-260, de `fleet` |
-| N | V143 | La ubicación del inventario en las sedes (V140 de la rama), solo si la decisión 10 la conserva, con las correcciones que ella dice |
-| N+1 | V144, o V143 sin la anterior | Borra `equipment_types.blocks_availability` y, si la decisión 10 retira `requires_serial`, esa columna, con `lock_timeout` |
+| N+1 | V143 | Borra `equipment_types.blocks_availability`, con `lock_timeout` |
+
+La V140 de la rama, la ubicación del inventario en las sedes, no se numera: salió por la decisión 10. `requires_serial` se queda, así que la N+1 no lo borra.
 
 Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migraciones de la rama `refactor/remove-equipment-type-flags` —V138 retira las banderas, V139 crea las marcas de equipo y V140 lleva el inventario a las sedes—, nunca de las de `develop`, que son las de D-261.
 
@@ -348,8 +349,8 @@ Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migr
 
 #### API, errores y mensajes
 
-- **Lo que no cambia de nombre:** `VehicleEnablementResource.EquipmentRequirement.blocksAvailability` se queda (sale de la configuración) y se suma `securesUnit`; `requiresSerial`, según la decisión 10. `VehicleStatusResource` y `UpdateVehicleStatusResource` suman `requiresSecurityEquipment` y `blocksEquipmentChanges`.
-- **Lo que sale del catálogo** (la rama): `blocksAvailability` de `EquipmentTypeResource` y de sus recursos de alta y edición, ordenar `/equipment-types` por `blocksAvailability`, y la columna «Bloquea la disponibilidad» de su exportación; lo mismo de `requiresSerial`, según la decisión 10.
+- **Lo que no cambia de nombre:** `VehicleEnablementResource.EquipmentRequirement.blocksAvailability` se queda (sale de la configuración) y se suma `securesUnit`; `requiresSerial` también se queda (decisión 10). `VehicleStatusResource` y `UpdateVehicleStatusResource` suman `requiresSecurityEquipment` y `blocksEquipmentChanges`.
+- **Lo que sale del catálogo** (la rama): `blocksAvailability` de `EquipmentTypeResource` y de sus recursos de alta y edición, ordenar `/equipment-types` por `blocksAvailability`, y la columna «Bloquea la disponibilidad» de su exportación. `requiresSerial` no sale (decisión 10).
 - **Los errores nuevos,** cada uno con su mensaje en `messages.properties` y `messages_es.properties` (`OwnErrorCodesHaveMessagesTests`), su `@ApiResponse` y su texto en `es.json`, todos `422`: `VEHICLE_SECURITY_EQUIPMENT_HELD_BY_STATUS` (el estado y el equipo), `VEHICLE_SECURITY_EQUIPMENT_MISSING` (el estado y los que faltan), `VEHICLE_EQUIPMENT_CHANGES_BLOCKED_BY_STATUS` (el estado), `VEHICLE_REQUIREMENT_LOSS_PATH_MISSING`, `STATUSCHANGEREASON_REQUIREMENT_LOSS_LOCKED`, `STATUSCHANGEREASON_AUTO_TARGET_SECURED`, `VEHICLESTATUS_REQUIREMENT_LOSS_RETIREMENT_NOT_ALLOWED`, `VEHICLESTATUS_SECURITY_INITIAL`, `VEHICLESTATUS_SECURITY_AUTO_TARGET` y `VEHICLEEQUIPMENTREQUIREMENT_OUTDATED`, este por su sufijo, como todo `_OUTDATED` (convenciones §7.2, D-134).
 - **`VEHICLE_ENABLEMENT_HELD_BY_STATUS`** ya no se responde en Disponible: su texto de `es.json`, que manda a sacar la unidad por «Pierde un requisito», cambia.
 
@@ -376,12 +377,12 @@ Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migr
 - **Los mocks:**
   - `e2e/support/mocks/enablement.ts` calcula lo exigido con la configuración y no con `type.blocksAvailability` (l.184-221); en Disponible escribe el retiro y los hitos y mueve la unidad, en vez de responder `VEHICLE_ENABLEMENT_HELD_BY_STATUS` (l.903, l.1066, l.1102), que sigue en Contrato firmado; suma las negativas de seguridad y de Robado y `/vehicle-equipment-requirements`;
   - `e2e/support/mocks/fleet.ts` (l.471-527, las reglas de `requiresEnablement`) suma las dos marcas con sus reglas;
-  - `e2e/support/api.ts:2127-2152` y `e2e/support/mocks/vehiclecatalog.ts:85-103`: los tipos de equipo pierden `blocksAvailability` (y `requiresSerial`, según la decisión 10); la configuración y las marcas de equipo tienen sus datos y sus respuestas.
+  - `e2e/support/api.ts:2127-2152` y `e2e/support/mocks/vehiclecatalog.ts:85-103`: los tipos de equipo pierden `blocksAvailability` y conservan `requiresSerial` (decisión 10); la configuración y las marcas de equipo tienen sus datos y sus respuestas.
 - **Casos nuevos:** en Activo el GPS se reemplaza y no se retira; entrar a Activo sin GPS se rechaza nombrándolo; en Robado no se ofrece instalar, reemplazar ni retirar; la pantalla de requisitos; el diálogo «Gestionar marcas».
 - **Las imágenes de referencia:** `equipment-types` (`e2e/screens.ts:532`) cambia con la rama, por el filtro de marca y «Gestionar marcas»: se regenera aquí, revisada, porque la fase 2 no regenera ninguna. La pantalla de requisitos entra a `e2e/screens.ts` con su imagen nueva, revisada.
 - **e2e-live:**
-  - `enablement.live.spec.ts`, la prueba 5 (l.400-425), pasa a «retira el GPS en Disponible, la unidad pasa a En habilitación y vuelve por «Habilitación completa» con otro»; su l.67 (`requiresSerial`), según la decisión 10;
-  - `vehiclecatalog.live.spec.ts:597` deja de mandar `blocksAvailability` y `requiresSerial`, y l.626 instala con un serial si la decisión 10 retira `requires_serial`.
+  - `enablement.live.spec.ts`, la prueba 5 (l.400-425), pasa a «retira el GPS en Disponible, la unidad pasa a En habilitación y vuelve por «Habilitación completa» con otro»; su `requiresSerial` (l.68) se queda (decisión 10);
+  - `vehiclecatalog.live.spec.ts:598` deja de mandar `blocksAvailability` y sigue mandando `requiresSerial` (decisión 10); l.627 sigue instalando sin serial.
 
 #### Pruebas del backend
 
@@ -410,7 +411,7 @@ Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migr
 
 - **El diccionario:**
   - la lista de tablas versionadas (§2) y una sección nueva de `vehicle_equipment_requirements` en el bloque 9 (§11);
-  - §7.5: `blocks_availability` sale, `requires_serial` según la decisión 10, y las marcas de equipo (`equipment_brands`, `equipment_models.equipment_brand_id`);
+  - §7.5: `blocks_availability` sale, `requires_serial` se queda (decisión 10), y las marcas de equipo (`equipment_brands`, `equipment_models.equipment_brand_id`);
   - §8.2 (las dos marcas y sus reglas), §8.3 (`PIERDE_REQUISITO` fijo; los caminos que mueven solos), §8.4 (la fila del paso automático), §11.4 (el retiro) y §11.9 (lo exigido sale de la configuración);
   - §14: D-184 y D-260 como construidas, y las dos preguntas abiertas de D-254 que cierra la decisión 10.
 - **`contextos/fleet.md`:** el párrafo «Decidido y por construir» (l.354), FLT-R85 y FLT-R93 enmendadas, y FLT-R148 a FLT-R151 en ✅ con sus pruebas.
@@ -1458,7 +1459,7 @@ Una migración nueva crea `vehicle_equipments (equipment_type_id)`, para la cons
   - los dos adaptadores con unidades de dos empresas, leídos con el alcance de una sola, como `VehicleEquipmentCurrencyUsageTests`;
   - `VehicleModelUsageWiringTests` y `EquipmentTypeUsageWiringTests`: el contexto arranca con `VehicleModelUsageAdapter` y `VehicleEquipmentTypeUsageAdapter` de `fleet` como los beans de los puertos (§5, §8);
   - dos carreras: corregir contra la primera unidad, y corregir contra la primera instalación.
-- **La prueba en vivo de D-185** (`e2e-live/vehiclecatalog.live.spec.ts:582`) sigue pasando. Instala con `serial: null` (l.626): si la decisión 10 retiró `requires_serial`, el trabajo previo de D-260 ya le dio un serial.
+- **La prueba en vivo de D-185** (`e2e-live/vehiclecatalog.live.spec.ts:582`) sigue pasando. Instala con `serial: null` (l.627), que sigue valiendo: la decisión 10 conservó `requires_serial`, y el tipo de la prueba no lo exige.
 
 #### 8.7 En dos entregas
 
