@@ -304,11 +304,11 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 
 ## 6. Estado y pendientes
 
-**Estado:** construido, con el paso abierto: faltan los modelos reales conciliados (§7.3) y la validación de este documento por el responsable. No se conocen diferencias con las convenciones de la API.
+**Estado:** construido, con el paso abierto: faltan el catálogo maestro de modelos, validado por el negocio (§7.3, D-273), y la validación de este documento por el responsable. No se conocen diferencias con las convenciones de la API.
 
 | Qué | Quién y cuándo |
 |---|---|
-| Los modelos reales, conciliados entre los dos catálogos entregados, que no coinciden (§7.3, advertencia para la carga inicial) | El negocio entrega los datos; criterio de cierre del paso |
+| El catálogo maestro de modelos: los dos catálogos entregados no coinciden, así que el equipo prepara la lista de sus diferencias, el negocio elige el nombre de cada modelo y valida el catálogo, y solo ese se carga (§7.3, D-273) | Antes de la carga inicial; criterio de cierre del paso |
 | Validar este documento | El responsable |
 | Las pruebas que faltan: la carrera de un modelo y de una marca de equipamiento (VCT-R21) y una prueba propia de los dos miembros de la fachada de VCT-R32, que hoy prueba su consumidor | Sin fecha |
 
@@ -316,7 +316,4 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 
 ## 7. Preguntas abiertas
 
-| Pregunta | Dónde se lleva |
-|---|---|
-| ¿Cómo se concilian los dos catálogos de modelos entregados, que escriben el mismo modelo de formas distintas? | Diccionario §7.3, advertencia para la carga inicial |
-| ¿Qué dato nuevo admitiría un catálogo de flota: el color en hexadecimal, el peso, los pasajeros, la garantía? | Diccionario §7.7, candidatos del bloque 4 |
+No quedan preguntas abiertas. Las respondió el responsable el 19/11/2026 (D-273): se carga un solo catálogo maestro de modelos, validado por el negocio antes de la carga inicial (sección 6), y los catálogos de flota no suman datos por ahora: el color en hexadecimal, el peso, los pasajeros y la garantía siguen candidatos hasta que una pantalla o un reporte los pida (diccionario §7.7).
