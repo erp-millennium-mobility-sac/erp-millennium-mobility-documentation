@@ -245,7 +245,7 @@ stateDiagram-v2
 
 ### P8 · Kilometraje (§8.5)
 
-Cada lectura se registra con su fecha y su origen: GPS, taller, entrega, devolución o manual. Una lectura no puede ser menor que la anterior ni futura; un cambio de tablero se registra como sustitución de odómetro, una lectura marcada con su propio permiso. Las lecturas no se editan ni se borran. Una lectura escrita de más se anulará con su motivo, y saldrá de la serie y del kilometraje de la unidad (D-267): está decidida y se construye antes del módulo de monitoreo. El kilometraje de la unidad es el de la última lectura y se escribe en la misma operación.
+Cada lectura se registra con su fecha y su origen: GPS, taller, entrega, devolución o manual. Una lectura no puede ser menor que la anterior ni futura; un cambio de tablero se registra como sustitución de odómetro, una lectura marcada con su propio permiso. Las lecturas no se editan ni se borran. Una lectura escrita de más se anula con su motivo y con el permiso `stock.anular_lectura_kilometraje`, y sale de la serie y del kilometraje de la unidad (D-267): en la pestaña de kilometraje de la ficha, cada lectura en vigor tiene en su menú «Anular lectura», que pide el motivo; la anulada sigue en la lista, con los kilómetros tachados, la marca «Anulada» y quién la anuló, cuándo y por qué. No se anula si, sin ella, la lectura siguiente, que no es una sustitución, quedaría por debajo de la anterior: se registra primero la sustitución correcta. El kilometraje de la unidad es el de la última lectura en vigor y se escribe en la misma operación.
 
 | Pantalla | Logística › Inventario (ficha de la unidad) |
 |---|---|
