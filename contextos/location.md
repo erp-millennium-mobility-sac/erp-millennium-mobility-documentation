@@ -296,7 +296,7 @@ La división por su identificador público, que mapa §5.1 deja como propuesta, 
 
 **Frontend.** `LocationFacade` ofrece a los demás contextos opciones mínimas de países, monedas y tipos de documento, la tasa propuesta de un documento y la regla del dígito de control del backend, para avisar antes de enviar (LOC-R35). Presta una sola pieza de pantalla, el campo de dirección, que produce su valor; guardarla le toca al dueño (empresa, sede, ubicación y proveedor).
 
-**Sin uso.** `vehiclecatalog` puede usar `location` y no lo necesita. Los fondos de `fleet` no tienen moneda (§12.1).
+**Sin uso.** `vehiclecatalog` puede usar `location` y no lo necesita. Los fondos de `financing` no tienen moneda (§12.1).
 
 ---
 

@@ -16,7 +16,7 @@
 
 **Lo que parece suyo y no lo es:**
 
-- **Lo que cada carga actualiza** es del contexto dueño: el impuesto vehicular y la garantía mobiliaria, de `fleet`; la carga inicial la orquesta `procurement`, porque las unidades nacen con su factura (D-200). `imports` no escribe ninguna de esas tablas ni conoce sus reglas: solo registra el lote.
+- **Lo que cada carga actualiza** es del contexto dueño: el impuesto vehicular, de `fleet`; la garantía mobiliaria, de `financing` (D-279); la carga inicial la orquesta `procurement`, porque las unidades nacen con su factura (D-200). `imports` no escribe ninguna de esas tablas ni conoce sus reglas: solo registra el lote.
 - **Los archivos** se guardan en `kept_files`, del módulo `documents`, por `KeptFileStore` (D-189).
 - **El nombre de quien cargó y la empresa** son de `iam` y de `organization`, que `imports` pide por los puertos de `audit::acl` (SHR-R11).
 
@@ -28,7 +28,7 @@
 
 ### F1 · Una carga registra su lote
 
-- **Quién:** la carga de un contexto —`fleet` (`/tax-declaration-imports`, `/fund-assignment-imports`) o `procurement` (`/initial-migration-imports`)—, con el permiso de su carga y `habilitacion.ver_cargas` en la empresa (SHR-R05).
+- **Quién:** la carga de un contexto —`fleet` (`/tax-declaration-imports`), `financing` (`/fund-assignment-imports`) o `procurement` (`/initial-migration-imports`)—, con el permiso de su carga y `habilitacion.ver_cargas` en la empresa (SHR-R05).
 - **Pasos:** toma el candado de su tipo y su empresa (`ImportLocks`, SHR-R10); lee el libro con `ImportWorkbookReader` (SHR-R06 a SHR-R08); aplica sus filas con sus propias reglas; escribe el informe con `ImportReportWriter` (SHR-R09); y registra el lote con `ImportBatchCommandService`, que guarda el archivo y el informe en `kept_files` (SHR-R03).
 - **Si falla:** una carga del mismo tipo que ya corre en la empresa responde `409 IMPORTBATCH_CONFLICT` (`ImportRefusals.conflict()`); un archivo que no es un libro válido, `422` antes de leer filas.
 
@@ -39,7 +39,7 @@
 
 ## 4. Reglas de negocio
 
-Son las del diccionario, §11.8, con su número: **SHR-R01 a SHR-R13**. Las pruebas que las cubren son las de este módulo —`FileLoadsMigrationTests`, `ImportCellTests`, `ImportReportWriterTests` e `ImportWorkbookReaderTests`— y las de cada carga en su contexto: `FleetImportsIntegrationTests` (`fleet`) e `InitialMigrationIntegrationTests` (`procurement`). Lo que falta probar de cada carga está en [fleet.md](fleet.md) y [procurement.md](procurement.md).
+Son las del diccionario, §11.8, con su número: **SHR-R01 a SHR-R13**. Las pruebas que las cubren son las de este módulo —`FileLoadsMigrationTests`, `ImportCellTests`, `ImportReportWriterTests` e `ImportWorkbookReaderTests`— y las de cada carga en su contexto: `FleetImportsIntegrationTests` (`fleet`), `FundAssignmentImportsIntegrationTests` (`financing`) e `InitialMigrationIntegrationTests` (`procurement`). Lo que falta probar de cada carga está en [fleet.md](fleet.md), [financing.md](financing.md) y [procurement.md](procurement.md).
 
 ## 5. Relación con otros contextos
 

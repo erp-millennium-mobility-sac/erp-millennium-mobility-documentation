@@ -423,11 +423,11 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 
 ## 5. Relación con otros contextos
 
-**Lo que ofrece: `IamContextFacade`.** La usan `fleet` —la opción B de la decisión 6 del mapa, resuelta el 19/11/2026 ([fleet.md](fleet.md), sección 5)— y el adaptador con que `iam` nombra a los autores de la bitácora (abajo).
+**Lo que ofrece: `IamContextFacade`.** La usan `fleet` y `financing` —la opción B de la decisión 6 del mapa, resuelta el 19/11/2026 ([fleet.md](fleet.md) y [financing.md](financing.md), sección 5)— y el adaptador con que `iam` nombra a los autores de la bitácora (abajo).
 
 | Miembro | Qué responde | Quién lo usa y para qué |
 |---|---|---|
-| `fetchAccountReferencesByIds` | Las cuentas de una lista, en una lectura: su identificador público y el nombre de su colaborador; `SYSTEM` para la cuenta de los procesos automáticos | `fleet`: quién creó o cambió una unidad, movió un estado o registró una lectura. La bitácora: quién hizo algo |
+| `fetchAccountReferencesByIds` | Las cuentas de una lista, en una lectura: su identificador público y el nombre de su colaborador; `SYSTEM` para la cuenta de los procesos automáticos | `fleet`: quién creó o cambió una unidad, movió un estado o registró una lectura. `financing`: quién registró una cesión. La bitácora: quién hizo algo |
 | `fetchSystemAccountId` | La cuenta `SYSTEM` (D-42) | `fleet`: firmar el regreso automático al vencer una tolerancia |
 | `fetchPermissionByCode`, `fetchPermissionReferencesByIds` | Un permiso del catálogo por su código, o varios por su identificador | `fleet`: el permiso que exige cada camino de estado (D-100) |
 
