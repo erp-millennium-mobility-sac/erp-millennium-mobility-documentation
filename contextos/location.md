@@ -94,7 +94,7 @@ El país incluye sus escalones: se guardan y se validan con él (D-45).
 | Retiro | Se desactiva. Quien ya lo usa sigue siendo válido; un registro nuevo no puede elegirlo (LOC-R36) |
 | Nunca | Se borra |
 
-El dígito de control lo calcula `location` según la sigla del tipo en su país, para el contexto que guarda el número (LOC-R35): hoy, solo el del RUC de Perú, con el módulo 11 de SUNAT; el DNI no lo tiene (D-76). El NIT, el RFC y la CURP aceptan sus números sin verificar hasta la primera empresa de su país (D-52; sección 6).
+El dígito de control lo calcula `location` según la sigla del tipo en su país, para el contexto que guarda el número (LOC-R35): hoy, solo el del RUC de Perú, con el módulo 11 de SUNAT; el DNI no lo tiene (D-76). El NIT, el RFC y la CURP aceptan sus números sin verificar hasta la primera empresa de su país (D-52; sección 6). El modelo del NIT y del RFC está decidido (D-275): el NIT lleva su dígito de control como último carácter, sin longitud fija, y el RFC son dos tipos, de 12 caracteres para empresas y de 13 para personas, cada uno con su sigla. Lo sembrado —el NIT de 9 caracteres y un solo RFC de 12 para empresas y personas— se corrige antes de la primera empresa de cada país.
 
 ### Dirección
 
@@ -186,7 +186,7 @@ Las lecturas piden `catalogos.ver`, que tienen los siete roles, porque toda pant
 
 La lista oficial de Perú (ubigeo del INEI, edición 2022) se carga completa con una migración (§4.5, D-2; procesos, P1 paso 1), generada desde el archivo tal como lo publica el INEI, que se conserva para compararlo con una edición nueva. Los nombres quedan como los publica el INEI —en mayúsculas, sin tildes y con la Ñ— y así se muestran (`LIMA › LIMA › CHORRILLOS`), por decisión del responsable del diccionario.
 
-Una edición nueva no reemplaza esa carga. Cada distrito que una ley crea después entra activo con su propia migración en cuanto el INEI o SUNAT publican su código; el distrito del que se separó sigue activo, y los que se fusionan se desactivan (D-77). Santa Rosa de Loreto (Ley 32403) es el primero y, mientras espera su código, no se puede elegir (sección 6). Volver a cargar la lista desde la aplicación no tiene mecanismo (sección 7).
+Una edición nueva no reemplaza esa carga. Cada distrito que una ley crea después entra activo con su propia migración en cuanto el INEI o SUNAT publican su código; el distrito del que se separó sigue activo, y los que se fusionan se desactivan (D-77). Santa Rosa de Loreto (Ley 32403) es el primero y, mientras espera su código, no se puede elegir (sección 6). La lista oficial se carga solo por migración: la aplicación nunca la vuelve a cargar (D-77, decisión del responsable del 19/11/2026).
 
 ### F7 · Registrar y corregir un tipo de cambio
 
@@ -302,17 +302,18 @@ La división por su identificador público, que mapa §5.1 deja como propuesta, 
 
 ## 6. Estado y pendientes
 
-`location` está construido para Perú, el único país que opera (D-5). Las tasas de cambio se cargan a mano. La única decisión abierta con disparo propio son las longitudes y el dígito de control de los documentos de Colombia y México (§4.7, D-52), con su momento abajo.
+`location` está construido para Perú, el único país que opera (D-5). Las tasas de cambio se cargan a mano. La única decisión abierta con disparo propio es el cálculo del dígito de control de los documentos de Colombia y México, con la longitud de la CC (§4.7, D-52), con su momento abajo; el modelo del NIT y del RFC ya está decidido (D-275).
 
 | Qué | Cuándo |
 |---|---|
 | La carga automática de las tasas desde la fuente oficial, a nombre de `SYSTEM` (D-46, D-148) | Cuando haya una fuente con acceso permitido para un sistema: la API del BCRP responde a una consulta automatizada con una página contra robots |
 | La moneda de grupo (D-46, §4.8). Los reportes no la usan: un reporte es de una empresa y se lee en su moneda funcional (D-233; [reporting.md](reporting.md)) | Cuando haya dos monedas funcionales que reunir en un mismo reporte |
-| Colombia y México: las longitudes de sus documentos y el cálculo del dígito de control del NIT, el RFC y la CURP (D-75), y sus listas oficiales (DANE, INEGI). **Riesgo aceptado:** hasta entonces nada en el código impide registrar una empresa de esos países, y sus tipos con dígito de control aceptan cualquier número. No hay que crear a mano divisiones de Colombia ni de México: con una sola división cargada, toda dirección de ese país pasa a exigir la suya (D-53) | Antes de registrar la primera empresa de Colombia o México (D-52) |
+| Colombia y México: los tipos del NIT y del RFC como los fija D-275, el cálculo del dígito de control del NIT, el RFC y la CURP (D-75), la longitud de la CC y sus listas oficiales (DANE, INEGI). **Riesgo aceptado:** hasta entonces nada en el código impide registrar una empresa de esos países, y sus tipos con dígito de control aceptan cualquier número. No hay que crear a mano divisiones de Colombia ni de México: con una sola división cargada, toda dirección de ese país pasa a exigir la suya (D-53) | Antes de registrar la primera empresa de Colombia o México (D-52) |
 | Dar de alta Santa Rosa de Loreto (Ley 32403) con su propia migración | Cuando el INEI o SUNAT publiquen su código (D-77) |
 | Revisar la lista de divisiones de Perú contra las leyes nuevas y las ediciones nuevas del INEI, como la que puede salir del Censo 2025 | En el cierre de cada paso (D-77); la última revisión es del 17/10/2026 |
 | El alta manual de una división acepta cualquier forma de código, que después queda fija: solo se limpia y se pasa a mayúsculas, sin comparar con la forma del código oficial del país | Si el alta manual vuelve a usarse para un país con lista oficial |
 | Una prueba de que una tasa registrada a la vez espera a la corrección de los códigos ISO de su país (LOC-R10) | Sin fecha |
+| Las seis altas que responden `201` sin `Location` —monedas, países, escalones, divisiones, tipos de documento tributario y tasas de cambio— lo suman ([convenciones](../convenciones-de-la-api-millennium-mobility.md) §14.9; §13 fila 8) | Cuando se toque su controlador |
 
 ---
 
@@ -320,11 +321,7 @@ La división por su identificador público, que mapa §5.1 deja como propuesta, 
 
 | Pregunta | Dónde se lleva |
 |---|---|
-| ¿El dígito de control del NIT se escribe aparte o forma parte del número? ¿Cómo se modela el RFC de 12 y de 13? | Diccionario §4.7; se resuelve antes de registrar la primera empresa de cada país (D-52) |
-| ¿Se puede volver a cargar la lista oficial de divisiones desde la aplicación? | [Procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), apartado 5, pregunta 7 |
-| ¿`taxRate` y la `rate` de un tipo de cambio viajan como texto decimal? | [Convenciones](../convenciones-de-la-api-millennium-mobility.md) §14.2 (§13 fila 7) |
-| ¿Un `422` dice qué regla falló, en un campo `rule`? | Convenciones §14.5 (§13 fila 15) |
-| ¿Dos ediciones simultáneas del mismo registro se detectan con `If-Match`? | Convenciones §14.7 |
-| ¿Las altas, también la de una tasa, responden `201` con `Location`? | Convenciones §14.9 (§13 fila 8) |
-| ¿Los códigos de error llevan guion bajo entre palabras (`GEO_DIVISION_*`)? | Convenciones §14.11 (§13 fila 13) |
-| ¿Cómo obtiene el registro público, sin sesión, los tipos de documento de las personas? | Convenciones §14.16; antes de encender el registro (D-83) |
+| ¿Cómo se calcula el dígito de control del NIT, del RFC y de la CURP? | Diccionario §4.7, D-75; antes de registrar la primera empresa de Colombia o México (D-52). El modelo del NIT y del RFC ya está decidido (D-275) |
+| ¿Cómo obtiene el registro público, sin sesión, los tipos de documento de las personas? | [Convenciones](../convenciones-de-la-api-millennium-mobility.md) §14.16; antes de encender el registro en un entorno (D-83). La forma preferida es una sola ruta pública, `sign-up/companies`, que devuelva también las sedes y los tipos de documento |
+
+Las demás las respondió el responsable el 19/11/2026. La lista oficial de divisiones se carga solo por migración, nunca desde la aplicación (D-77; F6). Y las técnicas las responden las convenciones: `taxRate` y la `rate` de un tipo de cambio siguen viajando como número a la escala de su columna (§14.2); un `422` no lleva `rule`, porque cada regla tiene su código (§14.5); la concurrencia es el candado de `updatedAt`, sin `If-Match` (§14.7); y las altas suman su `Location` cuando se toque su controlador (§14.9; sección 6). Los códigos de las divisiones ya siguen el prefijo único de D-114 (`GEODIVISION_*`).
