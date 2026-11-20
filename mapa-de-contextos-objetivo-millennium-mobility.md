@@ -99,7 +99,7 @@ En un monolito modular ninguna frontera exige otra base de datos ni otro desplie
 ### 3.7 `equipment` — Equipamiento
 
 - **Responsabilidad.** Los dispositivos —GPS y pantalla— con su serie, IMEI, ICCID, sus estados (`AVAILABLE`, `INSTALLED`, `MAINTENANCE`, `DISCARDED`), sus tipos y modelos, su proveedor y, después, el monitoreo del GPS desde su compra hasta su instalación.
-- **Agregados y tablas.** `Equipment` (`fleet_equipments`, hoy en `fleet`), `EquipmentType` (`equipment_types`, `equipment_type_vehicle_types`), `EquipmentBrand` (`equipment_brands`) y `EquipmentModel` (`equipment_models`), hoy en `vehiclecatalog`. Las marcas de equipo llegan con la rama `refactor/remove-equipment-type-flags` (su V139, que es V141 en `feature/d-260`), que se integra con D-260 antes de la fase 2; `EquipmentModel` las lee por su repositorio, así que pasan juntas.
+- **Agregados y tablas.** `Equipment` (`fleet_equipments`, hoy en `fleet`), `EquipmentType` (`equipment_types`, `equipment_type_vehicle_types`), `EquipmentBrand` (`equipment_brands`) y `EquipmentModel` (`equipment_models`), hoy en `vehiclecatalog`. Las marcas de equipo llegan con la rama `refactor/remove-equipment-type-flags` (su V139, que es V141 en `feature/d-260`), que se integra con D-260 antes de la fase 2; `EquipmentModel` las lee por su repositorio, así que pasan juntas. Integrada en la fase 2 (20/11/2026): los cuatro agregados y sus cinco tablas son de `equipment`, con la fachada `EquipmentContextFacade` y los puertos `EquipmentSuppliers` y `EquipmentUnits`; `fleet_equipments` conserva su nombre (D-278).
 - **Depende de.** `organization` (la empresa y la ubicación de cada dispositivo), `vehiclecatalog` (los tipos de vehículo y lo que la habilitación necesita de cada modelo) y `documents` (las exportaciones del inventario y de los catálogos).
 - **Ofrece.** Los tipos de equipo, a qué tipo de vehículo aplica cada uno y si un modelo ya lo trae de fábrica, que lee la habilitación —qué equipo se exige lo decide `fleet` (D-260)— y, cuando llegue el monitoreo, la instalación y el retiro de un dispositivo que pide `fleet`, con la regla de la fase 2 §2.6 del plan, que el responsable aprobó el 19/11/2026 (D-263, D-264): la instalación de `fleet` es la fuente de verdad, solo `fleet` instala, reemplaza y retira, y el motivo del retiro decide adónde vuelve el dispositivo.
 - **Declara puertos.** `EquipmentSuppliers` (lo implementa `procurement`), `EquipmentUnits` y, desde la fase 8 del plan, `EquipmentTypeUsage` (los dos los implementa `fleet`), así `equipment` no depende de `fleet`.
@@ -135,7 +135,7 @@ En un monolito modular ninguna frontera exige otra base de datos ni otro desplie
 ### 3.12 `vehiclecatalog` — Catálogo de vehículos
 
 - **Responsabilidad.** Tipos de vehículo, marcas, modelos y colores.
-- **Cambia.** Entrega los tipos, las marcas y los modelos de equipo a `equipment`, y pregunta por un puerto si un modelo ya tiene unidades, como hace `CurrencyUsage`, en vez de guardar la bandera que hoy le escribe `fleet`.
+- **Cambia.** Entrega los tipos, las marcas y los modelos de equipo a `equipment`, y pregunta por un puerto si un modelo ya tiene unidades, como hace `CurrencyUsage`, en vez de guardar la bandera que hoy le escribe `fleet`. Integrada en la fase 2 (20/11/2026) la entrega del equipamiento: su fachada responde ahora los tipos de vehículo en lote y, de cada modelo, su tipo, si es a gas y si trae la pantalla de fábrica (D-278). El puerto de las unidades llega con la fase 8.
 
 ### 3.13 Plataforma: `documents`, `notifications`, `audit` e `imports`
 
