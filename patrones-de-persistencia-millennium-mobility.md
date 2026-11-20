@@ -129,7 +129,7 @@ La regla:
 
 ## El orden de los candados de cada contexto
 
-Cada escritura toma sus candados en un orden fijo, el mismo en todo el sistema, para que dos escrituras —del mismo contexto o de dos contextos— no se esperen la una a la otra para siempre. Lo que no cubre un candado lo cubre un único de la base, que se traduce a su `409` (arriba, «La base sigue siendo la última línea»).
+Cada escritura toma sus candados en un orden fijo, el mismo en todo el sistema, para que dos escrituras —del mismo contexto o de dos contextos— no se esperen la una a la otra para siempre. Lo que no cubre un candado lo cubre un único de la base, que se traduce al fallo esperado de la revisión que dejó pasar, casi siempre un `409` (arriba, «La base sigue siendo la última línea»).
 
 ### `organization`
 
@@ -141,14 +141,14 @@ Lo que lee y después cambia una empresa, una sede, una marca o una cuenta banca
 
 | Operación | Candados, en orden | Lo que lee después del candado |
 |---|---|---|
-| El cambio de estado (F3) | La unidad | El estado actual, la anulación, el traspaso y, solo si el destino tiene puerta, los hechos de la habilitación |
+| El cambio de estado (F3) | La unidad | El estado actual, la anulación, el traspaso y, solo si el destino tiene puerta o exige los equipos de seguridad, los hechos de la habilitación, leídos una sola vez para las dos revisiones: lo que falta y los equipos abiertos de la unidad |
 | La edición de la unidad (F2) | La unidad | Si tiene una línea de factura vigente (el año queda fijo) y si ingresó (no queda sin ubicación) |
 | El ingreso en lote | Todas las unidades del lote, en una sentencia, por `id` ascendente | Las unidades, sus ubicaciones actuales y la ubicación de destino |
-| El ingreso de una unidad y los hitos | La unidad | Su `updatedAt`, su estado, su placa y el inicio más antiguo de sus equipos |
+| El ingreso de una unidad y los hitos | La unidad | Su `updatedAt`, su estado, su placa y el inicio más antiguo de sus equipos. Si la escritura vacía el ingreso o las placas físicas en Disponible, además el camino «Pierde un requisito» y En habilitación, antes de escribir; y escribe el paso de la unidad —ella y su fila del historial— en la misma transacción, sin otro candado (D-260) |
 | La primera placa | La unidad | Su título y su TIVE vigente; la unicidad en el país, con una elevación que solo responde sí o no |
 | Un documento | La unidad; después el documento vigente de ese tipo | El tipo y si el modelo es a gas |
-| Instalar un equipo | La unidad | Su ingreso, sus equipos abiertos del tipo, el tipo de equipo y la moneda del costo, esta en modo compartido (`CurrencyUsage`) |
-| Reemplazar, retirar, registrar el costo o completar el serial de un equipo | La unidad del equipo; después el equipo | Su estado, sus requisitos y el período del equipo |
+| Instalar un equipo | La unidad | Su estado, primero, por si congela el equipamiento (D-260); después su ingreso, sus equipos abiertos del tipo, el tipo de equipo y la moneda del costo, esta en modo compartido (`CurrencyUsage`) |
+| Reemplazar, retirar, registrar el costo o completar el serial de un equipo | La unidad del equipo; después el equipo | El período del equipo. Al reemplazar, el estado de la unidad, que lo detiene solo si congela el equipamiento. Al retirar, el estado con sus tres marcas y, solo si exige la habilitación o los equipos de seguridad, lo que el modelo exige y lo que es de seguridad; en Disponible, además el camino «Pierde un requisito» y En habilitación, antes de escribir, y escribe el paso de la unidad en la misma transacción, sin otro candado (D-260). Registrar el costo y completar el serial no leen el estado |
 | Una llave | La unidad; en la edición, después la llave | — |
 | Anular una unidad | La unidad | Su valor, sus contratos y su cesión abierta: la cesión se lee bajo el mismo candado que toman ceder y cerrar |
 | Crear o reactivar un fondo | El fondo; la empresa en modo compartido, después del fondo | Si la empresa está activa (D-84, D-94) |
@@ -159,10 +159,11 @@ Lo que lee y después cambia una empresa, una sede, una marca o una cuenta banca
 | El alta y el vínculo por lote de una factura (fachada, FLT-R52) | Las unidades existentes por `id` ascendente | Las unidades bloqueadas, leídas en una sola sentencia, reutilizando la copia que la transacción ya leyó bajo el candado |
 | La nota de crédito que devuelve o se anula (fachada, FLT-R95) | Las unidades de sus líneas por `id` ascendente, con el candado de toda escritura de la unidad | La unidad que se leyó antes del candado y otra transacción cambió se vuelve a leer |
 | El regreso automático (F4) | Una sola instancia del proceso, con un bloqueo consultivo de la sesión que no espera (`SingleInstanceRun`, `fleet.status-tolerance-breach`); después, cada unidad | La unidad, vuelta a leer: si alguien la movió, si está anulada, el camino, el destino y, si aplica, la habilitación |
+| Marcar un tipo de equipo en la configuración de lo que se exige (D-260) | La fila del tipo en `vehicle_equipment_requirements`, por su `equipment_type_id`, con `FOR NO KEY UPDATE`; es su único candado y no se ordena con ningún otro | La fila, vuelta a leer después del candado, y su `updatedAt`. Un tipo sin fila no tiene qué bloquear: dos primeras marcas a la vez las detiene el `UNIQUE` del tipo, y la segunda responde `422 VEHICLEEQUIPMENTREQUIREMENT_OUTDATED` sin escribir nada |
 
 **Lo que resulta de ese orden**
 
-- Si una persona mueve la unidad a Disponible mientras otra retira su GPS, una espera a la otra: si el retiro confirma primero, el cambio recibe `VEHICLE_ENABLEMENT_INCOMPLETE`; si el cambio confirma primero, el retiro recibe `VEHICLE_ENABLEMENT_HELD_BY_STATUS`. Ningún orden deja una unidad Disponible sin GPS (`EnablementConcurrencyTests`).
+- Si una persona mueve la unidad a Disponible mientras otra retira su GPS, una espera a la otra: si el retiro confirma primero, el cambio recibe `VEHICLE_ENABLEMENT_INCOMPLETE`; si el cambio confirma primero, el retiro confirma después y lleva la unidad a En habilitación por «Pierde un requisito», en su misma transacción (D-260). Ningún orden deja una unidad Disponible sin GPS (`EnablementConcurrencyTests`).
 - Las escrituras de la habilitación que se suman o se cierran —subir un documento, instalar, reemplazar y retirar un equipo, registrar la placa y el ingreso en lote— no llevan `updatedAt`: las serializa el candado de la unidad, y `_ALREADY_REMOVED`, `_ALREADY_ARRIVED` y `_PLATE_ALREADY_REGISTERED` dicen que otro llegó antes. Las ediciones —el ingreso de una unidad, los hitos y una llave— llevan además el `updatedAt` leído (`VEHICLE_OUTDATED`, `VEHICLEKEY_OUTDATED`).
 - Una cesión a mano de las unidades de una carga de garantía espera a la carga, porque bloquea la unidad primero, y ve lo que la carga escribió (FLT-R117).
 - Toda escritura de cesiones lee su fondo en modo compartido, también la carga de garantía: así la corrección del código del fondo, que lo bloquea para actualizar, sabe si alguna cesión lo usa.
@@ -265,7 +266,7 @@ Lo prueban `SpacesKeptFileStoreTests` y `KeptFileStoreUpsertTests`, en los dos a
 El bloqueo de una fila ordena dos operaciones que corren al mismo tiempo; no protege una edición que alguien abrió hace diez minutos, mientras otra persona guardaba la suya. Para eso, lo que se edita en un formulario llega con su `updatedAt` y vuelve con él al guardar:
 
 - **Se compara bajo el candado.** El servicio lee la fila con `ForUpdate`, hace las revisiones de acceso y, antes de las reglas de su estado, compara el `updatedAt` que llegó con el de la fila, en milisegundos, la precisión de un momento en el navegador. Si no coinciden, responde `422 <RECURSO>_OUTDATED` y no guarda nada.
-- **Lo hacen** el proveedor (`SUPPLIER_OUTDATED`) y cada uno de sus contactos (`SUPPLIER_CONTACT_OUTDATED`, D-137), la plantilla (`PURCHASEORDERTEMPLATE_OUTDATED`), el borrador de una orden de compra (`PURCHASEORDER_OUTDATED`, D-138), la factura (`PURCHASEINVOICE_OUTDATED`), la nota de crédito (`CREDITNOTE_OUTDATED`), el pago (`SUPPLIERPAYMENT_OUTDATED`), la cuenta bancaria (`BANKACCOUNT_OUTDATED`), el tipo de cambio (`EXCHANGERATE_OUTDATED`), la unidad (`VEHICLE_OUTDATED`) y sus llaves (`VEHICLEKEY_OUTDATED`).
+- **Lo hacen** el proveedor (`SUPPLIER_OUTDATED`) y cada uno de sus contactos (`SUPPLIER_CONTACT_OUTDATED`, D-137), la plantilla (`PURCHASEORDERTEMPLATE_OUTDATED`), el borrador de una orden de compra (`PURCHASEORDER_OUTDATED`, D-138), la factura (`PURCHASEINVOICE_OUTDATED`), la nota de crédito (`CREDITNOTE_OUTDATED`), el pago (`SUPPLIERPAYMENT_OUTDATED`), la cuenta bancaria (`BANKACCOUNT_OUTDATED`), el tipo de cambio (`EXCHANGERATE_OUTDATED`), la unidad (`VEHICLE_OUTDATED`), sus llaves (`VEHICLEKEY_OUTDATED`) y lo que la habilitación exige de un tipo de equipo (`VEHICLEEQUIPMENTREQUIREMENT_OUTDATED`, D-260), que llega con un `updatedAt` nulo mientras el tipo no tiene fila.
 - **La revisión la llena el sistema** (D-42): `updated_at` y, donde existe, `updated_by` los pone la auditoría de la clase base.
 - **Lo que no toca la cabecera también mueve la revisión.** Un guardado que cambia solo las líneas de una orden deja la entidad sin cambios, y la auditoría no escribiría nada: el repositorio mueve la revisión con una sentencia propia (`PurchaseOrderJpaRepository.recordRevision`), como la plantilla cuando cambia uno de sus archivos. Enviar, cumplir y anular la mueven también.
 

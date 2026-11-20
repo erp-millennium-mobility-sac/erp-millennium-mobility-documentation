@@ -17,7 +17,7 @@ Los demás documentos están ordenados por tema: los datos (diccionario), la API
 | [location.md](location.md) | `location`: monedas, países con su estructura territorial, divisiones y ubigeo, direcciones, tipos de documento tributario y tasas de cambio |
 | [iam.md](iam.md) | `iam`: cuentas, roles, permisos y sesiones; dar acceso con su código de activación, bloqueos y el enlace para restablecer la contraseña |
 | [organization.md](organization.md) | `organization`: empresas, marcas comerciales, sedes, ubicaciones, cuentas bancarias y colaboradores con su historial de ingresos |
-| [vehiclecatalog.md](vehiclecatalog.md) | `vehiclecatalog`: tipos de vehículo, marcas y modelos, colores, tipos y modelos de equipamiento |
+| [vehiclecatalog.md](vehiclecatalog.md) | `vehiclecatalog`: tipos de vehículo, marcas y modelos, colores, tipos, marcas y modelos de equipamiento |
 | [fleet.md](fleet.md) | `fleet`: el vehículo, sus estados, sus caminos y su kilometraje, la habilitación, los fondos y las cesiones |
 | [procurement.md](procurement.md) | `procurement`: proveedores, plantillas y órdenes de compra, facturas de compra, notas de crédito, pagos a proveedores y Por pagar |
 | [reporting.md](reporting.md) | `reporting`: la capa de lectura, los reportes de Logística y el exportable de stock (D-232) |
