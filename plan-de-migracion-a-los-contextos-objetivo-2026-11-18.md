@@ -451,7 +451,10 @@ Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migr
   - en el frontend, 16 archivos de `vehiclecatalog` (`equipment-brand.entity.ts`, 3 comandos, 3 peticiones, `equipment-brands-api-endpoint.ts`, `equipment-brands-response.ts`, `equipment-brand-assembler.ts` y `components/equipment-brands-dialog/` con 6, 2 de ellos specs); `EquipmentBrandOption`, `equipmentBrandOptions`, `equipmentBrandsLoading`, `equipmentBrandsError` y `clearEquipmentBrandsError` de `VehicleCatalogFacade`, que usa el inventario; los métodos de marcas de `vehiclecatalog-api.ts`; `vehicleCatalogEquipmentBrandsEndpointPath` de `environment*.ts`; y `'equipment-brand'` en `deactivation-question.ts`;
 - **`equipmentBrandInactive`** en `FleetErrors`: 21 fábricas del inventario;
 - **si V140 se conserva** (decisión 10): `fetchBranch` y `fetchBranchesByIds` del `ExternalOrganizationService` de `fleet`, que solo usa el inventario, sobre `fetchBranchLocationReferenceByPublicId` y `fetchBranchLocationReferencesByIds` de `organization::acl`; y `OrganizationFacade.loadCompanyBranches` en el frontend;
-- **de D-260:** `fetchEquipmentTypeReferences()` de `vehiclecatalog::acl`, que lista todos los tipos para la pantalla de requisitos; y `ModelRequirements`, el único lector en `fleet` del perfil del catálogo para equipos, en lugar de los seis de hoy (§2.3).
+- **de D-260:**
+  - `fetchEquipmentTypeReferences()` de `vehiclecatalog::acl`, que lista todos los tipos para la pantalla de requisitos, y `ModelRequirements`, el único lector en `fleet` del perfil del catálogo para equipos, en lugar de los seis de hoy (§2.3);
+  - el comando de la pantalla de requisitos, que lee el tipo por su identificador público con `fetchEquipmentType` antes de crear o corregir su fila (`VehicleEquipmentRequirementCommandServiceImpl:44`, en `develop` del 19/11; §2.2, §2.3);
+  - en el frontend, el historial de la unidad, que nombra el equipo perdido de una fila de «Pierde un requisito» con cuatro miembros de `VehicleCatalogFacade`: `equipmentTypeOptions`, `loadEquipmentTypes`, `equipmentTypesError` y `clearEquipmentTypesError` (`vehicle-status-history.ts:58,72-84,131-133`, en `develop` del 19/11). Es el único consumidor de esos miembros fuera del inventario, que se muda con ellos, y por él `equipment` tiene fachada en el frontend (§2.8).
 
 #### 2.1 Backend — el módulo
 
@@ -489,7 +492,7 @@ Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migr
   - `fetchModelEnablementFactsByIds(Set<Long>)`, que devuelve `ModelEnablementFacts(modelId, vehicleTypeId, runsOnGas, hasFactoryScreen)` y responde `VehicleModelQueryService` con `GetModelEnablementFactsQuery`. Es un miembro nuevo, con otro nombre: `fetchEnablementProfilesByModelIds` y `ModelEnablementProfile` ya existen en `vehiclecatalog::acl` (`VehicleCatalogContextFacade:107`) y hoy los responde `EquipmentTypeQueryService.handle(GetModelEnablementProfilesQuery)`, que se muda.
 - **`vehiclecatalog::acl` pierde** (paso 7): `fetchEquipmentTypeReferenceByPublicId`, `fetchEquipmentTypeReferencesByIds`, `fetchEquipmentTypeReferences` (D-260), `fetchEquipmentModelReferenceByPublicId`, `fetchEquipmentModelReferencesByIds`, `markEquipmentTypeInUse` y `fetchEnablementProfilesByModelIds`, con sus records `EquipmentTypeReference`, `EquipmentModelReference` y `ModelEnablementProfile`. `fetchEnablementDataVersion` queda solo en lo del modelo.
 - **`EquipmentContextFacade`, solo con lo que `fleet` usa:**
-  - `fetchEquipmentTypeReferenceByPublicId` (`VehicleEquipmentCommandServiceImpl:78`);
+  - `fetchEquipmentTypeReferenceByPublicId` (`VehicleEquipmentCommandServiceImpl:78`, y el comando de la configuración de D-260, `VehicleEquipmentRequirementCommandServiceImpl:44` de `develop` del 19/11);
   - `fetchEquipmentTypeReferencesByIds` (`VehicleEquipmentCommandServiceImpl:103`, `VehicleEnablementList:125`, `VehicleEquipmentViewFactory:66`);
   - `fetchEquipmentTypeReferences()`: todos los tipos, activos o no, para la pantalla de requisitos de `fleet` (D-260);
   - `fetchEquipmentApplicabilityByModelIds(Set<Long>)`: el equipo que admite cada modelo, con `factoryFitted`, leído una vez por clase; qué se exige lo lee `fleet` de su propia configuración (D-260);
@@ -506,7 +509,7 @@ Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migr
   - `ExternalVehicleCatalogService` pierde sus miembros de equipos (l.126-201 de hoy, con el `fetchEquipmentTypes` de D-260) y lee `runsOnGas` por `fetchModelEnablementFactsByIds`.
   - Cambian a `ExternalEquipmentService`:
     - quien pide el perfil para equipos: solo `ModelRequirements` (D-260). `VehicleDocumentCommandServiceImpl:121` lee solo si el modelo es a gas, así que sigue en `ExternalVehicleCatalogService`, con `runsOnGas`;
-    - quien lee tipos: `VehicleEquipmentCommandServiceImpl:78,103`, `VehicleEnablementList:125`, `VehicleEquipmentViewFactory:66` y la consulta de la configuración de D-260, que lista todos los tipos;
+    - quien lee tipos: `VehicleEquipmentCommandServiceImpl:78,103`, `VehicleEnablementList:125`, `VehicleEquipmentViewFactory:66` y la configuración de D-260, con su consulta, que lista todos los tipos, y su comando, que lee el tipo por su identificador público antes de crear o corregir su fila y responde `404 EQUIPMENTTYPE_NOT_FOUND` si no existe (`VehicleEquipmentRequirementCommandServiceImpl:44` de `develop` del 19/11);
     - quien marca el uso: `VehicleEquipmentInstallations:174` y `MigratedUnitRegistrations:204`;
     - la versión: `FleetDocumentKinds:67`, que compone la versión de la habilitación de los dos catálogos.
   - `UnitEnablement`, `VehicleEnablementViewFactory` y `EnablementPolicy` no cambian: reciben el `ModelEnablementProfile` de `ModelRequirements`.
@@ -574,7 +577,7 @@ El responsable la aprobó como está escrita el 19/11/2026, junto con el destino
   - el adaptador `EquipmentUnits`, `EquipmentAuditTests` (regla 4.8) y `fleet_equipments` en una prueba de filas que nunca se borran;
   - `EquipmentSuppliersWiringTests`, en `procurement/infrastructure/equipment`, como `UnitPurchasesWiringTests`: el contexto arranca con `SupplierEquipmentSuppliersAdapter` entre los `EquipmentSuppliers`, y un proveedor de la empresa se resuelve por él. `ExternalSupplierService` recibe una lista: sin el adaptador, la lista queda vacía y toda alta con proveedor responde `SUPPLIER_NOT_FOUND`, sin que nada falle al arrancar (§5).
 - **Se corren completas:**
-  - toda la habilitación de `fleet`: `EnablementGateIntegrationTests`, `EnablementConcurrencyTests`, los seis `VehicleEnablement*`, `VehicleEquipmentIntegrationTests`, `VehicleEquipmentOverlapTests`, `VehicleEquipmentAuditTests`, `VehicleArrivalIntegrationTests`, `EnablementAnnulledUnitTests`, `EnablementDatesInLimaTests`, `EnablementPermissionsIntegrationTests` y las de D-260 (`ModelRequirementsTests`, `RequirementLossIntegrationTests`, `SecurityEquipmentIntegrationTests` y `EquipmentChangesBlockedTests`);
+  - toda la habilitación de `fleet`: `EnablementGateIntegrationTests`, `EnablementConcurrencyTests`, los seis `VehicleEnablement*`, `VehicleEquipmentIntegrationTests`, `VehicleEquipmentOverlapTests`, `VehicleEquipmentAuditTests`, `VehicleArrivalIntegrationTests`, `EnablementAnnulledUnitTests`, `EnablementDatesInLimaTests`, `EnablementPermissionsIntegrationTests` y las de D-260 (`ModelRequirementsTests`, `RequirementLossIntegrationTests`, `SecurityEquipmentIntegrationTests`, `EquipmentChangesBlockedTests` y `VehicleEquipmentRequirementsControllerTests`, que lista todos los tipos y marca uno por su identificador público, con el `404` de un tipo que no existe);
   - `InitialMigrationIntegrationTests`, `ReportsIntegrationTests` y `StockRowsTests`;
   - `RowLevelSecurityMigrationTests`, `FleetRowLevelSecurityTests` y `PermissionsMigrationTests`;
   - las de arquitectura y `ErpMillenniumMobilityBackendApplicationTests`, que detecta los nombres de bean repetidos.
@@ -597,14 +600,21 @@ El responsable la aprobó como está escrita el 19/11/2026, junto con el destino
   - `presentation`: `views/equipment-types-view/` (4), `components/equipment-types-dialog/` (5, con `equipment-type-form.ts`), `components/equipment-brands-dialog/` (6, con `equipment-brand-form.ts` y su spec) y `components/equipment-model-form-dialog/` (4).
 - **Archivos nuevos:**
   - `equipment/infrastructure/api/equipment-api.ts` (`EquipmentApi`), con lo que sale de `fleet-api.ts:366-381` y de `vehiclecatalog-api.ts:174+`, con los métodos de marcas;
+  - `equipment/application/equipment.facade.ts` (`EquipmentFacade`) y su spec, con lo que usa el historial de la unidad (abajo);
   - `equipment/presentation/equipment.routes.ts` y su spec, con `inventory` (`stock.ver`) y `types` (`catalogos.ver`), con las mismas constantes de acceso y los mismos `title`;
   - `equipment/presentation/components/deactivation-question.ts`, una copia de la de `vehiclecatalog` con `equipment-type`, `equipment-model` y `equipment-brand` (decisión 12): no pasa a `shared`, que nunca conoce las entidades de los contextos. La de `vehiclecatalog` pierde esas tres.
-- **Sin `EquipmentFacade`:** ningún contexto la usaría. La pantalla de requisitos de D-260 lee los tipos de su propia respuesta (`/vehicle-equipment-requirements`), no de una fachada.
-  - El inventario lee los tipos, las marcas y los modelos de `EquipmentCatalogStore`, con su estado externo, en vez de `VehicleCatalogFacade` (`equipment-inventory-view.ts:26,56` y `equipment-form-dialog.ts:66`).
-  - Si V140 se conserva, el inventario sigue leyendo las sedes con `OrganizationFacade.loadCompanyBranches`.
-  - Los tipos de equipamiento leen los tipos de vehículo de `VehicleCatalogFacade`, en vez de `VehicleTypesStore` (`equipment-types-view.ts:38,78` y `equipment-types-dialog.ts:40,103`).
+- **`EquipmentFacade`, solo con lo que usa el historial de la unidad de `fleet`.** D-260 le dio a `fleet` un consumidor de los equipos en el frontend: el historial nombra por su tipo el equipo perdido de una fila de «Pierde un requisito» («Antes de la fase 2», «Se precisaron»), y hoy lo lee de `VehicleCatalogFacade`. Sin esta fachada, retirar de `VehicleCatalogFacade` sus miembros de equipos deja el historial sin compilar.
+  - Tiene los cuatro miembros que el historial usa hoy, con los mismos nombres: `equipmentTypeOptions`, con todos los tipos, activos o no, en un tipo propio definido junto a la fachada que lleva lo que el historial lee, su código y su nombre (regla 1.3); `loadEquipmentTypes()`, que lee solo los tipos, sin las marcas ni los modelos; y `equipmentTypesError` con `clearEquipmentTypesError()`. No lleva las marcas ni los modelos, que ningún otro contexto lee: un miembro sin consumidor no se agrega (regla 1.3).
+  - Pasa por el estado externo de `EquipmentCatalogStore` (`externalEquipmentTypes`, `loadingExternalEquipmentTypes`, `externalEquipmentTypesError`, `clearExternalEquipmentTypesError()` y `loadExternalEquipmentTypes()`), el mismo que lee el inventario. Así el historial hace lo que hace hoy: pide `GET /equipment-types`, con `catalogos.ver`, solo si ninguna pantalla leyó ya los tipos; si falla, muestra el código y calla el error; y su lectura nunca cambia lo que muestra Tipos de equipamiento.
+  - `vehicle-status-history.ts` inyecta `EquipmentFacade` en lugar de `VehicleCatalogFacade` (l.4 y l.58 de `develop` del 19/11), y `fleet` deja de leer equipos de `vehiclecatalog`.
+- **Los demás lectores de los equipos no pasan por esa fachada:**
+  - la pantalla de requisitos de D-260 lee los tipos de su propia respuesta (`/vehicle-equipment-requirements`);
+  - el inventario, que pasa a ser del mismo contexto, lee los tipos, las marcas y los modelos de `EquipmentCatalogStore`, con su estado externo, en vez de `VehicleCatalogFacade` (`equipment-inventory-view.ts:26,56` y `equipment-form-dialog.ts:66`).
+- **Lo que `equipment` lee de otros contextos:**
+  - si V140 se conserva, el inventario sigue leyendo las sedes con `OrganizationFacade.loadCompanyBranches`;
+  - los tipos de equipamiento leen los tipos de vehículo de `VehicleCatalogFacade`, en vez de `VehicleTypesStore` (`equipment-types-view.ts:38,78` y `equipment-types-dialog.ts:40,103`).
 - **`VehicleCatalogFacade`:**
-  - pierde sus miembros de equipos (l.37-56 y l.150-206 de hoy) y los de las marcas (`EquipmentBrandOption`, `equipmentBrandOptions`, `equipmentBrandsLoading`, `equipmentBrandsError` y `clearEquipmentBrandsError`), y la inyección de `EquipmentCatalogStore`;
+  - pierde sus miembros de equipos (l.37-56 y l.150-206 de hoy), los de las marcas (`EquipmentBrandOption`, `equipmentBrandOptions`, `equipmentBrandsLoading`, `equipmentBrandsError` y `clearEquipmentBrandsError`) y `loadEquipmentTypes()`, que sumó D-260 (l.248-254 de `develop` del 19/11), y la inyección de `EquipmentCatalogStore`;
   - **gana `vehicleTypeOptions`:** todos los tipos, activos o no, con `isActive`, porque el diálogo ofrece los inactivos que un equipo ya tiene.
 - **Las rutas pasan a `/equipment/inventory` y `/equipment/types`:**
   - `app.routes.ts` suma `{ path: 'equipment', loadChildren: equipmentRoutes }`;
@@ -612,7 +622,10 @@ El responsable la aprobó como está escrita el 19/11/2026, junto con el destino
   - `app-navigation.ts:175,345` cambia los enlaces sin cambiar grupo, permiso, título ni descripción.
 - **Specs:**
   - las 12 que se mueven con su código: las 10 de hoy y las 2 de las marcas;
-  - `vehiclecatalog.facade.spec.ts`;
+  - `vehiclecatalog.facade.spec.ts` pierde su `describe('equipment catalogs')`:
+    - lo que prueba de los tipos —leerlos solos (D-260), su error con su `clear` y que no deja su error ni sus filas en Tipos de equipamiento— pasa a `equipment.facade.spec.ts`, que lleva así el caso «una lectura ajena no deja su error en la pantalla dueña» que pide la regla 1.3;
+    - lo que prueba de las marcas y los modelos pasa a `equipment-catalog.store.spec.ts`, contra el estado externo del store, que es lo que lee el inventario: hoy esa spec prueba la lectura externa de las marcas, no la de los modelos;
+  - `vehicle-status-history.spec.ts` simula `EquipmentFacade` en lugar de `VehicleCatalogFacade`, con los mismos cuatro miembros, y sus casos de «Pierde un requisito» prueban lo mismo;
   - `app-shell.spec.ts:316`, y en `:385-397` se suma `equipmentRoutes` a las rutas que compone;
   - `fleet.routes.spec.ts:115-118` pasa a `equipment.routes.spec.ts`;
   - `equipment-form-dialog.spec`, `equipment-inventory-view.spec`, `equipment-types-view.spec` y `equipment-types-dialog.spec`, con sus mocks nuevos.
@@ -629,6 +642,7 @@ El responsable la aprobó como está escrita el 19/11/2026, junto con el destino
 - `contextos/equipment.md`, con lo de equipamiento de `fleet.md` y de `vehiclecatalog.md`, y las marcas de equipo. Las reglas conservan su id (`FLT-R…`, `VCT-R…`); VCT-R28 pasa entera a `equipment`.
 - **Una decisión nueva del diccionario**, con el siguiente número libre, que precisa D-254: el inventario y el catálogo de equipos, con sus marcas, forman el contexto `equipment`; la instalación y la configuración de los requisitos (D-260) siguen en `fleet` (§5).
 - El mapa vigente y el diccionario §3, con la fila 9 del bloque 9: el enlace del inventario con la instalación ya está decidido (D-263, D-264) y se construye con el monitoreo, no en esta fase.
+- **El mapa vigente, §8:** `equipment` entre los contextos con fachada en el frontend, con `EquipmentFacade` y su único consumidor, el historial de la unidad de `fleet`.
 - **Los patrones de persistencia:** una subsección `equipment` en «El orden de los candados de cada contexto», con los candados que no cambian: el inventario bloquea `fleet_equipments` `FOR NO KEY UPDATE` (`EquipmentJpaRepository:28,35`), y el catálogo, `equipment_types` y `equipment_models`.
 - **Las convenciones:** la tabla de rutas por contexto (§2), con `/equipment-brands`, y el texto de los modelos de equipamiento («catálogo general de `vehiclecatalog`»).
 - **`procesos-y-pantallas`:** las rutas `/equipment/inventory` y `/equipment/types` (l.304, l.320, l.358 y l.379).
@@ -638,6 +652,7 @@ El responsable la aprobó como está escrita el 19/11/2026, junto con el destino
 **Terminado cuando:**
 - la habilitación de cada unidad da el mismo estado que en el paso 1;
 - `vehiclecatalog` ya no sabe de equipos ni de marcas de equipo;
+- en el frontend, `VehicleCatalogFacade` no tiene miembros de equipos, y `fleet` lee los tipos de equipo solo por `EquipmentFacade`;
 - `ModularityTests` pasa con `fleet` → `equipment`, `procurement` → `equipment` y `equipment` → `vehiclecatalog` y `organization`, sin ciclos;
 - la aplicación arranca, sin dos beans con el mismo nombre, y `EquipmentSuppliersWiringTests` encuentra el adaptador de `procurement`.
 
@@ -1641,6 +1656,12 @@ Desde el 19/11/2026 el calendario termina en la semana 14 y no en la 15. Sale la
 ---
 
 ## 9. Lo que corrigieron las auditorías
+
+### La revisión de cobertura del 19/11/2026
+
+Después de integrar la entrega N de D-260, una revisión comprobó contra `develop` (backend `2324debb`, frontend `a7998d3d`) que cada cambio de dueño que pide el mapa objetivo tiene su fase: las 73 tablas que crean las migraciones tienen dueño en el mapa, y lo que mueven las fases 2 y 4 solo lo usan las piezas que cada fase ya nombra, salvo dos lectores que D-260 sumó después de escrita la fase 2. La fase los suma:
+- **En el frontend, el historial de la unidad** nombra el equipo perdido con cuatro miembros de equipos de `VehicleCatalogFacade`. La fase decía que no habría `EquipmentFacade` porque ningún contexto la usaría; ahora la crea con esos cuatro miembros, sin cambiar el comportamiento, y dice adónde va cada caso de la spec de `VehicleCatalogFacade` (§2.8).
+- **En el backend, el comando de la configuración de los requisitos** lee el tipo por su identificador público. Pasa a `ExternalEquipmentService` con los demás lectores de tipos (§2.2, §2.3), y `VehicleEquipmentRequirementsControllerTests` se corre con la fase (§2.7).
 
 ### La auditoría del 19/11/2026 (versión 3)
 
