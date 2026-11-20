@@ -56,7 +56,7 @@ Son las del diccionario, §11.8, con su número: **SHR-R01 a SHR-R13**. Las prue
 
 **Lo que usa:** de `audit::acl`, `AuditActorLookupPort` y `AuditCompanyLookupPort`, para el nombre de quien cargó y la empresa de cada carga; de `documents::acl`, `KeptFileStore`, sobre el que implementa su propio puerto `ImportBatchFileStore` (`ImportBatchFileStoreAdapter`). Declara `allowedDependencies = {"audit::acl", "documents::acl"}`.
 
-`imports::acl` sale de `procurement` en la fase 3 del plan de migración, cuando la carga inicial pasa al módulo `legacyimport`.
+`imports::acl` sale de `procurement` en el borrado 3b del plan de migración, cuando se borra el código de la carga inicial, después de la puesta en marcha: la carga corre antes, así que no pasa a un módulo `legacyimport` (decisión 4 de la fase 0 del plan).
 
 ## 6. Estado y pendientes para cerrar
 

@@ -1,6 +1,6 @@
 # Plan de migración a los contextos objetivo — ERP Millennium Mobility
 
-**Estado:** aprobado por el responsable el 19/11/2026, junto con el [mapa de contextos objetivo](mapa-de-contextos-objetivo-millennium-mobility.md), para empezar por las fases 0, 1 y 6; las decisiones de cada fase siguiente se resuelven al llegar a ella. Versión 3, del 19/11/2026: incorpora la auditoría del mismo día, que verificó el plan contra el mapa objetivo y contra el código (§9).
+**Estado:** aprobado por el responsable el 19/11/2026, junto con el [mapa de contextos objetivo](mapa-de-contextos-objetivo-millennium-mobility.md), para empezar por las fases 0, 1 y 6. Versión 3, del 19/11/2026: incorpora la auditoría del mismo día, que verificó el plan contra el mapa objetivo y contra el código (§9). El mismo día el responsable resolvió todas las decisiones de la fase 0, y el plan aplica sus consecuencias: la fase 9 sale del plan, porque `location` no se renombra; la fase 3 se reemplaza por el borrado 3b, porque la carga inicial corre antes; y las fases 4 y 5 van con sus opciones A, A1 y A, que no cambian el recurso de la unidad.
 
 **Fuente:** el inventario del código de `develop` (backend `ed5adc12` y frontend `835ed667`) del 18/11/2026, la rama sin integrar `refactor/remove-equipment-type-flags` (backend `d6d23fe8`, frontend `37dbc8dd`), las reglas de arquitectura de las skills `backend-module`, `frontend-feature` y `architecture-review`, y *Domain-Driven Design* de Eric Evans (las referencias «cap. n» son capítulos del libro). Las rutas de archivo y los números de línea citados son los de ese `develop`: antes de ejecutar una fase se comprueban otra vez, porque el código sigue cambiando.
 
@@ -19,7 +19,7 @@ Estas garantías hacen que cada fase sea un cambio de estructura y no de comport
 | **Las rutas de la API** | Las rutas no llevan el contexto (convenciones §2.1). Una ruta puede pasar a otro módulo sin cambiar: `/vehicles/{id}/fund-assignments` a `financing`, `/vehicles/{id}/purchase-cost` a `procurement` y `/employees/{id}/termination` y `/reactivation` a `organization`. El controlador viejo sale en el mismo commit en que entra el nuevo: una ruta mapeada dos veces impide arrancar |
 | **Los códigos de los permisos, de los errores, las claves de los mensajes y los nombres del esquema OpenAPI** | Son contratos por nombre con el catálogo, el frontend, los bundles y las pruebas `*OpenApiTests`. Renombrar permisos es una decisión aparte (mapa objetivo, §7) |
 | **El orden de los candados** | Cada fase conserva las mismas sentencias de bloqueo en el mismo orden, aunque una pase por otra fachada; las fases que cruzan una frontera nueva lo dicen y lo prueban |
-| **El comportamiento** | Cada fase es una refactorización: las mismas pruebas pasan antes y después. Las excepciones son el recurso de la unidad, que cambia solo si se elige la opción B de la fase 4 o la B de la fase 5, y la regla del inventario de equipos de la fase 2 §2.6, que se construye con el monitoreo y no en esta migración |
+| **El comportamiento** | Cada fase es una refactorización: las mismas pruebas pasan antes y después. El recurso de la unidad no cambia, porque las fases 4 y 5 van con sus opciones A (decisiones 5 y 7 de la fase 0). La excepción es la regla del inventario de equipos de la fase 2 §2.6, que se construye con el monitoreo y no en esta migración (D-263, D-264) |
 
 ---
 
@@ -27,16 +27,16 @@ Estas garantías hacen que cada fase sea un cambio de estructura y no de comport
 
 - **Pasos pequeños que dejan el sistema sano** (cap. 13, *Refactoring Toward Deeper Insight*). Una fase se integra completa o no se integra; nunca queda un contexto a medio mover en `develop`.
 - **Una fase, una rama por repositorio:** `refactor/<fase>` en el backend, en el frontend si la fase lo toca, y en la documentación. Cada push a `develop` despliega `dev`: el backend en App Platform (`deploy_on_push`) y el frontend en Cloudflare Pages, por separado y con minutos de diferencia. Por eso:
-  - si el contrato de la API no cambia (todas las fases con sus opciones A), se integra primero el backend y después el frontend: cada uno funciona con la versión anterior del otro;
-  - si cambia (la opción B de la fase 4 o de la 5), se integra en tres pasos: el backend suma el subrecurso nuevo y conserva el campo viejo; el frontend pasa al subrecurso; el backend retira el campo;
+  - ninguna fase cambia el contrato de la API —las fases 4 y 5 van con sus opciones A—, así que se integra primero el backend y después el frontend: cada uno funciona con la versión anterior del otro;
+  - un cambio que sí lo cambiara se integraría en tres pasos, como manda para todo cambio incompatible el §1 de las convenciones de la API (§14.14): el backend acepta las dos formas, el frontend pasa a la nueva y el backend retira la vieja;
   - la rama de la documentación se integra a `master` el mismo día que la del backend.
-- **Lo que está en curso al desplegar.** De las fases, solo la 8 cambia el esquema (§6); fuera de ellas, también el trabajo previo de D-260. No se lanza una carga de archivos mientras se despliega una fase que mueve su código (1, 3 y 4).
-- **Primero se caracteriza.** Las fases que tocan reglas delicadas —la habilitación (2), la carga inicial (3), las cesiones (4), el costo de la unidad (5) y la salida del colaborador (7)— empiezan escribiendo pruebas de caracterización contra el código de hoy, en verde en `develop`, y terminan con esas mismas pruebas sin cambios.
+- **Lo que está en curso al desplegar.** De las fases, solo la 8 cambia el esquema (§6); fuera de ellas, también el trabajo previo de D-260. No se lanza una carga de archivos mientras se despliega una fase que mueve su código (1 y 4).
+- **Primero se caracteriza.** Las fases que tocan reglas delicadas —la habilitación (2), las cesiones (4), el costo de la unidad (5) y la salida del colaborador (7)— empiezan escribiendo pruebas de caracterización contra el código de hoy, en verde en `develop`, y terminan con esas mismas pruebas sin cambios.
 - **Cada fachada nueva trae su prueba de contrato.** En el libro, la relación *Customer/Supplier* se sostiene con pruebas automáticas de aceptación en la frontera, que corre el proveedor (cap. 14). Con un solo equipo eso se traduce en una prueba por fachada o puerto nuevo, en el módulo que lo ofrece, que fija lo que el consumidor espera.
 - **El CI corre en la rama antes de integrar.** Cada push a `develop` despliega `dev` sin esperar al CI, así que la suite completa se corre en la rama (*Run workflow*) y se integra solo en verde. `gh` no está autenticado en la máquina de trabajo: el resultado del CI lo mira el responsable en GitHub, o se autentica `gh` antes de empezar.
 - **El mapa se actualiza en la misma fase** (cap. 14, *Context Map*). Lo que la fase mueve pasa al mapa vigente, a `contextos/` y al diccionario §3 en el mismo cambio. En el mapa objetivo, la parte integrada se queda, con la marca «Integrada en la fase n (fecha)». Si el mapa objetivo ya describe el estado final de la fase, su texto no se reescribe: pasa al mapa vigente y se marca integrado.
-- **Sin trabajo funcional en el área que se mueve mientras dura su fase.** Las fases 4 y 5 tocan los mismos archivos de `fleet` (`FleetContextFacade` y su implementación, `fleet-api.ts` y la ficha de la unidad con su spec; con una opción B, también `vehicles.store.spec.ts` o `e2e/support/mocks/fleet.ts`) y van en ese orden, una después de la otra.
-- **El monitoreo y las fases siguientes.** El monitoreo del GPS es trabajo funcional y va después de la fase 2. La fase 8 va antes de empezarlo o después de terminarlo, nunca durante: los dos cambian `VehicleEquipmentInstallations`, `EquipmentType` y la fachada de `equipment`. Mientras se construye el monitoreo, las fases 3 a 7 no tocan `equipment` ni la instalación.
+- **Sin trabajo funcional en el área que se mueve mientras dura su fase.** Las fases 4 y 5 tocan los mismos archivos de `fleet` (`FleetContextFacade` y su implementación, `fleet-api.ts` y la ficha de la unidad con su spec) y van en ese orden, una después de la otra.
+- **El monitoreo y las fases siguientes.** El monitoreo del GPS es trabajo funcional y va después de la fase 2. La fase 8 va antes de empezarlo o después de terminarlo, nunca durante: los dos cambian `VehicleEquipmentInstallations`, `EquipmentType` y la fachada de `equipment`. Mientras se construye el monitoreo, las fases 4 a 7 no tocan `equipment` ni la instalación.
 - **Las pruebas, a la medida del cambio:**
   - en local, en una base nueva de `erp_mm_owner` y nunca con el `.env` remoto: las pruebas del contexto que se mueve, las de quien lo consume, las de arquitectura (`ModularityTests`, `LayerDependencyTests`, `ForeignAclStaysInTranslationLayerTests`, `NoRoleAnnotationTests`, `PermissionCatalogConsistencyTests`, `DeadlockRetryTests`, `JdbcDataVersionsTests`, `NoDeleteEndpointsTests`, `OwnErrorCodesHaveMessagesTests`) y `ErpMillenniumMobilityBackendApplicationTests`, que arranca el contexto y detecta los beans repetidos;
   - en el frontend, el build, las specs de lo movido y de lo que cambia, y `lint:styles`;
@@ -53,17 +53,17 @@ Estas garantías hacen que cada fase sea un cambio de estructura y no de comport
 | 1 | La bitácora y las cargas salen de `shared` | `audit`, `imports` | 3–4 días | Bajo | 0 |
 | Antes de 2 | D-260, sobre la rama `refactor/remove-equipment-type-flags` corregida: trabajo funcional, no una fase. Dos entregas: la primera con las marcas de equipo, D-260 y V140 si la decisión 10 la conserva; la segunda borra `blocks_availability` y, si la decisión 10 lo retira, `requires_serial` | `fleet`, `vehiclecatalog` | 6–9 días | Medio | 0, con la decisión 10 resuelta |
 | 2 | Equipamiento | `equipment`, `fleet`, `vehiclecatalog`, `procurement` | 10–14 días | Medio | 0 y el trabajo previo de D-260 |
-| 3 | La migración inicial como capa anticorrupción | `legacyimport`, `procurement` | 5–7 días | Medio | 1 |
-| 3b | Borrar `legacyimport` (con la decisión 4, borrar el código de la carga en lugar de la fase 3) | `legacyimport`, `procurement`, `fleet` | 1–2 días | Bajo | La puesta en marcha, cuando la carga inicial ya corrió en producción y se cerró |
-| 4 | Financiamiento | `financing`, `fleet` | 9–12 días | Medio | 1, con `imports::acl` completo, y las decisiones de la fase 4 |
-| 5 | El servicio publicado de compras | `procurement`, `fleet`, `reporting` | 6–9 días | Medio | 0 (crea `procurement::acl` si la fase 3 no lo hizo); después de la 4 |
+| 3b | Borrar el código de la carga inicial, en lugar de la fase 3 (decisión 4) | `procurement`, `fleet` | 1–2 días | Bajo | La puesta en marcha, cuando la carga inicial ya corrió en producción y se cerró |
+| 4 | Financiamiento | `financing`, `fleet` | 9–12 días | Medio | 1, con `imports::acl` completo |
+| 5 | El servicio publicado de compras | `procurement`, `fleet`, `reporting` | 6–9 días | Medio | 0 (crea `procurement::acl`); después de la 4 |
 | 6 | Las cuentas bancarias se quedan en `organization`, con un puerto por consumidor | `organization`, `procurement` | Menos de 1 día | Bajo | 0 |
 | 7 | La salida y el regreso del colaborador, en `organization` | `organization`, `iam` | 6–9 días | **Alto** | 0 |
 | 8 | Los catálogos preguntan en vez de recibir banderas | `vehiclecatalog`, `equipment`, `fleet` | 3–5 días, en dos entregas | Medio | 2; antes o después del monitoreo, nunca durante (§2) |
-| 9 | Renombrar `location` a `reference` (opcional) | `reference` | 6–10 días | Bajo | 1 a 8; si se hace, antes del bloque 12 (decisión 16) |
 | 10 | Preparar el bloque 12 | Diseño, sin código | 2–3 días | — | Respuestas del negocio |
 
-Las fases 0 a 10 son entre 52 y 77 días de trabajo de una persona, sin calibrar. Van aparte el trabajo previo de D-260, de 6 a 9 días, que es trabajo funcional y no una refactorización, y el borrado de `legacyimport` (3b), de 1 a 2 días, que espera a la puesta en marcha: con los dos, entre 59 y 88 días. El orden va de lo barato y seguro a lo delicado, con una excepción deliberada: **equipamiento va segundo**, porque el próximo módulo anunciado al cliente es el monitoreo del GPS, y separarlo antes de construirlo cuesta mucho menos que después (cap. 14).
+No hay fase 3 ni fase 9, y sus números no se reutilizan. La 3, la carga inicial como capa anticorrupción, la reemplaza el borrado 3b, porque la carga inicial corre antes de ella (decisión 4 de la fase 0); la 9, el renombre de `location` a `reference`, salió del plan, porque `location` no se renombra (decisiones 2 y 16).
+
+Las fases 0 a 10 son entre 41 y 60 días de trabajo de una persona, sin calibrar: la suma de sus costos en la tabla, contada la 6 entre 0 y 1 día. Antes de las decisiones del 19/11/2026 eran entre 52 y 77; salen la 3, de 5 a 7 días, y la 9, de 6 a 10. Van aparte el trabajo previo de D-260, de 6 a 9 días, que es trabajo funcional y no una refactorización, y el borrado del código de la carga inicial (3b), de 1 a 2 días, que espera a la puesta en marcha: con los dos, entre 48 y 71 días, antes entre 59 y 88. Tampoco entra lo que el responsable decidió el 19/11/2026 como trabajo funcional para justo después de D-260 —la migración de las tolerancias (D-240) y el camino «Devolución al proveedor» (D-265), el cambio de nombres de las convenciones §14.8 y los errores del marco de §14.11— ni la anulación de una lectura de kilometraje, antes del monitoreo (D-267): no son fases, el plan no les da días, y la lista está en el diccionario, §14, «Decidido y por construir». El orden va de lo barato y seguro a lo delicado, con una excepción deliberada: **equipamiento va segundo**, porque el próximo módulo anunciado al cliente es el monitoreo del GPS, y separarlo antes de construirlo cuesta mucho menos que después (cap. 14).
 
 ---
 
@@ -71,7 +71,7 @@ Las fases 0 a 10 son entre 52 y 77 días de trabajo de una persona, sin calibrar
 
 ### Fase 0 — Preparación
 
-**Hecha el 19/11/2026** (backend y documentación en `refactor/phase-0`): las cuatro copias de las skills quedaron idénticas; la línea base de la suite del backend corrió en local, con las dos cuentas, sobre `develop` con D-261: 4138 pruebas, 0 fallos, 0 errores y 2 omitidas; `CurrencyUsageWiringTests` exige los cuatro implementadores; `procurement` dejó `iam::acl`. Están resueltas las decisiones 1, 3, 9 y 15; las demás se resuelven al llegar a su fase.
+**Hecha el 19/11/2026** (backend y documentación en `refactor/phase-0`): las cuatro copias de las skills quedaron idénticas; la línea base de la suite del backend corrió en local, con las dos cuentas, sobre `develop` con D-261: 4138 pruebas, 0 fallos, 0 errores y 2 omitidas; `CurrencyUsageWiringTests` exige los cuatro implementadores; `procurement` dejó `iam::acl`. Están resueltas todas las decisiones: la 1, la 3, la 9 y la 15 al hacerla, la 10 antes de D-260 y las demás el mismo 19/11/2026, con sus consecuencias aplicadas en cada fase.
 
 - **Sincronizar las cuatro copias de las skills**, que ya divergen: las de `.cursor` son versiones viejas de `backend-module`, `architecture-rules`, `frontend-feature`, `frontend-rules` y `architecture-review`, y `frontend-feature` de `.claude` es más reciente en el frontend que en el backend. La fuente es `.claude` del frontend para `frontend-feature` y `.claude` del backend para las demás; las otras tres copias se sobrescriben con ellas. Son copias locales: `/.claude/skills/` y `/.cursor/skills/` están en el `.gitignore` del backend (`7475cb64`) y del frontend (`8c84a054`). La rama de una fase no las lleva, el CI no las revisa y revertir un commit no las restaura (decisión 15).
 - **Línea base:** la suite completa en verde con las dos cuentas de la base, en el backend y en el frontend.
@@ -79,13 +79,13 @@ Las fases 0 a 10 son entre 52 y 77 días de trabajo de una persona, sin calibrar
 - **Quitar de `procurement` la dependencia `iam::acl`,** que declara y no usa: `git grep -n "erp\.iam\." -- src/main/java/ky/millennium/mobility/erp/procurement` no devuelve nada. Sus pruebas sí usan `iam`, pero Modulith no las analiza. En el mismo cambio se corrigen la fila `procurement` de la tabla de dependencias del mapa vigente (§4), la línea 369 del `README.md` del backend y §2 de `backend-module/SKILL.md`. Está terminado cuando `ModularityTests` pasa.
 - **Aprobar** el mapa objetivo y este plan, y resolver con el responsable:
   1. **Los códigos de los permisos** no cambian en la migración (decisión 2 del mapa objetivo). **Resuelta el 19/11/2026:** no cambian.
-  2. **Renombrar `location`** a `reference`: sí o no (decisión 4).
+  2. **Renombrar `location`** a `reference`: sí o no (decisión 4 del mapa objetivo). **Resuelta el 19/11/2026: no.** `location` conserva su nombre, el mapa objetivo vuelve a llamarlo `location` en todas sus secciones y la fase 9 sale del plan.
   3. **Los requisitos de la habilitación:** resuelta (decisión 5 del mapa objetivo, D-260). Qué equipo es requisito pasa a una configuración de `fleet`; la aplicabilidad y la pantalla de fábrica se quedan con el catálogo de equipos. D-260 se construye como trabajo funcional, en el trabajo previo de D-260 (antes de la fase 2).
-  4. **La carga inicial** (decisión 9 del mapa objetivo): si se ejecuta antes de la fase 3, la fase 3 se reemplaza por borrar su código después de la puesta en marcha (3b en §3).
-  5. **Fase 4, opción A o B:** quién calcula `registerFundAssignment`. A, recomendada: `fleet` lo pregunta a `financing` por su puerto y el recurso de la unidad no cambia. B: sale del recurso de la unidad y lo responde un subrecurso de `financing`.
-  6. **Fase 4, opción A1 o A2:** quién dibuja la pestaña de cesiones de la ficha de la unidad. A1, recomendada: `fleet`, alimentada por `FinancingFacade`. A2: una pieza prestada de `financing`, con su excepción en la regla 1.2 del frontend.
-  7. **Fase 5, opción A o B:** quién es dueño de la brecha de días. A, recomendada: sigue en `fleet` y el recurso de la unidad no cambia. B: pasa a `procurement`, nunca a `reporting`, y cambia el recurso de la unidad.
-  8. **El destino de un dispositivo al retirarlo de una unidad**, para cuando el monitoreo una el inventario a la instalación (fase 2 §2.6): la propuesta es `falla` a mantenimiento, `robo` a baja y `reemplazo` a disponible. Se decide junto con la 11.
+  4. **La carga inicial** (decisión 9 del mapa objetivo): si se ejecuta antes de la fase 3, la fase 3 se reemplaza por borrar su código después de la puesta en marcha. **Resuelta el 19/11/2026: corre antes de la fase 3**, así que la fase 3 se reemplaza por el borrado 3b (§3 y §4), y la fase 5 crea `procurement::acl`.
+  5. **Fase 4, opción A o B:** quién calcula `registerFundAssignment`. **Resuelta el 19/11/2026 con la A:** `fleet` lo pregunta a `financing` por su puerto, y el recurso de la unidad no cambia.
+  6. **Fase 4, opción A1 o A2:** quién dibuja la pestaña de cesiones de la ficha de la unidad. **Resuelta el 19/11/2026 con la A1:** `fleet`, alimentada por `FinancingFacade`, sin excepción nueva en la regla 1.2 del frontend.
+  7. **Fase 5, opción A o B:** quién es dueño de la brecha de días. **Resuelta el 19/11/2026 con la A:** sigue en `fleet`, y el recurso de la unidad no cambia.
+  8. **El destino de un dispositivo al retirarlo de una unidad**, para cuando el monitoreo una el inventario a la instalación (fase 2 §2.6). **Resuelta el 19/11/2026 con la propuesta:** `falla` lleva el dispositivo a mantenimiento (`MAINTENANCE`), `robo` a baja (`DISCARDED`) y `reemplazo` a disponible (`AVAILABLE`) (D-263). El mismo día se aprobó como está escrita la regla de §2.6, que se construye con el monitoreo.
   9. **Las referencias a cuentas fuera de `iam`** (decisión 6 del mapa vigente): la opción B, que este plan da por hecha. **Resuelta el 19/11/2026 con la opción B**, cerrada en el mapa vigente §11. `fleet` conserva `iam::acl`, `financing` lo suma en la fase 4 y `procurement` lo pierde en esta fase, porque no lo usa. Se cierra en el mapa vigente §11. Si se elige la A, la fase 4 no da `iam::acl` a `financing`, y quitarlo de `fleet` es un cambio aparte.
   10. **Dónde se guarda un equipo del inventario y si todo equipo instalado exige su serial** (diccionario §14, abiertas). Las dos deciden la rama `refactor/remove-equipment-type-flags` y se resuelven antes del trabajo previo de D-260. **Resuelta el 19/11/2026:** el inventario sigue en cualquier ubicación, así que V140 sale de la rama con su código; y el serial lo exige solo el tipo que lo pide, así que `requires_serial` se conserva.
       - **V140** lleva `fleet_equipments.location_id` de las ubicaciones a las sedes. Si se conserva, se corrige:
@@ -95,12 +95,12 @@ Las fases 0 a 10 son entre 52 y 77 días de trabajo de una persona, sin calibrar
 
         Sin respuesta, V140 sale de la rama y el inventario sigue en `locations`.
       - **`requires_serial`:** la rama lo retira de `equipment_types` (V138) y del código de los dos repositorios (`b9008e41` y `69f5e3d8`), y exige siempre el serial, salvo en la carga inicial. Sin respuesta, la rama lo conserva: se revierte de esos dos commits lo que lo retira.
-  11. **Un dispositivo instalado en una unidad que se anula o pasa a Inactivo** (fase 2 §2.6): hoy `VehicleAnnulments` y `VehicleTransfers` no miran las instalaciones. Se decide junto con la 8, antes de construir el monitoreo.
-  12. **`deactivation-question.ts`,** que hoy vive en `vehiclecatalog/presentation/components` y después de la fase 2 lo usan los dos catálogos: una copia en `equipment`, con `equipment-type`, `equipment-model` y `equipment-brand`, o su paso a `shared` (fase 2 §2.8).
-  13. **La serialización de la fase 8:** la fila del catálogo `FOR UPDATE` antes de preguntar, que es la propuesta, o lecturas `ForShare` en los cuatro caminos que escriben (`VehicleCommandServiceImpl`, `PurchasedUnitRegistrations`, `MigratedUnitRegistrations` y `VehicleEquipmentInstallations`). Se elige una antes de la fase 8.
-  14. **Las acciones de cuenta de cada fila de Colaboradores** (fase 7): se quedan en `organization`, calculadas por `EmployeeAllowedActions` con `ProtectedAccounts` y `PendingAccountActivations` de `shared`, o pasan a `iam` en una fase propia, que se suma a §3. Moverlas cambia el contrato de `allowedActions` de la lista de colaboradores.
+  11. **Un dispositivo instalado en una unidad que se anula o pasa a Inactivo** (fase 2 §2.6): hoy `VehicleAnnulments` y `VehicleTransfers` no miran las instalaciones. **Resuelta el 19/11/2026:** una unidad con dispositivos instalados no se anula ni pasa a Inactivo; se rechaza nombrando los dispositivos, y cada uno se retira antes, con el destino de la decisión 8. Al traspasar la unidad al cliente, el GPS se retira antes de cerrar el traspaso y vuelve al inventario. Se construye con el monitoreo (D-264).
+  12. **`deactivation-question.ts`,** que hoy vive en `vehiclecatalog/presentation/components` y después de la fase 2 lo usan los dos catálogos. **Resuelta el 19/11/2026:** una copia en `equipment/presentation/components/`, con `equipment-type`, `equipment-model` y `equipment-brand`; no pasa a `shared`, que nunca conoce las entidades de los contextos (fase 2 §2.8).
+  13. **La serialización de la fase 8.** **Resuelta el 19/11/2026 con la propuesta:** la corrección toma la fila del catálogo `FOR UPDATE` antes de preguntar, y el puerto lee con el alcance de sistema, por lote (fase 8 §8.3 y §8.4). Las lecturas `ForShare` en los cuatro caminos que escriben quedaron descartadas.
+  14. **Las acciones de cuenta de cada fila de Colaboradores** (fase 7). **Resuelta el 19/11/2026:** se quedan en `organization`, calculadas por `EmployeeAllowedActions` con `ProtectedAccounts` y `PendingAccountActivations` de `shared`. No hay fase nueva ni cambio del contrato de `allowedActions`.
   15. **Las skills:** versionarlas en git o seguir con copias locales. **Resuelta el 19/11/2026: nunca se versionan ni se suben**; solo se alinean en local, en las cuatro copias. Si se versionan, esta fase retira `/.claude/skills/` y `/.cursor/skills/` de los dos `.gitignore` y sube las cuatro copias sincronizadas, y desde ahí viajan con la rama de cada fase. Si siguen locales, cada fase las actualiza a mano en las cuatro copias el día que integra, y la vuelta atrás las restaura a mano (§6).
-  16. **Cuándo se responde la 2:** antes de empezar el bloque 12. Si es sí, la fase 9 va antes del primer contexto nuevo, para que `customers`, `leasing` y `collections` nazcan con `reference::acl` y no sumen su `location::acl`. Si es no, el mapa objetivo vuelve a llamarlo `location` en todas sus secciones.
+  16. **Cuándo se responde la 2:** antes de empezar el bloque 12. **Resuelta el 19/11/2026, con la 2:** no hay renombre, así que el mapa objetivo vuelve a llamarlo `location` en todas sus secciones y los contextos del bloque 12 nacen con `location::acl`.
 
 ### Fase 1 — `audit` e `imports` salen de `shared`
 
@@ -154,7 +154,7 @@ Las fases 0 a 10 son entre 52 y 77 días de trabajo de una persona, sin calibrar
 - `ImportBatchesController` se mueve con sus cuatro rutas (`GET /api/v1/imports`, `/{id}`, `/{id}/error-report` y `/{id}/file`), su permiso (`PermissionCodes.Enablement.VIEW_IMPORTS`, `habilitacion.ver_cargas`) y su `@Tag`.
 - **Consumidores:**
   - `fleet` (5): `FleetImportCommandService`, `FleetImportCommandServiceImpl`, `VehicleFundAssignmentViewFactory`, `VehicleTaxDeclarationQueryServiceImpl` y `FleetImportsController`;
-  - `procurement` (5, todos de la carga inicial, que sale en la fase 3): `InitialMigrationImportCommandService`, `InitialMigrationImportCommandServiceImpl`, `InitialMigrationRun`, `StockRowMapper` e `InitialMigrationImportsController`.
+  - `procurement` (5, todos de la carga inicial, que se borra en el borrado 3b): `InitialMigrationImportCommandService`, `InitialMigrationImportCommandServiceImpl`, `InitialMigrationRun`, `StockRowMapper` e `InitialMigrationImportsController`.
 
 **`allowedDependencies` después de la fase:**
 
@@ -163,7 +163,7 @@ Las fases 0 a 10 son entre 52 y 77 días de trabajo de una persona, sin calibrar
 | `audit` | Nuevo: `{}` |
 | `imports` | Nuevo: `{"audit::acl", "documents::acl"}` |
 | `fleet` | `audit::acl`, `imports::acl` |
-| `procurement` | `audit::acl`, `imports::acl` (`imports::acl` sale en la fase 3) |
+| `procurement` | `audit::acl`, `imports::acl` (`imports::acl` sale en el borrado 3b) |
 | `location` | `audit::acl` |
 | `iam`, `organization` | `audit::acl` (implementan sus puertos) |
 | `documents` | Queda en `{}` |
@@ -536,6 +536,8 @@ Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migr
 
 #### 2.6 Regla para cuando el monitoreo una el inventario a la instalación (se escribe ahora y se construye con el monitoreo)
 
+El responsable la aprobó como está escrita el 19/11/2026, junto con el destino al retirar y lo que pasa con una unidad que se anula o sale de la flota (decisiones 8 y 11 de la fase 0; D-263, D-264).
+
 - **Fuente de verdad.**
   - Qué dispositivo está en qué unidad, y desde cuándo, lo dice la instalación de `fleet`: el período abierto de `vehicle_equipments`, que suma `equipment_id` como FK a `fleet_equipments`. Queda nulo para lo migrado y lo de fábrica.
   - `fleet_equipments.status = INSTALLED` y `current_vehicle_id` son el estado actual del dispositivo, escrito en la misma transacción que la instalación. Es una excepción a la regla 4.1, como el estado actual de la unidad, y se registra como decisión.
@@ -546,11 +548,13 @@ Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migr
   - Está `INSTALLED` si y solo si tiene una instalación abierta.
   - Es de la empresa de la unidad y del tipo de la instalación: FK `(equipment_id, company_id, equipment_type_id)` a `fleet_equipments (id, company_id, equipment_type_id)`, con su `UNIQUE`. `current_vehicle_id` pasa a ser FK compuesta `(current_vehicle_id, company_id)` a `vehicles (id, company_id)`.
   - El serial de la instalación es el del dispositivo. Ya no se edita mientras el dispositivo no está `AVAILABLE` (`updateIdentifiers`).
+  - El serial, el IMEI y el ICCID siguen únicos en todo el sistema, como hoy, y no por empresa (D-263).
 - **El inventario no saca un dispositivo de `INSTALLED`.**
   - Se retira `INSTALLED → MAINTENANCE` de `Equipment.canTransitionTo` y de `moveToMaintenance`, y de las convenciones (§ de `PATCH /equipments/{id}/status`). Es un cambio del contrato de `PATCH /equipments/{id}/status`, que hoy nadie puede ejercer.
   - El inventario responde `422 EQUIPMENT_INSTALLED`. No se da de baja, no se manda a mantenimiento y no se corrige un dispositivo instalado.
 - **Las reglas del retiro siguen en `fleet`** (D-260). Un dispositivo solo sale de una unidad por el retiro o el reemplazo de `fleet`, que antes aplica `RequirementHolds`: en Contrato firmado y en Activo un equipo de seguridad no se retira sin reemplazo, en Robado no se retira nada, y en Disponible el retiro lleva la unidad a En habilitación en la misma transacción. Así el inventario no puede invalidar en silencio lo que la puerta cuenta.
-- **El destino al retirar** lo decide el responsable (decisión 8). Propuesta: `falla` → `MAINTENANCE`, `robo` → `DISCARDED`, `reemplazo` → `AVAILABLE`. Junto con ella se decide qué pasa con un dispositivo instalado cuando la unidad se anula o pasa a Inactivo (decisión 11): hoy `VehicleAnnulments` y `VehicleTransfers` no miran las instalaciones.
+- **El destino al retirar lo da el motivo** (decisión 8, D-263): `falla` → `MAINTENANCE`, `robo` → `DISCARDED`, `reemplazo` → `AVAILABLE`. `fleet` lo pasa como `destino` a `releaseDevice`.
+- **Una unidad con dispositivos instalados no se anula ni pasa a Inactivo** (decisión 11, D-264): se rechaza nombrando los dispositivos, y cada uno se retira antes, con el destino de su motivo. Así ningún dispositivo queda `INSTALLED` en una unidad anulada o fuera de la flota. **Al traspasar la unidad al cliente, el GPS se retira antes de cerrar el traspaso** (En traspaso → Inactivo) y vuelve al inventario, disponible para otra unidad; el cliente pasa por el taller. Hoy `VehicleAnnulments` y `VehicleTransfers` no miran las instalaciones.
 
 #### 2.7 Pruebas del backend
 
@@ -593,7 +597,7 @@ Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migr
 - **Archivos nuevos:**
   - `equipment/infrastructure/api/equipment-api.ts` (`EquipmentApi`), con lo que sale de `fleet-api.ts:366-381` y de `vehiclecatalog-api.ts:174+`, con los métodos de marcas;
   - `equipment/presentation/equipment.routes.ts` y su spec, con `inventory` (`stock.ver`) y `types` (`catalogos.ver`), con las mismas constantes de acceso y los mismos `title`;
-  - `deactivation-question.ts`, con `equipment-type`, `equipment-model` y `equipment-brand`: una copia en `equipment/presentation/components/` o su paso a `shared`, según la decisión 12.
+  - `equipment/presentation/components/deactivation-question.ts`, una copia de la de `vehiclecatalog` con `equipment-type`, `equipment-model` y `equipment-brand` (decisión 12): no pasa a `shared`, que nunca conoce las entidades de los contextos. La de `vehiclecatalog` pierde esas tres.
 - **Sin `EquipmentFacade`:** ningún contexto la usaría. La pantalla de requisitos de D-260 lee los tipos de su propia respuesta (`/vehicle-equipment-requirements`), no de una fachada.
   - El inventario lee los tipos, las marcas y los modelos de `EquipmentCatalogStore`, con su estado externo, en vez de `VehicleCatalogFacade` (`equipment-inventory-view.ts:26,56` y `equipment-form-dialog.ts:66`).
   - Si V140 se conserva, el inventario sigue leyendo las sedes con `OrganizationFacade.loadCompanyBranches`.
@@ -623,7 +627,7 @@ Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migr
 
 - `contextos/equipment.md`, con lo de equipamiento de `fleet.md` y de `vehiclecatalog.md`, y las marcas de equipo. Las reglas conservan su id (`FLT-R…`, `VCT-R…`); VCT-R28 pasa entera a `equipment`.
 - **Una decisión nueva del diccionario**, con el siguiente número libre, que precisa D-254: el inventario y el catálogo de equipos, con sus marcas, forman el contexto `equipment`; la instalación y la configuración de los requisitos (D-260) siguen en `fleet` (§5).
-- El mapa vigente y el diccionario §3, con la fila 9 del bloque 9: D-254 sigue abierta.
+- El mapa vigente y el diccionario §3, con la fila 9 del bloque 9: el enlace del inventario con la instalación ya está decidido (D-263, D-264) y se construye con el monitoreo, no en esta fase.
 - **Los patrones de persistencia:** una subsección `equipment` en «El orden de los candados de cada contexto», con los candados que no cambian: el inventario bloquea `fleet_equipments` `FOR NO KEY UPDATE` (`EquipmentJpaRepository:28,35`), y el catálogo, `equipment_types` y `equipment_models`.
 - **Las convenciones:** la tabla de rutas por contexto (§2), con `/equipment-brands`, y el texto de los modelos de equipamiento («catálogo general de `vehiclecatalog`»).
 - **`procesos-y-pantallas`:** las rutas `/equipment/inventory` y `/equipment/types` (l.304, l.320, l.358 y l.379).
@@ -636,198 +640,47 @@ Fuera de esta tabla, cuando este plan nombra V138, V139 o V140 habla de las migr
 - `ModularityTests` pasa con `fleet` → `equipment`, `procurement` → `equipment` y `equipment` → `vehiclecatalog` y `organization`, sin ciclos;
 - la aplicación arranca, sin dos beans con el mismo nombre, y `EquipmentSuppliersWiringTests` encuentra el adaptador de `procurement`.
 
-### Fase 3 — `legacyimport`
+### Fase 3b — Borrar el código de la carga inicial, después de la puesta en marcha
 
-**Por qué.** El libro de stock de 52 columnas es un modelo heredado. El libro pide traducirlo en una *Anticorruption Layer* (cap. 14) —fachadas, adaptadores y traductores— para que no contamine el modelo nuevo. Hoy esa traducción vive dentro de `procurement` y de `fleet`, y a medias: los writers de compras hablan de filas y de columnas del libro.
+**Reemplaza a la fase 3** (decisión 4 de la fase 0, resuelta el 19/11/2026). La fase 3 llevaba la carga inicial a una capa anticorrupción, `legacyimport`, para que el libro de stock de 52 columnas no contaminara `procurement` ni `fleet` (cap. 14). Como la carga inicial corre antes, esa capa no se construye: el libro se lee una sola vez, con el código de hoy, que vive en `procurement` y en `fleet`, y después de la puesta en marcha se borra. Las reglas de cada dueño sobre lo migrado —la factura sin los 20 días (D-177), la nota de campaña sin mes (D-191, D-192, D-207), el pago de dealer con su inicial (D-197, D-199, D-248) y la unidad registrada en su estado (D-202)— se borran con la carga, porque nadie más las usa. `procurement::acl` lo crea la fase 5, con su único miembro.
 
-Después de esta fase, `legacyimport` es el único que conoce las columnas, las filas y el informe. Las reglas de cada dueño se quedan en su contexto y se exponen por su fachada:
-- la factura migrada sin los 20 días (D-177);
-- la nota de campaña sin mes (D-191, D-192, D-207);
-- el pago de dealer con su inicial (D-197, D-199, D-248);
-- la unidad registrada en su estado (D-202).
+**Cuándo.** En una entrega propia, de 1 a 2 días y riesgo bajo, cuando la carga inicial ya corrió en producción y se cerró.
 
-**Una decisión** (decisión 4 de la fase 0): si la carga inicial se ejecuta antes de esta fase, la fase se reemplaza por borrar el código después de la puesta en marcha, y la fase 5 crea `procurement::acl`.
+**Backend.**
+- **De `procurement`, la carga y su traducción del libro:**
+  - en `interfaces/rest`: `InitialMigrationImportsController`, con sus rutas (`POST /api/v1/initial-migration-imports` y `/preview`), `ImportInitialMigrationResource` e `InitialMigrationPreviewResource`;
+  - en `application`: `InitialMigrationImportCommandService` y su implementación, `InitialMigrationRun`, `InitialMigrationCatalogs`, `StockRowMapper`, `MigrationTransactions`, `InitialMigrationEffects` e `InitialMigrationPreview`;
+  - en el dominio: `ImportInitialMigrationCommand`, `StockRow` y `StockRowGroups`;
+  - los writers de lo migrado —`MigratedInvoiceWriter`, `MigratedCreditNoteWriter` y `MigratedPaymentWriter`— y `MigrationScope`;
+  - en `application/internal/outboundservices/acl`: `MigrationUnitMatch`, `MigrationRefusals`, `MigrationUnit` y `MigrationUnitLine`, y de `ExternalFleetService`, `matchMigrated`, `resolveMigrationLocation` y `registerMigrated`. `ImportableModel` se queda, porque lo usa la importación de las líneas de una factura;
+  - `"imports::acl"` de su `package-info.java`: solo lo usa la carga (fase 1).
+- **De `fleet`:** `matchMigratedUnits`, `resolveMigrationLocation` y `registerMigratedUnits` de su fachada, con `MigratedUnitRegistrations`, sus records de `fleet::acl` (los `Migrated*` y `RegisterMigratedUnitsRequest`) y `MigrationTargetPolicy`.
+- **Los códigos:** los `INITIALMIGRATION_*` que ya nadie levanta, con sus claves en los `messages*.properties`.
+- **La configuración:** la propiedad `imports.max-rows.migracion-inicial`, con `IMPORTS_MAX_ROWS_INITIAL_MIGRATION` en el `README.md` y en `.env.example`.
+- **Las pruebas de la carga:** `InitialMigrationIntegrationTests` con `StockWorkbook`, `InitialMigrationCatalogsTests`, `StockRowMapperTests`, `StockRowGroupsTests` y `MigrationTargetPolicyTests`.
 
-**Quién llama a quién.**
-- `legacyimport` lee el libro, lo agrupa, resuelve los nombres y orquesta las transacciones.
-- De `fleet::acl` usa solo `matchMigratedUnits` y `resolveMigrationLocation`.
-- `registerMigratedUnits` lo sigue llamando el registro de la factura en `procurement`, dentro de su transacción. Así no cambian:
-  - el orden de los candados: empresa, proveedor y moneda en modo compartido; después la marca y las unidades en `fleet`; después la factura (§2.4 de la especificación, patrones de persistencia);
-  - qué rechazo gana en el informe cuando una factura tiene más de uno.
+**Frontend.**
+- el diálogo de la carga, 7 archivos de `procurement`: `application/initial-migration.store.ts` y su spec, `domain/model/initial-migration.ts`, `infrastructure/api/initial-migration-api-endpoint.ts` y `presentation/components/initial-migration-import-dialog/`, con su `.ts`, su `.html` y su `.scss`;
+- `ProcurementFacade.openInitialMigrationImport` y la opción de la pantalla Cargas que lo abre (`imports-view.ts`);
+- la pantalla `initial-migration-preview` de `e2e/screens.ts`, con sus tres imágenes;
+- los mocks de `/initial-migration-imports` en `e2e/support/mocks/imports.ts`, los dos casos de `e2e/imports.spec.ts` que abren «Migración inicial» y el caso del libro de stock de `e2e-live/imports.live.spec.ts`;
+- las claves `procurement.initial-migration` de `es.json`.
 
-**Backend — `legacyimport`.**
-- **`package-info.java`** con `@ApplicationModule(displayName = "LegacyImport", allowedDependencies = {"fleet::acl", "procurement::acl", "organization::acl", "location::acl", "vehiclecatalog::acl", "imports::acl"})` y `@NullMarked`.
-  - Sin `documents::acl`: no exporta ni guarda archivos; los guarda `imports`.
-  - Sin `interfaces/acl`: nadie depende de él.
-- **Desde `procurement` se mueven:**
-  - en `interfaces/rest`: `InitialMigrationImportsController`, con sus rutas (`POST /api/v1/initial-migration-imports` y `/preview`), su permiso (`PermissionCodes.Stock.LOAD_INITIAL_MIGRATION`, `stock.cargar_migracion_inicial`) y su `@Tag("Imports")`; `ImportInitialMigrationResource` e `InitialMigrationPreviewResource`;
-  - en `application/commandservices`: `InitialMigrationImportCommandService`;
-  - en `application/internal/commandservices`:
-    - `InitialMigrationImportCommandServiceImpl`, con el mismo nombre y el mismo paquete relativo, para que lo siga envolviendo `DeadlockRetry`;
-    - `InitialMigrationRun`, `InitialMigrationCatalogs` y `StockRowMapper`;
-    - `MigrationTransactions`: `REQUIRES_NEW` y el reintento de cada paso (PRC-R152);
-  - en `application/queryservices`: `InitialMigrationEffects` e `InitialMigrationPreview`;
-  - en el dominio: `ImportInitialMigrationCommand` (`domain/model/commands`), `StockRow` (`domain/model/valueobjects`) y `StockRowGroups` (`domain/services`);
-  - en `application/internal/outboundservices/acl`: `MigrationUnitMatch`, y una copia de `ImportableModel`. El original se queda, porque lo usa la importación de las líneas de una factura (`PurchaseInvoiceLineImportQueryServiceImpl`).
-- **Clases nuevas de `legacyimport`:**
-  - su alcance de la carga: la empresa, su nombre, la marca con su código y la sede;
-  - `LegacyImportErrors.companyInactive()`, con el mismo código `COMPANY_INACTIVE`;
-  - un calendario sobre el `Clock` UTC, con el «hoy» en la zona de la empresa;
-  - `LegacyTextFolding.fold` en `application/internal/policies`, copia pura de `InvoiceLineImportPolicy.fold`, que pliega los dos lados del cruce de nombres;
-  - `ExternalProcurementService`, `ExternalFleetService`, `ExternalOrganizationService`, `ExternalLocationService` y `ExternalVehicleCatalogService` en `application/internal/outboundservices/acl`, con records propios y nombre de bean explícito (`@Service("legacyimportExternal…Service")`). Los de `iam` y `organization` no llevan nombre explícito: un homónimo sin nombre chocaría con `externalOrganizationService` y `externalLocationService`;
-  - en el mismo paquete, los tipos de la traducción: `LegacySupplier`, `LegacyRefusals`, `LegacyNumbers` y un record propio por cada respuesta de `procurement::acl`.
-- **Lo que esas clases toman hoy del interior de `procurement`, y cómo queda:**
-
-| Hoy | Después |
-|---|---|
-| `StockRow` lleva `InvoiceNumber` y `OperationNumber` | Lleva `String` ya normalizados |
-| `InvoiceNumber.normalize` en `StockRowMapper` | `normalizeVoucherNumber` de `procurement::acl`, por `ExternalProcurementService`, que `StockRowMapper` recibe como `LegacyNumbers` |
-| `OperationNumber.normalize` en `StockRowMapper` | `normalizeOperationNumber` de `procurement::acl`, por el mismo camino: vacío si no queda un número de 1 a 100 caracteres, y entonces `IMPORTBATCH_CELL_INVALID` en `OPERACIÓN DE PAGO`, como hoy |
-| `InvoiceLineImportPolicy.fold` | `LegacyTextFolding.fold` |
-| `PurchaseInvoice.MAX_LINES` en `StockRowGroups` | `maxInvoiceLines()` de la fachada, pasado a `StockRowGroups.refusals` |
-| `SupplierRepository.findAllByCompanyId` y `Supplier` en `InitialMigrationCatalogs` | `fetchMigrationSuppliers(companyId)`, que `ExternalProcurementService` traduce a `LegacySupplier(id, publicId, legalName, tradeName, isActive)` |
-| `PurchaseInvoiceRepository.findCurrentByNumber` y `PurchaseInvoiceItem` en el orquestador | `fetchCurrentInvoiceByNumber(companyId, supplierId, number)`, traducido a un record de `legacyimport` |
-| `MigrationRefusals` en `InitialMigrationRun.failFrom` | `LegacyRefusals(List<Refusal(int row, String code, String column)>)`, que `ExternalProcurementService` arma desde `MigratedRecordRefusals`, como hoy `ExternalFleetService.translatedRefusals` en `procurement` |
-| `ProcurementErrors.companyInactive()` | `LegacyImportErrors.companyInactive()` |
-| `ProcurementCalendar` | El calendario de `legacyimport` |
-| `ExternalOrganizationService`, `ExternalLocationService`, `ExternalVehicleCatalogService` y `ExternalFleetService` de `procurement`, con `InvoiceCompany`, `InvoiceCountry`, `BrandReference`, `OrderCurrency` y `LineColor` | Los de `legacyimport` |
-| `ImportBatch*` de `shared.importbatches` | `imports::acl` (fase 1) |
-
-- **La traducción.**
-  - El orquestador, `InitialMigrationRun` e `InitialMigrationCatalogs` viven en `application/internal/commandservices` y nombran solo tipos de `legacyimport`. Un tipo de `procurement::acl` o de `fleet::acl` fuera de `outboundservices/acl` rompe `ForeignAclStaysInTranslationLayerTests`.
-  - `ExternalProcurementService` arma las peticiones de `procurement::acl` y traduce cada respuesta a un record propio, como hoy `ExternalFleetService.registerMigrated` de `procurement` arma `RegisterMigratedUnitsRequest`.
-  - `StockRowMapper` sigue estático y recibe la normalización como parámetro: `read(row, companyName, today, LegacyNumbers numbers)`. `LegacyNumbers` da `voucher(String)` y `operation(String)`, que responden `Optional<String>`. La implementa `ExternalProcurementService`, y el orquestador se la pasa. Un vacío es `IMPORTBATCH_CELL_INVALID` en su columna, como hoy.
-  - Cada línea de una petición lleva como `line` el número de su fila. `procurement` lo devuelve en el rechazo sin saber qué es.
-  - `ExternalProcurementService` traduce cada `MigratedRecordField` a su columna del libro con un `switch` exhaustivo. Para los campos de la unidad usa el mapa de hoy, `StockRowMapper.COLUMNS`, que pasa a ese `switch`.
-  - `InitialMigrationRun.failFrom` lee `LegacyRefusals`. Un error sin rechazos llega tal cual y cae en la primera fila del paso, como hoy.
-- **`procurement::acl`, la primera fachada de `procurement`:** `procurement/interfaces/acl/package-info.java` con `@NamedInterface("acl")`, `ProcurementContextFacade`, y su implementación `procurement/application/acl/ProcurementContextFacadeImpl`. Devuelve tipos simples o records del propio paquete `acl`, nunca un tipo del dominio de compras ni de `fleet::acl`.
-  - **Lectura:**
-    - `fetchMigrationSuppliers(Long companyId)` → `List<MigrationSupplier(id, publicId, legalName, tradeName, isActive)>`;
-    - `fetchCurrentInvoiceByNumber(Long companyId, Long supplierId, String number)` → `Optional<MigratedInvoiceReference(invoiceId, Set<Long> currentVehicleIds)>`;
-    - `maxInvoiceLines()`;
-    - `normalizeVoucherNumber(String raw)` → `Optional<String>`;
-    - `normalizeOperationNumber(String raw)` → `Optional<String>`: vacío si no queda un número de 1 a 100 caracteres, lo que exige `OperationNumber`.
-    - Las dos primeras leen tablas de empresa: exigen la transacción de quien llama (`MANDATORY`) y corren en el paso `REQUIRES_NEW` que las pide. Las otras tres no son transaccionales: las filas se leen fuera de toda transacción, en el bucle de `run()` del orquestador.
-  - **Escritura,** con `@Transactional(propagation = MANDATORY)`, como `registerMigratedUnits` de `fleet`:
-    - `registerMigratedInvoice(RegisterMigratedInvoiceRequest)` → `Result<MigratedInvoice, ApplicationError>`, con el `invoiceId`, los vehículos por VIN y el estado en que entró cada unidad;
-    - `registerMigratedCreditNote(RegisterMigratedCreditNoteRequest)` → `Result<Boolean, ApplicationError>`;
-    - `registerMigratedPayment(RegisterMigratedPaymentRequest)` → `Result<Boolean, ApplicationError>`.
-  - **La petición de la factura** lleva la empresa, la marca, la sede, el proveedor, la moneda, el número, la fecha y la tasa. Por cada línea lleva el precio y los datos de la unidad que hoy viajan a `fleet`: VIN, motor, modelo, año, color, número del libro, propietario, la habilitación, el SOAT y la llave con su etiqueta, que calcula `legacyimport` con el código de la marca.
-  - **Los tipos de las peticiones:**
-    - la empresa, la marca y la sede, por su `Long id`, ya resueltas y revisadas por `legacyimport`; la sede puede faltar;
-    - el proveedor, por su `UUID publicId`, como hoy los `Draft` de los writers;
-    - la moneda, por su código ISO;
-    - el número de la factura o de la nota y la operación del pago, como `String` ya normalizados;
-    - la fecha, como `LocalDate`; la tasa, como `BigDecimal`, que puede faltar;
-    - el modelo y el color de cada unidad, por su `Long id`;
-    - cada línea, con su `int line`.
-  - **Los rechazos** vuelven como `Result.failure(ApplicationError)` con `MigratedRecordRefusals(List<Refusal(int line, String code, MigratedRecordField field)>)` en `context()`, como hoy viaja `MigrationRefusals`. Un `ApplicationError` sin ese contexto rechaza el paso entero.
-    - `MigratedRecordField` es un enum de `procurement` con los campos de compras (`INVOICE_NUMBER`, `INVOICE_DATE`, `PRICE`, `RATE`, `NOTE_NUMBER`, `NOTE_DATE`, `NOTE_VALUE`, `OPERATION`, `PAYMENT_DATE` y `PAYMENT_AMOUNT`) y los de la unidad que rechaza `fleet` (`VIN`, `LEGACY_NUMBER`, `MODEL`, `COLOR`, `TITLE`, `TITLE_DATE`, `PLATE`, `PLATES`, `ARRIVAL`, `GPS`, `SCREEN`, `SOAT`, `KEY`, `DELIVERY` y `READY`).
-    - El rechazo de `fleet` llega al registro de la factura por `registerMigratedUnits`. `ExternalFleetService` de `procurement` traduce cada `MigratedUnitField` al valor de igual nombre con un `switch` exhaustivo, así que `ProcurementContextFacade` no devuelve ningún tipo de `fleet::acl`.
-  - **La prueba de contrato** de `ProcurementContextFacade` fija los tipos de las peticiones; que las escrituras y las dos primeras lecturas exigen transacción; que un rechazo vuelve con su línea y su campo, también uno de `fleet`; y lo que responden las dos normalizaciones.
-- **En `procurement` se quedan las reglas de compras de lo migrado, sin el libro:**
-  - `MigratedInvoiceWriter`, `MigratedCreditNoteWriter` y `MigratedPaymentWriter` dejan de nombrar `StockRow` y `StockRowMapper`: reciben los records de la fachada y rechazan por `MigratedRecordField`.
-  - `MigrationScope` se queda, sin el nombre de la empresa ni el código de la marca, que usa solo `legacyimport`.
-    - Se arma dentro del miembro de la fachada con una lectura sin candado de la empresa (`fetchPurchasingCompaniesByIds`, la de las vistas) y de su país (`fetchInvoiceCountry`).
-    - Cada writer conserva sus lecturas `FOR SHARE` en el orden de hoy. El pago sigue tomando primero el candado consultivo de su `requestId`, antes de leer nada (patrones de persistencia, «La carga inicial»); la factura y la nota empiezan por la empresa. Una lectura `FOR SHARE` de la empresa para armar el alcance pondría su candado antes del `requestId`.
-  - Se quedan `MigrationRefusals` y `MigrationUnit`.
-    - `MigrationRefusals` se redefine como `Refusal(int line, String code, MigratedRecordField field)`. Lo arman los writers y `ExternalFleetService`, y `ProcurementContextFacadeImpl` lo copia a `MigratedRecordRefusals`.
-    - `MigrationUnitLine` se redefine sin `StockRow`.
-  - De `ExternalFleetService` se quedan `registerMigrated` y `fetchUnits`; `matchMigrated` y `resolveMigrationLocation` salen a `legacyimport`.
-  - Se quedan los códigos que levantan los writers:
-    - `INITIALMIGRATION_RATE_NOT_ONE`, `INITIALMIGRATION_CREDIT_NOTE_REGISTERED`, `INITIALMIGRATION_CREDIT_NOTE_ZEROES_LINE`, `INITIALMIGRATION_PAYMENT_REGISTERED` e `INITIALMIGRATION_PAYMENT_INCONSISTENT`;
-    - los de compras: `PURCHASEINVOICE_*`, `CREDITNOTE_*`, `SUPPLIERPAYMENT_DATE_IN_FUTURE` y los que el pago toma de `SupplierPaymentApplications.owed` y de `SupplierPaymentAllocations.allocations`;
-    - `IMPORTBATCH_CELL_REQUIRED` e `IMPORTBATCH_CELL_INVALID`, para la tasa de la factura y el monto del pago, con su campo en `MigratedRecordField`. Son literales del vocabulario de `imports`: levantarlos no exige `imports::acl`.
-
-    Los demás `INITIALMIGRATION_*` son literales del orquestador, de `InitialMigrationRun`, de `StockRowMapper`, de `StockRowGroups` y de `InitialMigrationCatalogs`, y se van con ellos. Las claves de los `messages*.properties` no cambian.
-  - `procurement` retira `"imports::acl"` de su `package-info.java`: ya no lo usa.
-- **En `fleet` no cambia nada:** `MigratedUnitRegistrations`, `MigrationTargetPolicy` y los tres miembros de su fachada (`matchMigratedUnits`, `resolveMigrationLocation` y `registerMigratedUnits`), porque registrar una unidad en su estado es regla de flota (D-202). Siguen ahí `INITIALMIGRATION_LEGACY_NUMBER_TAKEN` e `INITIALMIGRATION_SCREEN_NOT_FROM_FACTORY`.
-- **Las transacciones y los candados siguen como hoy.**
-  - El orquestador no es transaccional y sigue envuelto por `DeadlockRetry`.
-  - `MigrationTransactions` abre una transacción `REQUIRES_NEW` para cada uno de estos pasos: el alcance, los catálogos con los VIN, la búsqueda de cada factura existente, cada factura, cada nota, cada pago y el registro de la carga. Cada paso se repite una vez si pierde un interbloqueo.
-  - Los miembros de las fachadas corren en la transacción de quien los llama.
-  - El candado de la carga es `ImportLocks.tryOnSession`, de `imports::acl`, en su propia conexión.
-  - Row Level Security no cambia: el alcance lo fija `AccessScopeJpaTransactionManager` en cada transacción, sea cual sea el módulo.
-- **El contrato no cambia:** las rutas, el permiso, el `@Tag`, los recursos y los códigos de error son los mismos.
-
-**Frontend.** No se muda: las rutas no cambian y el módulo se borra después de la puesta en marcha. Se quedan en `procurement` hasta el borrado:
-- el diálogo de la carga, 7 archivos:
-  - `application/initial-migration.store.ts` y su spec;
-  - `domain/model/initial-migration.ts`;
-  - `infrastructure/api/initial-migration-api-endpoint.ts`;
-  - `presentation/components/initial-migration-import-dialog/`, con su `.ts`, su `.html` y su `.scss`;
-- `ProcurementFacade.openInitialMigrationImport`, que llama la pantalla Cargas (`imports-view.ts`).
-
-`e2e/screens.ts` (`initial-migration-preview`) y `e2e/support/mocks/imports.ts` no cambian.
-
-**Orden dentro de la fase.** Cada paso deja el build y las pruebas de arquitectura en verde, y todo se integra junto.
-1. **Caracterización, en `develop`.** `InitialMigrationIntegrationTests` comprueba el código de cada rechazo (`line.get(3)`), pero la columna solo de `PROVEEDOR` y de `FECHA DE FACTURA`. Suma la columna (`line.get(2)`):
-   - de un rechazo de `fleet`: `N°` para `INITIALMIGRATION_LEGACY_NUMBER_TAKEN`, en `aLegacyNumberTakenInTheBrandIsRefused`;
-   - de los writers de la factura y de la nota: `FACTURA` para `PURCHASEINVOICE_NUMBER_FORMAT`, `TC` para `INITIALMIGRATION_RATE_NOT_ONE` y `VALOR NC / ND` para `INITIALMIGRATION_CREDIT_NOTE_ZEROES_LINE`;
-   - de `MigratedPaymentWriter`, en un caso nuevo, porque ninguno lo cubre: el `INITIALMIGRATION_PAYMENT_INCONSISTENT` del caso de dos montos lo levanta el orquestador antes del writer. Por ejemplo, `INITIALMIGRATION_PAYMENT_REGISTERED` en `OPERACIÓN DE PAGO`.
-
-   Pasan en `develop` antes de tocar el código. Que la lista de precarga no escribe nada ya lo cubre `theListBeforeTheLoadTellsEverythingAndWritesNothing`.
-2. **`procurement::acl`, con el orquestador todavía en `procurement`.** Se crean la fachada, sus records y su prueba de contrato. Los writers reciben los records de la fachada y rechazan por `MigratedRecordField`, y el orquestador llama a la fachada.
-3. **`legacyimport`.** Se mudan el orquestador y sus clases, con `ExternalProcurementService` y los demás traductores, y `procurement` retira `imports::acl`. Los casos del paso 1 pasan sin cambios.
-4. **Documentación y skills.**
-
-**Pruebas.**
-- **Se mueven a `legacyimport`**, espejando los paquetes:
-  - `InitialMigrationIntegrationTests` (27 casos, más el del paso 1), con `StockWorkbook`, que es package-private y va al mismo paquete;
-  - `InitialMigrationCatalogsTests`, que se reescribe sobre `LegacySupplier`, porque hoy construye el agregado `Supplier`.
-- **Se mueven y cambian:**
-  - `StockRowMapperTests`: pasa un `LegacyNumbers` de prueba a `read` (línea 52) y compara `String` en vez de `.value()` (líneas 93, 97 y 99);
-  - `StockRowGroupsTests`: su ayudante de la línea 27 pasa el tope de 100 líneas a `refusals`.
-- **Nueva, en `legacyimport`:** cada valor de `MigratedRecordField` tiene su columna en `StockRowMapper.HEADERS`.
-- **Nuevas, en `procurement`:** la prueba de contrato de `ProcurementContextFacade` y los writers sin `StockRow`.
-- **Se quedan:** `MigrationTargetPolicyTests` (`fleet`) y `SpreadAndCustomerInitialMigrationTests` (el esquema de V127, en `procurement`).
-- **Se corren:**
-  - las de arquitectura (`ModularityTests`, `ForeignAclStaysInTranslationLayerTests`, `DeadlockRetryTests` y las demás de §2);
-  - `ErpMillenniumMobilityBackendApplicationTests`, por los nombres de bean;
-  - en el CI, `e2e/imports.spec.ts` y `e2e-live/imports.live.spec.ts`.
+**Se conservan:**
+- los datos, los caminos `MIGRACION_INICIAL`, `legacy_number` y las migraciones V117 a V119 y V127, con `SpreadAndCustomerInitialMigrationTests`, que prueba el esquema de V127;
+- `ImportType.MIGRACION_INICIAL`, porque hay lotes con ese tipo;
+- el permiso `stock.cargar_migracion_inicial`, con su constante en el backend y en el frontend. Ninguna ruta lo pide ya; retirarlo es una migración de `iam` aparte, con su decisión (decisión 1 de la fase 0).
 
 **Documentación.**
-- Una decisión nueva del diccionario que precisa D-200: la carga inicial la orquesta `legacyimport` por `procurement::acl`, y el registro de la factura sigue llamando a `fleet`.
-- `contextos/legacyimport.md`:
-  - las reglas de la traducción del libro: PRC-R142, PRC-R144, PRC-R146, PRC-R147, PRC-R149 a PRC-R152, PRC-R154 y PRC-R158 a PRC-R161. Conservan su id: un id no se reutiliza ni se renumera;
-  - la sección «La carga inicial» de §4 y el anexo de las 52 columnas, que salen de `contextos/procurement.md`.
-- `contextos/procurement.md`:
-  - se quedan las reglas de compras, PRC-R143, PRC-R145, PRC-R148 y PRC-R153, que dicen que se exponen por `procurement::acl`. `legacyimport.md` las cita para los grupos y el orden de los pasos;
-  - §5 (línea 642): `legacyimport` depende de `procurement::acl`.
-- `contextos/fleet.md`.
-- `contextos/README.md`: la fila de `legacyimport.md`, y en la línea 55, que sus reglas conservan el prefijo `PRC-`.
-- El mapa vigente.
-- El diccionario: §3, y §11.8, línea 3489: la carga inicial la orquesta `legacyimport`, y la factura con sus unidades la registra `procurement`.
-- Las convenciones §2.2: `/initial-migration-imports` y `/initial-migration-imports/preview` pasan de la fila de `procurement` a una fila `legacyimport`.
-- Los patrones de persistencia, «La carga inicial»: el orquestador es de `legacyimport`; los candados no cambian.
-- El `README.md` del backend.
-- Las skills, en sus cuatro copias (decisión 15 de la fase 0): §1 de `backend-module/SKILL.md` («Las cargas y los reportes») y §2 (`allowedDependencies`).
+- Una decisión nueva del diccionario que precisa D-200: la carga inicial ya corrió y su ruta se borró.
+- `contextos/procurement.md`: la sección «La carga inicial» de §4, sus reglas (PRC-R142 a PRC-R154 y PRC-R158 a PRC-R161), que quedan sin efecto con su número mientras algo las cite, y el anexo de las 52 columnas.
+- `contextos/fleet.md` (F15 y las reglas de la carga que se van con su código; los caminos `MIGRACION_INICIAL` y el serial que completa un GPS migrado se quedan) y `contextos/imports.md`.
+- El mapa vigente, el diccionario (§3 y §11.8), las convenciones §2.2 (las dos rutas de la fila de `procurement`), los patrones de persistencia («La carga inicial»), el `README.md` del backend y las cuatro copias de las skills (§1 de `backend-module/SKILL.md`, «Las cargas y los reportes», y §2, `allowedDependencies`).
 
 **Terminado cuando:**
-- `procurement` no nombra el libro:
-  - `git grep -nw -e StockRow -e StockRowMapper -e StockRowGroups -e ImportRow -- src/main/java/ky/millennium/mobility/erp/procurement` no devuelve nada. Sin `-w`, `ImportRow` encuentra `InvoiceErrorContexts.ImportRows`, de la importación de las líneas de una factura, que se queda;
-  - `git grep -n "erp\.imports\." -- src/main/java/ky/millennium/mobility/erp/procurement` no devuelve nada;
-  - los records de `procurement::acl` y los writers hablan de `line`, nunca de `row` ni de una columna;
-- `ModularityTests` y `ForeignAclStaysInTranslationLayerTests` pasan;
-- `InitialMigrationIntegrationTests` da los mismos conteos, el mismo informe, los mismos códigos y las mismas columnas que antes.
-
-**Después de la puesta en marcha, el módulo se borra,** en una entrega propia de 1 a 2 días y riesgo bajo, cuando la carga inicial ya corrió.
-- **Backend:**
-  - sale `legacyimport` entero;
-  - de `procurement`, los miembros de migración de `ProcurementContextFacade` con sus records, los tres writers, `MigrationScope`, `MigrationRefusals`, `MigrationUnit`, `MigrationUnitLine` y `registerMigrated` de `ExternalFleetService`. Si para entonces la fase 5 ya puso miembros en `procurement::acl`, la fachada se queda con ellos;
-  - de `fleet`, `matchMigratedUnits`, `resolveMigrationLocation` y `registerMigratedUnits`, con `MigratedUnitRegistrations`, sus records de `fleet::acl` (los `Migrated*` y `RegisterMigratedUnitsRequest`) y `MigrationTargetPolicy` con su prueba;
-  - los `INITIALMIGRATION_*` que ya nadie levanta, con sus claves en los `messages*.properties`;
-  - la propiedad `imports.max-rows.migracion-inicial`, con `IMPORTS_MAX_ROWS_INITIAL_MIGRATION` en el `README.md` y en `.env.example`.
-- **Frontend:**
-  - el diálogo (sus 7 archivos), `ProcurementFacade.openInitialMigrationImport` y la opción de la pantalla Cargas que lo abre (`imports-view.ts`);
-  - la pantalla `initial-migration-preview` de `e2e/screens.ts`, con sus tres imágenes;
-  - los mocks de `/initial-migration-imports` en `e2e/support/mocks/imports.ts`, los dos casos de `e2e/imports.spec.ts` que abren «Migración inicial» y el caso del libro de stock de `e2e-live/imports.live.spec.ts`;
-  - las claves `procurement.initial-migration` de `es.json`.
-- **Documentación:** `contextos/legacyimport.md`, la fila `legacyimport` de las convenciones §2.2, el mapa vigente y las skills.
-- **Se conservan:**
-  - los datos, los caminos `MIGRACION_INICIAL`, `legacy_number` y las migraciones V117 a V119 y V127;
-  - `ImportType.MIGRACION_INICIAL`, porque hay lotes con ese tipo;
-  - el permiso `stock.cargar_migracion_inicial`, con su constante en el backend y en el frontend. Ninguna ruta lo pide ya; retirarlo es una migración de `iam` aparte, con su decisión (decisión 1 de la fase 0).
+- `git grep -nw -e StockRow -e StockRowMapper -e StockRowGroups -- src/main/java` no devuelve nada, ni `git grep -n "erp\.imports\." -- src/main/java/ky/millennium/mobility/erp/procurement`;
+- `ModularityTests` pasa con `procurement` sin `imports::acl`, y la aplicación arranca;
+- las demás cargas —el impuesto vehicular y la garantía— y la pantalla Cargas responden igual, y los lotes de la carga inicial se siguen leyendo en `/imports`.
 
 ### Fase 4 — `financing`
 
@@ -842,12 +695,8 @@ Después de esta fase, `legacyimport` es el único que conoce las columnas, las 
   - `ImportRefusals.conflict()` e `ImportReading.reads(…)`;
   - el libro (`ImportWorkbookReader`, `ImportWorkbook`, `ImportRow`, `ImportCell`, `ImportCellException`, `ImportSheetSpec`, `ImportReportWriter`, `ImportReport` con `SummaryLine` y `ExtraSheet`, `ImportRowFailure`, `ImportSummaries`, `ImportFailureMessages`);
   - la respuesta de una carga (`ImportBatchResourceFromViewAssembler`, `ImportResultResource`).
-- **Decisión A o B: quién calcula `registerFundAssignment`** (fase 0, decisión 5; convenciones §4.2):
-  - **A, recomendada.** El puerto de `fleet` pregunta a `financing` si la sesión puede ceder la unidad ahora. `VehicleResource.allowedActions.registerFundAssignment` sigue igual y el contrato no cambia: la fase es solo de estructura, como promete el §1.
-  - **B.** `registerFundAssignment` sale del recurso de la unidad y lo responde un subrecurso nuevo de `financing` (por ejemplo `GET /vehicles/{id}/fund-standing`; la página de `GET /vehicles/{id}/fund-assignments` no tiene lugar para una acción de la colección). Su forma se acuerda antes en convenciones §4.2 y §6.2, el §1 y el §8 la declaran como excepción, y backend y frontend se integran juntos. Lo que agrega está marcado «con la opción B» en esta fase.
-- **Decisión A1 o A2: quién dibuja la pestaña Cesiones** de la ficha de la unidad (`?seccion=cesiones`; fase 0, decisión 6):
-  - **A1, recomendada, sin excepción nueva.** La lista se queda en `fleet` y la alimenta `FinancingFacade`, con tipos propios y su propia carga y error (regla 1.3). Los flujos de ceder y cerrar los abre la fachada.
-  - **A2.** Una pieza de UI prestada en `financing/presentation/public/`, con su excepción en la regla 1.2 del frontend y su revisión de `DESIGN.md`.
+- **Quién calcula `registerFundAssignment`** (fase 0, decisión 5, resuelta el 19/11/2026 con la opción A; convenciones §4.2). El puerto de `fleet` pregunta a `financing` si la sesión puede ceder la unidad ahora. `VehicleResource.allowedActions.registerFundAssignment` sigue igual y el contrato no cambia: la fase es solo de estructura, como promete el §1. Quedó descartada la opción B, que lo sacaba del recurso de la unidad hacia un subrecurso de `financing`.
+- **Quién dibuja la pestaña Cesiones** de la ficha de la unidad (`?seccion=cesiones`; fase 0, decisión 6, resuelta el 19/11/2026 con la opción A1, sin excepción nueva). La lista se queda en `fleet` y la alimenta `FinancingFacade`, con tipos propios y su propia carga y error (regla 1.3). Los flujos de ceder y cerrar los abre la fachada. Quedó descartada la A2, una pieza de UI prestada de `financing` con su excepción en la regla 1.2 del frontend.
 
 #### Backend — el módulo
 
@@ -896,13 +745,13 @@ Mismo nombre y mismos subpaquetes, bajo `ky.millennium.mobility.erp.financing`:
   - `ExternalIamService`, `@Service("financingExternalIamService")`: `fetchAccountReferencesByIds`.
   - Sus records: `AssignedUnit`, `OwningCompany` y `AccountName`. No repiten el nombre simple de `FinancedUnit` de `fleet::acl` ni el de `AccountReference` de `iam::acl`, que la misma clase de traducción nombra. `AccountName` reemplaza a `AccountReferenceView` de `fleet`, que hoy usa `VehicleFundAssignmentViewFactory`.
 - **`FinancingSessionAccount`** (con `CurrentAccessScope`) y **`FinancingCalendar`**, el «hoy» y la zona de la empresa (D-40). Reemplaza a `CompanyCalendar` de `fleet`, y no lleva ese nombre para no repetir el bean. Lee el momento de su reloj por `now()`, que una prueba reemplaza espiándolo, como `CompanyCalendar`.
-- **El adaptador del puerto:** `infrastructure/fleet/VehicleFundAssignmentUnitFundAssignmentsAdapter implements UnitFundAssignments`. Solo depende de `VehicleFundAssignmentRepository`, y de `CurrentAccessScope` y `FinancingCalendar` mientras implementa `offersCession`: con la opción A, siempre; con la B, hasta el paso 5. Así no hay un ciclo de beans con `FleetContextFacade`.
+- **El adaptador del puerto:** `infrastructure/fleet/VehicleFundAssignmentUnitFundAssignmentsAdapter implements UnitFundAssignments`. Solo depende de `VehicleFundAssignmentRepository`, y de `CurrentAccessScope` y `FinancingCalendar`, porque implementa `offersCession`. Así no hay un ciclo de beans con `FleetContextFacade`.
 
 #### Backend — lo que cambia en `fleet`
 
 - **El puerto `interfaces/acl/UnitFundAssignments`:**
   - `boolean hasOpenAssignment(Long vehicleId)`;
-  - con la opción A, también `boolean offersCession(Long vehicleId, Long companyId, Long commercialBrandId)`; con la B, solo de los pasos 1 a 4. Es la regla de hoy: `fondos.registrar_cesion` en toda la empresa o en la marca de la unidad (DP-11), `fondos.ver` en su empresa, y ninguna cesión abierta ni que termine después de hoy en la zona de la empresa (D-40).
+  - `boolean offersCession(Long vehicleId, Long companyId, Long commercialBrandId)`. Es la regla de hoy: `fondos.registrar_cesion` en toda la empresa o en la marca de la unidad (DP-11), `fondos.ver` en su empresa, y ninguna cesión abierta ni que termine después de hoy en la zona de la empresa (D-40).
 - **`application/internal/outboundservices/funds/UnitFundFacts`** envuelve el puerto. Inyecta **un solo bean obligatorio**, no una lista: sin el bean, una unidad cedida se anularía sin aviso (D-182).
 - **Miembros nuevos de `FleetContextFacade`**, con el record nuevo `FinancedUnit(id, publicId, companyId, commercialBrandId, plate, vin, annulled)`. No se toca `UnitSummary`, que usa `procurement`.
   - `Optional<FinancedUnit> lockVisibleUnitByPublicId(UUID)` y `lockVisibleUnitById(Long)`: con `Propagation.MANDATORY` y `FOR NO KEY UPDATE`, y vacío si la sesión no ve la unidad con `stock.ver` en su marca (`VehicleAccessPolicy.sees`). La regla de la visibilidad la decide `fleet`.
@@ -914,8 +763,7 @@ Mismo nombre y mismos subpaquetes, bajo `ky.millennium.mobility.erp.financing`:
   - Se borran `VehicleJpaRepository.lockByCompanyIdAndPlatesOrFund`, `VehicleRepository.findAllByCompanyIdAndPlatesOrAssignedToFundForUpdate` y su implementación en `VehicleRepositoryImpl`. Leen `vehicle_fund_assignments`, que deja de ser de `fleet`.
 - **Quién usa el puerto:**
   - `VehicleAnnulments`: la guarda de la anulación. Por ella pasan la anulación explícita y la de las unidades que devuelve una nota de crédito (`ReturnedUnits`, que no cambia).
-  - `VehicleAllowedActions`: `mayAnnul` pasa por `UnitFundFacts`, y `mayCede` delega en `offersCession`. `VehicleAllowedActions` pierde su constructor con `Clock`, que solo servía a `mayCede`. Con la opción B, `mayCede` se borra en el paso 5.
-- **Con la opción B:** `registerFundAssignment` sale de `VehicleAllowedActionsView`, de `VehicleAllowedActionsResource` y de `VehicleResourceFromViewAssembler`.
+  - `VehicleAllowedActions`: `mayAnnul` pasa por `UnitFundFacts`, y `mayCede` delega en `offersCession`. `VehicleAllowedActions` pierde su constructor con `Clock`, que solo servía a `mayCede`.
 - **Javadoc:** `package-info.java` de `fleet`.
 
 #### Otros módulos
@@ -947,20 +795,16 @@ Pasan a una sección `financing` de los patrones de persistencia:
 
 #### La API
 
-- **Opción A:** nada cambia. Rutas, permisos, códigos de error y cuerpos son los mismos.
-- **Opción B:**
-  - `VehicleResource.allowedActions` pierde `registerFundAssignment`, también en las respuestas de las escrituras de la unidad, y se suma el subrecurso acordado;
-  - la ficha sigue releyendo la unidad después de ceder o cerrar, porque `allowedActions.annul` depende de la cesión abierta;
-  - se actualizan convenciones §4.2 (la unidad) y §6.2, y el §1 y el §8 del plan.
+Nada cambia: rutas, permisos, códigos de error y cuerpos son los mismos, también `VehicleResource.allowedActions.registerFundAssignment` (opción A).
 
 #### Frontend
 
-- **La carpeta nueva `src/app/financing` recibe de `fleet` 40 archivos con A1 y 43 con A2:**
+- **La carpeta nueva `src/app/financing` recibe de `fleet` 40 archivos:**
   - `application/`: `funds.store.ts` y `vehicle-fund-assignments.store.ts`, con sus specs;
   - `domain/model/`: `fund.entity.ts`, `vehicle-fund-assignment.entity.ts` y `commands/{assign-vehicle-fund,change-fund-status,close-vehicle-fund-assignment,create-fund,update-fund}.command.ts`;
   - `infrastructure/api/`: `{change-fund-status,close-vehicle-fund-assignment,create-fund,create-vehicle-fund-assignment,update-fund}.request.ts`, `funds-api-endpoint.ts`, `funds-response.ts`, `vehicle-fund-assignments-api-endpoint.ts` y `vehicle-fund-assignments-response.ts`;
   - `infrastructure/assemblers/`: `fund-assembler.ts` y `vehicle-fund-assignment-assembler.ts`;
-  - `presentation/components/`: `assign-fund-dialog`, `close-fund-assignment-dialog` y `fund-form-dialog` (cuatro archivos cada uno), `guarantee-import-dialog` (dos) y `vehicle-fund-assignments` (tres). Con A1, este último se queda en `fleet`, reescrito contra la fachada;
+  - `presentation/components/`: `assign-fund-dialog`, `close-fund-assignment-dialog` y `fund-form-dialog` (cuatro archivos cada uno), `guarantee-import-dialog` (dos) y `vehicle-fund-assignments` (tres), que no se mueve: se queda en `fleet`, reescrito contra la fachada (opción A1);
   - `presentation/views/funds-view` (cuatro).
 - **Archivos nuevos en `financing`:**
   - `infrastructure/api/financing-api.ts`, que reemplaza en `FleetApi` lo de fondos y cesiones;
@@ -969,20 +813,19 @@ Pasan a una sección `financing` de los patrones de persistencia:
   - `application/guarantee-imports.store.ts`, con su spec y su propio `GuaranteeUpload`, con la variante `closures`;
   - `application/financing.facade.ts`, con su spec:
     - `openGuaranteeImport(ImportTarget)`, que hoy está en `FleetFacade` y usa la pantalla Cargas, con su propia copia de `closedOf`;
-    - con A1, estos miembros, con tipos definidos junto a la fachada (`UnitAssignmentView`, `UnitAssignmentFilters`, `CededUnit`) y carga y error separados de las pantallas del dueño (regla 1.3):
+    - estos miembros, con tipos definidos junto a la fachada (`UnitAssignmentView`, `UnitAssignmentFilters`, `CededUnit`) y carga y error separados de las pantallas del dueño (regla 1.3):
       - la página de cesiones de una unidad, con lo que hoy usa la pestaña de `assignmentPage`: `items` (como `UnitAssignmentView`), `totalItems`, `loading` y `query`, y `load(request, filters)`, `reload()` y `clear()`;
       - `unitAssignmentsNotice` y `clearUnitAssignmentsNotice()`, `unitAssignmentsError` y `clearUnitAssignmentsError()`. El error de la carga de la página llega por `unitAssignmentsError`, como hoy por `error`;
       - `unitAssignmentsOutdated: Signal<number>`, que sube con cada negativa porque la unidad o sus cesiones cambiaron mientras tanto;
       - `cedeUnit(unit: CededUnit, timeZone: string): Promise<boolean>` y `closeAssignment(assignment: UnitAssignmentView, timeZone: string): Promise<boolean>`, que abren los diálogos de `financing` y responden si se guardó, para que la ficha relea la unidad y devuelva el foco. `CededUnit` lleva `id`, `companyId`, `plate` y `vin`, lo que hoy recibe `AssignFundDialogData` junto con la zona;
   - `presentation/financing.routes.ts`, con su spec, con la forma de las demás: una ruta `''` con `providers: [provideFormFieldDefaults()]` y, dentro, `funds` con `data` `FUNDS_READERS` (`anyOf(PermissionCodes.Funds.VIEW)`) y `title` `Millennium Mobility - Fondos`, que se mudan con su comentario. Sin los `providers`, los campos de la lista se dibujan con la apariencia por omisión y cambian las capturas `funds-*`;
   - `UnitAssignmentFilters`, el tipo propio de filtros de las cesiones de una unidad, que usan la fachada y el store. Hoy el store importa `VehicleRecordFilters` de `fleet/application/vehicles.store`, y desde otro contexto eso viola la regla 1.1.
-- **El selector `mm-vehicle-fund-assignments` no cambia**, con A1 ni con A2: lo nombran `e2e/funds.spec.ts` y la spec de la ficha.
+- **El selector `mm-vehicle-fund-assignments` no cambia:** lo nombran `e2e/funds.spec.ts` y la spec de la ficha.
 - **Archivos que se parten o cambian:**
   - `fleet/infrastructure/api/fleet-api.ts`: salen los extremos de fondos y cesiones;
   - `fleet/infrastructure/api/fleet-imports-api-endpoint.ts` (`GuaranteeImportRequest` y `uploadGuaranteeList`), `fleet-imports-response.ts` (`GuaranteeEffectsResource` y `GuaranteeImportResource`) y `fleet/domain/model/fleet-import.ts` (`GuaranteeEffects` y `GuaranteeClosures`);
   - `fleet/application/fleet-imports.store.ts` y `fleet.facade.ts` (`openGuaranteeImport`), con sus specs. `FleetUpload` pierde la variante `closures`, que solo usa la garantía;
-  - `fleet/presentation/views/vehicle-profile-view/vehicle-profile-view.{ts,html,spec.ts}`: deja de importar el store y los componentes de cesiones, y usa `FinancingFacade` (A1) o la pieza prestada (A2);
-  - con la opción B: `vehicle-allowed-actions.ts`, `vehicles-response.ts`, `vehicle-assembler.ts` con su spec, y `vehicles.store.spec.ts`;
+  - `fleet/presentation/views/vehicle-profile-view/vehicle-profile-view.{ts,html,spec.ts}`: deja de importar el store y los componentes de cesiones, y usa `FinancingFacade`;
   - `fleet/presentation/fleet.routes.ts` y su spec: `{ path: 'funds', redirectTo: toFinancingFunds }`, con `const toFinancingFunds: RedirectFunction = ({ queryParams }) => inject(Router).createUrlTree(['/financing/funds'], { queryParams })`, como `toModelsOfBrand` de `vehiclecatalog.routes.ts`. Un `redirectTo` de texto no conserva `?empresa=`: Angular copia solo los parámetros que el texto nombra. Los casos de `fleet.routes.spec.ts` que prueban el acceso a `funds` pasan a `financing.routes.spec.ts`;
   - `app.routes.ts`: `{ path: 'financing', loadChildren: financingRoutes }`;
   - `app-shell/app-navigation.ts`: el enlace de Fondos va a `/financing/funds`, con el mismo grupo y el mismo acceso. Se ajusta `app-shell.spec.ts`, en la lista de fondos y en la comparación de rutas con el menú;
@@ -992,8 +835,8 @@ Pasan a una sección `financing` de los patrones de persistencia:
 - **e2e.**
   - `e2e/screens.ts`: la pantalla `funds` pasa a `/financing/funds`; `vehicle-profile-assignments` no cambia de ruta.
   - Specs: `funds.spec.ts` (las rutas, el selector `mm-vehicle-fund-assignments`, cuándo se ofrece ceder y un caso nuevo: `/fleet/funds?empresa=<id>` abre `/financing/funds?empresa=<id>`, el e2e de la redirección que pide §5), `exports.spec.ts` (la exportación de fondos) e `imports.spec.ts` (la garantía).
-  - Mocks: las rutas de fondos y cesiones de `e2e/support/mocks/fleet.ts` pasan a un `mocks/financing.ts`, registrado en `e2e/support/api.ts` respetando el orden de los manejadores de Playwright. `registerFundAssignment` en el mock de la unidad cambia según la opción; `/fund-assignment-imports` sigue en `mocks/imports.ts`.
-  - Capturas: `funds-*` y `vehicle-profile-assignments-*` conservan su nombre, porque se nombran por `screen.name`, y **no se regeneran**: ninguna opción cambia lo dibujado. Una que cambie es una regresión y se corrige antes de integrar.
+  - Mocks: las rutas de fondos y cesiones de `e2e/support/mocks/fleet.ts` pasan a un `mocks/financing.ts`, registrado en `e2e/support/api.ts` respetando el orden de los manejadores de Playwright. `registerFundAssignment` en el mock de la unidad no cambia; `/fund-assignment-imports` sigue en `mocks/imports.ts`.
+  - Capturas: `funds-*` y `vehicle-profile-assignments-*` conservan su nombre, porque se nombran por `screen.name`, y **no se regeneran**: la fase no cambia lo dibujado. Una que cambie es una regresión y se corrige antes de integrar.
   - Sondas: `e2e-live/funds.live.spec.ts` navega a `/financing/funds`. `imports.live.spec.ts` no cambia, porque usa la API.
 
 #### Pruebas de caracterización, antes de mover nada (paso 0, en `develop`, contra `fleet`)
@@ -1004,9 +847,7 @@ Van por la API o por SQL, en paquetes que la fase no mueve (la raíz `ky.millenn
 3. La columna «GARANTÍA MOBILIARIA» del exportable de stock, en las pruebas de `reporting`: `SI` con una cesión abierta; `NO` sin cesión o con la cesión cerrada. Hoy ninguna prueba la cubre.
 4. `allowedActions.registerFundAssignment` y `annul`, por la API, de una unidad con una cesión abierta, de una sin cesión, de una cuya cesión termina hoy y de una cuya cesión termina mañana en la zona de su empresa.
 
-Las pruebas de hoy que fijan la regla también caracterizan: `FundsIntegrationTests`, `VehicleFundAssignmentsIntegrationTests` y los casos de garantía de `FleetImportsIntegrationTests` cambian de paquete y de imports, no de casos; `VehicleAllowedActionsTests` y `VehicleAnnulmentsIntegrationTests` no cambian con la opción A.
-
-Con la opción B, el caso de `registerFundAssignment` de la prueba 4 se reescribe contra el subrecurso en el paso 5. Es el único que cambia, por la excepción que declara la opción; el de `annul` sigue igual.
+Las pruebas de hoy que fijan la regla también caracterizan: `FundsIntegrationTests`, `VehicleFundAssignmentsIntegrationTests` y los casos de garantía de `FleetImportsIntegrationTests` cambian de paquete y de imports, no de casos; `VehicleAllowedActionsTests` y `VehicleAnnulmentsIntegrationTests` no cambian.
 
 #### Pruebas que cambian
 
@@ -1017,9 +858,8 @@ Con la opción B, el caso de `registerFundAssignment` de la prueba 4 se reescrib
   - de `FleetRowsAreNeverDeletedTests`, las entradas `funds` y `vehicle_fund_assignments` van a `FinancingRowsAreNeverDeletedTests`.
 - **Se reescriben:**
   - `VehicleAnnulmentLockTests`: en el paso 0, como prueba de la raíz por la API (caracterización 1);
-  - `VehicleAllowedActionsTodayTests`, el caso de «hoy en la zona de la empresa» (D-40). En el paso 1 prueba `offersCession` del adaptador provisional, con el reloj de `CompanyCalendar` fijo. En el paso 4 pasa a `financing` como `UnitFundAssignmentsTodayTests`, contra el adaptador del puerto, con el reloj de `FinancingCalendar` fijo. Con la opción B, en el paso 5 pasa al servicio del subrecurso;
-  - `VehicleAllowedActionsTests`, el caso de la cesión: con la opción A se queda; con la B pasa a `financing` en el paso 5;
-  - `VehicleAnnulmentsIntegrationTests`: con la opción B sale la línea de `registerFundAssignment`, en el paso 5.
+  - `VehicleAllowedActionsTodayTests`, el caso de «hoy en la zona de la empresa» (D-40). En el paso 1 prueba `offersCession` del adaptador provisional, con el reloj de `CompanyCalendar` fijo. En el paso 4 pasa a `financing` como `UnitFundAssignmentsTodayTests`, contra el adaptador del puerto, con el reloj de `FinancingCalendar` fijo;
+  - `VehicleAllowedActionsTests`, el caso de la cesión, se queda en `fleet`.
 - **Se corren sin cambios:**
   - `FleetContextFacadeImplTests`: la unidad devuelta con su cesión abierta;
   - `CreditNotesIntegrationTests`: la nota que devuelve una unidad cedida;
@@ -1027,24 +867,22 @@ Con la opción B, el caso de `registerFundAssignment` de la prueba 4 se reescrib
 - **Nuevas:**
   - `UnitFundAssignmentsWiringTests`, en el paso 1: un solo bean, el provisional de `fleet`; desde el paso 4, el de `financing`;
   - las de los miembros nuevos de la fachada de `fleet`, en el paso 2: candado por `id` ascendente, la fila después del candado, la visibilidad por marca y, en `FleetContextFacadeTransactionTests`, que `lockVisibleUnitByPublicId`, `lockVisibleUnitById` y `lockUnitsOfCompanyByPlatesOrIds` fallan fuera de una transacción;
-  - la de `findVehicleIdsOpenToFund`, en el paso 2: solo las cesiones abiertas a ese fondo;
-  - con la opción B, las del subrecurso nuevo, en el paso 5.
+  - la de `findVehicleIdsOpenToFund`, en el paso 2: solo las cesiones abiertas a ese fondo.
 
 #### Pasos dentro de la fase
 
 Cada paso compila y pasa sus pruebas antes del siguiente: una prueba se mueve, se parte o se reescribe en el mismo paso que el código que importa. La fase se integra completa.
 
 0. **Caracterizar**, en `develop` y contra `fleet`: las cuatro pruebas de arriba, en verde. `VehicleAnnulmentLockTests` pasa a su versión de raíz.
-1. **`fleet`:** el puerto, `UnitFundFacts` y un adaptador provisional en `fleet` sobre su propio repositorio y `CompanyCalendar`. `VehicleAnnulments` y `VehicleAllowedActions` pasan por él, y `VehicleAllowedActions` pierde su constructor con `Clock`. El puerto lleva `offersCession` también con la opción B: así `mayCede` deja de leer el repositorio antes de que se mude, y el paso 5 lo borra. En el mismo paso se reescribe `VehicleAllowedActionsTodayTests` y entra `UnitFundAssignmentsWiringTests`.
+1. **`fleet`:** el puerto, `UnitFundFacts` y un adaptador provisional en `fleet` sobre su propio repositorio y `CompanyCalendar`. `VehicleAnnulments` y `VehicleAllowedActions` pasan por él, y `VehicleAllowedActions` pierde su constructor con `Clock`. El puerto lleva `offersCession`: así `mayCede` deja de leer el repositorio antes de que se mude. En el mismo paso se reescribe `VehicleAllowedActionsTodayTests` y entra `UnitFundAssignmentsWiringTests`.
 2. **`fleet`:** los miembros nuevos de la fachada, `lockByCompanyIdAndPlatesOrIds` y `VehicleFundAssignmentRepository.findVehicleIdsOpenToFund`, con sus pruebas.
 3. **Todavía dentro de `fleet`:** los servicios de fondos y la carga de garantía dejan de usar `Vehicle`, `VehicleRepository` y `VehicleAccessPolicy`. Leen y bloquean la unidad por los miembros nuevos de la fachada; la carga lee los ids con `findVehicleIdsOpenToFund` y marca la placa con `normalizePlate`. Se borra la consulta que bloquea por placas o por fondo. Ninguna prueba cambia: ninguna construye esos servicios ni llama a la consulta borrada.
 4. **Se crea `financing`:**
    - se mueven las 54 clases con sus pruebas, y se parten las piezas con las suyas;
    - se crean las clases nuevas con sus nombres de bean, y las movidas pasan de las piezas de `fleet` que hoy usan (`ExternalOrganizationService`, `ExternalIamService`, `OwningCompany`, `AccountReferenceView`, `FleetSessionAccount`, `CompanyCalendar`, `FleetErrors` y `FleetDocumentKinds`) a las de `financing`;
    - el adaptador del puerto pasa a `financing` en el mismo paso que borra el provisional de `fleet`, y con él `UnitFundAssignmentsTodayTests`. `UnitFundAssignmentsWiringTests` espera el bean de `financing`.
-5. **Con la opción B:** el cambio del recurso de la unidad y el subrecurso nuevo, con sus pruebas. `offersCession` sale del puerto y `mayCede` de `VehicleAllowedActions`, y cambian las pruebas que «Pruebas que cambian» ata a este paso.
-6. **El frontend**, con sus specs y sus e2e.
-7. **La documentación.**
+5. **El frontend**, con sus specs y sus e2e.
+6. **La documentación.**
 
 #### Documentación
 
@@ -1054,20 +892,19 @@ Cada paso compila y pasa sus pruebas antes del siguiente: una prueba se mueve, s
 - El mapa objetivo §3.8: `documents` (la exportación de los fondos) entre sus dependencias.
 - Los patrones de persistencia: la regla de lo que se referencia en modo compartido y la sección nueva de `financing` con la tabla de arriba, que sale de la de `fleet`.
 - Procesos y pantallas: Fondos en `/financing/funds`.
-- Las convenciones, con cualquier opción: en §2.2, una fila `financing` con `/funds`, `/vehicles/{id}/fund-assignments`, `/fund-assignments/{id}/closure` y `/fund-assignment-imports`, que salen de la de `fleet`, y la línea de las cargas que atribuye `/fund-assignment-imports` a `fleet`; y el punto 18 de §14. Con la opción B, además §4.2 y §6.2.
+- Las convenciones: en §2.2, una fila `financing` con `/funds`, `/vehicles/{id}/fund-assignments`, `/fund-assignments/{id}/closure` y `/fund-assignment-imports`, que salen de la de `fleet`, y la línea de las cargas que atribuye `/fund-assignment-imports` a `fleet`; y el punto 18 de §14.
 - El README del backend: `financing` en el árbol de módulos y en la lista de los módulos que exportan, y `fleet` sin los fondos ni la garantía.
 - Las cuatro copias de las skills:
   - `backend-module`: §1 (la carga de garantía es de `financing`) y §2 (la lista de `allowedDependencies`);
   - `architecture-review`: `financing` en la búsqueda de la regla 1.2;
-  - `frontend-feature`: `financing` en la lista de los contextos;
-  - la regla 1.2 del frontend, si se elige A2.
+  - `frontend-feature`: `financing` en la lista de los contextos.
 
 **Terminado cuando:**
 - ninguna clase de `fleet` importa un tipo de fondos ni lee `funds` o `vehicle_fund_assignments` por SQL, y `fleet` no nombra `financing`;
-- las rutas de fondos, de cesiones y de la carga de garantía responden lo mismo, con los mismos permisos y códigos (con la opción B, salvo `registerFundAssignment`, que pasa al subrecurso);
+- las rutas de fondos, de cesiones y de la carga de garantía responden lo mismo, con los mismos permisos y códigos;
 - `UnitFundAssignmentsWiringTests` encuentra un solo bean, el de `financing`;
 - `/fleet/funds?empresa=<id>` abre `/financing/funds?empresa=<id>`, y ninguna imagen de referencia cambió;
-- ninguna prueba de caracterización cambió (con la opción B, salvo el caso de `registerFundAssignment`).
+- ninguna prueba de caracterización cambió.
 
 ### Fase 5 — El servicio publicado de `procurement`
 
@@ -1075,13 +912,11 @@ Cada paso compila y pasa sus pruebas antes del siguiente: una prueba se mueve, s
 
 El dueño del costo es `procurement`, y debe publicarlo él (*Open Host Service* con *Published Language*, cap. 14): por REST para la ficha, y por `procurement::acl` para `reporting` y, más adelante, para la conciliación de la inicial (D-31). Lo que `fleet` necesita para sus propias reglas sigue llegando por su puerto.
 
-**Decisión previa (fase 0, decisión 7): quién es dueño de la brecha de días.** Un reporte dice lo que dice la ficha (D-232), así que la regla tiene un solo dueño:
-- **A (recomendada):** sigue en `fleet` (`DayGapPolicy`, FLT-R131). El puerto conserva el estado de pago y la fecha base, sin montos (D-212). El recurso de la unidad no cambia.
-- **B:** `fleet` deja de saber de pagos, y la brecha pasa a `procurement`, nunca a `reporting`. Cambia el recurso de la unidad. Lo que agrega B está al final de esta fase.
+**Quién es dueño de la brecha de días** (fase 0, decisión 7, resuelta el 19/11/2026 con la opción A). Un reporte dice lo que dice la ficha (D-232), así que la regla tiene un solo dueño: sigue en `fleet` (`DayGapPolicy`, FLT-R131). El puerto conserva el estado de pago y la fecha base, sin montos (D-212), y el recurso de la unidad no cambia. Quedó descartada la opción B, que pasaba la brecha a `procurement` y cambiaba el recurso de la unidad.
 
-**Backend (A).**
+**Backend.**
 
-- **`procurement::acl`.** Si la fase 3 no la creó, esta fase crea:
+- **`procurement::acl`.** La fase 3 no se hace (decisión 4), así que esta fase crea la fachada:
   - `procurement/interfaces/acl/package-info.java`, con `@NamedInterface("acl")` y `@NullMarked`;
   - `ProcurementContextFacade`;
   - `procurement/application/acl/ProcurementContextFacadeImpl`.
@@ -1153,7 +988,7 @@ El dueño del costo es `procurement`, y debe publicarlo él (*Open Host Service*
 
 - **Transacciones y candados:** todo es lectura, en la transacción de solo lectura de quien llama. No hay candados nuevos.
 
-**Frontend (A).**
+**Frontend.**
 
 - **`procurement`** recibe de `fleet`:
   - `vehicle-purchase-cost.entity.ts`, `vehicle-purchase-cost-response.ts` y `vehicle-purchase-cost-assembler.ts` con su spec;
@@ -1206,7 +1041,7 @@ El dueño del costo es `procurement`, y debe publicarlo él (*Open Host Service*
 
 **Orden dentro de la fase.** Cada paso compila y pasa sus pruebas antes del siguiente: una prueba cambia en el mismo paso que el código que importa.
 1. Las pruebas de caracterización, en verde en `develop`.
-2. `procurement::acl`, si falta, y `UnitPurchaseCosts` con `fetchUnitPurchaseCosts`. El cálculo se copia del adaptador, que conserva el suyo hasta el paso 6, y la prueba de contrato compara los dos. Entra `UnitPurchaseCostsTests`, con los casos de costo del adaptador.
+2. `procurement::acl` y `UnitPurchaseCosts` con `fetchUnitPurchaseCosts`. El cálculo se copia del adaptador, que conserva el suyo hasta el paso 6, y la prueba de contrato compara los dos. Entra `UnitPurchaseCostsTests`, con los casos de costo del adaptador.
 3. `fetchSeenUnit` en `fleet`, con su prueba.
 4. La ruta en `procurement`, con `fetchSeenUnit` de `procurementExternalFleetService` y `UnitPurchaseCostQueryService`, y su retiro de `fleet`, en el mismo commit. `VehiclePurchaseCostIntegrationTests` se muda con ella.
 5. `reporting` lee de `procurement::acl`.
@@ -1231,34 +1066,6 @@ El dueño del costo es `procurement`, y debe publicarlo él (*Open Host Service*
 - `GET /vehicles/{id}/purchase-cost` responde el mismo JSON con el mismo orden de negativas;
 - los reportes dan las mismas celdas;
 - ninguna prueba de caracterización cambió.
-
-**Si se elige B, además:**
-- `UnitPurchases` pierde también `paymentFacts` y `UnitPaymentFacts`.
-- `DayGapPolicy` y `DayGapPolicyTests` pasan a `procurement/domain/services`.
-- `procurement::acl` suma un miembro, con la brecha calculada por `procurement` con la primera entrega que da `fleet` y la zona de la empresa (`America/Lima` si no se lee, como `CompanyCalendar`):
-  ```java
-  Map<Long, UnitPaymentFacts> fetchUnitPaymentFacts(Set<Long> vehicleIds);
-
-  record UnitPaymentFacts(String status, LocalDate baseDate, long dayGap) {
-  }
-  ```
-- `fleet::acl` suma el primer paso a Activo (FLT-R58), y `SeenUnit` suma `@Nullable Instant firstDeliveredAt`:
-  ```java
-  Map<Long, Instant> fetchFirstDeliveries(Set<Long> vehicleIds);
-  ```
-- `UnitReportFacts` y `ReportUnitFacts` pierden `baseDate` y `dayGap`. `UnitReportFactsReader` pierde `UnitPurchaseFacts`, `DayGapPolicy` y `CompanyCalendar`. `ReportQueryServiceImpl.gapOf` y la columna de la brecha de `StockRows` leen de `ExternalProcurementService`.
-- Ruta nueva `GET /vehicles/{id}/payment-status` en `procurement`, con `@PermissionRequired(PermissionCodes.Stock.VIEW)`: `404 VEHICLE_NOT_FOUND` si `stock.ver` no ve la unidad, y `200 {vehicleId, payment: {status, baseDate, dayGap} | null}`. Sin versión por lote: el Inventario no muestra el pago.
-- `fleet` pierde `VehicleView.payment` (`withRecord(enablement, actions)`), `VehiclePaymentView`, `VehiclePaymentResource`, `VehicleResource.payment` y `VehicleViewFactory.paymentOf`. Es un cambio del recurso de la unidad (convenciones §4.2), de D-212 y de FLT-R131.
-- `VehiclesIntegrationTests` cambia sus aserciones de `$.payment`.
-- **Frontend:**
-  - `Vehicle`, `vehicles-response.ts` y `vehicle-assembler.ts` pierden `payment`, y `vehicle-payment.ts` pasa junto a la fachada;
-  - `ProcurementFacade` suma `unitPaymentStatus`, su carga, su error y `loadUnitPaymentStatus(vehicleId)`;
-  - la ficha vuelve a pedir la banda cada vez que el store reemplaza la unidad, porque un paso a Activo congela la brecha;
-  - `e2e/support/mocks/fleet.ts` saca `payment` del registro y atiende la ruta nueva.
-- **Caracterización adicional:**
-  - la banda de hoy (`$.payment` de la ficha) es igual a la de la ruta nueva para una unidad entregada, una sin entregar, una con `stock.ver` limitado a su marca y una sin línea vigente;
-  - `GET /reports/day-gaps` da las mismas filas.
-- **Documentación:** además D-212, FLT-R131 y el mapa objetivo §3.1 y §3.14 (la brecha la calcula `procurement`, y `reporting` la lee).
 
 ### Fase 6 — Las cuentas bancarias se quedan en `organization`, con un puerto por consumidor
 
@@ -1517,7 +1324,7 @@ Esta fase reemplaza la decisión 2, opción A, del mapa vigente, con una decisi�
 
 **Frontend.** Nada: las rutas, el cuerpo y los códigos no cambian (`EmployeesStore` y los diálogos de baja y de reincorporación). Solo cambian los comentarios de `employees.store.ts` que dicen que la salida es de `iam` (líneas 97, 282 y 319). El de la línea 35 habla de la cuenta (`IamFacade`) y se queda.
 
-**Las acciones de cuenta de cada fila no entran en esta fase.** `EmployeeAllowedActions` las calcula con `ProtectedAccounts` y `PendingAccountActivations`. Moverlas a `iam` cambia el contrato de `allowedActions` de la lista de colaboradores, la regla «las acciones por fila las calcula el backend» y lo construido el 15/11 (`bb02f4cf`, `11c29a46`): es una fase propia, con su decisión (decisión 14 de la fase 0).
+**Las acciones de cuenta de cada fila se quedan en `organization`** (decisión 14 de la fase 0, resuelta el 19/11/2026). `EmployeeAllowedActions` las sigue calculando con `ProtectedAccounts` y `PendingAccountActivations` de `shared`. No hay fase nueva ni cambio de contrato: moverlas a `iam` habría cambiado el contrato de `allowedActions` de la lista de colaboradores, la regla «las acciones por fila las calcula el backend» y lo construido el 15/11 (`bb02f4cf`, `11c29a46`).
 
 **Pruebas de caracterización, antes de mover nada (contra las rutas de `iam`, sin cambiarlas después).** Las caracterizaciones 2, 3 y 5 y parte de la 1 ya están en `EmployeeTenureIntegrationTests` (24 pruebas), que se mueve sin cambiar sus aserciones:
 - en la 1: `nobodyRecordsTheirOwnExitOrReturn`, `aCompanyAdministratorNotLinkedToAnEmployeeRecordsNoExit`, `aCompanyAdministratorDoesNotRecordExitsInAnotherCompany` y `aSuperadminNotLinkedYetRecordsNoExitNorReturn`;
@@ -1627,13 +1434,13 @@ Se pregunta siempre con `systemAccessScope.call(...)`, como `CurrencyCommandServ
 
 #### 8.4 Los candados
 
-La bandera que hoy escribe el alta es lo que serializa la corrección con la primera unidad o la primera instalación. Sin ella, la propuesta (decisión 13) es:
+La bandera que hoy escribe el alta es lo que serializa la corrección con la primera unidad o la primera instalación. Sin ella, rige la propuesta, que el responsable eligió el 19/11/2026 (decisión 13 de la fase 0):
 - la corrección del tipo de vehículo de un modelo, y la del código de un tipo de equipo, toman la fila **`FOR UPDATE`**, y no `FOR NO KEY UPDATE`, **antes** de preguntar al puerto. Es un método nuevo, `findByPublicIdForKeyUpdate` (`SELECT id … FOR UPDATE`), en `VehicleModelRepository` y `EquipmentTypeRepository`: el `findByPublicIdForUpdate` de hoy bloquea con `FOR NO KEY UPDATE` (`VehicleModelJpaRepository:45`, `EquipmentTypeJpaRepository:78`), que la FK no espera;
 - el alta de una unidad o de una instalación pasa por la FK (`vehicles.model_id` y `vehicle_equipments.equipment_type_id`), que toma `FOR KEY SHARE` sobre esa fila y choca con `FOR UPDATE`;
 - así el alta confirma antes y el puerto la ve, o espera a la corrección;
 - después de preguntar se relee el registro, porque entrar al alcance `SYSTEM` limpió lo leído (`CurrencyCommandServiceImpl.java:99-103`).
 
-La alternativa de `CurrencyUsage` es que los cuatro caminos que escriben (`VehicleCommandServiceImpl`, `PurchasedUnitRegistrations`, `MigratedUnitRegistrations` y `VehicleEquipmentInstallations`) lean el modelo o el tipo `ForShare`. El orden no cambia con ninguna de las dos: primero la unidad y después el catálogo; el catálogo nunca bloquea una unidad.
+Quedó descartada la alternativa de `CurrencyUsage`, que los cuatro caminos que escriben (`VehicleCommandServiceImpl`, `PurchasedUnitRegistrations`, `MigratedUnitRegistrations` y `VehicleEquipmentInstallations`) lean el modelo o el tipo `ForShare`. El orden de los candados no cambia: primero la unidad y después el catálogo; el catálogo nunca bloquea una unidad.
 
 #### 8.5 Índice
 
@@ -1678,44 +1485,15 @@ Va con la entrega N, salvo las filas de las columnas, que salen en la N+1.
 - **El `README.md` del backend** (l.386: `markModelInUse`, D-107 y `vehicle_models.has_units`).
 - Las skills no nombran las banderas: no cambian.
 
-### Fase 9 — Renombrar `location` a `reference` (opcional)
+### Fase 9 — Salió del plan
 
-**Por qué.** El nombre es parte del lenguaje (cap. 2). `location` no describe monedas, tasas ni tipos de documento, y choca con `Location` de `organization`.
-
-**Si se hace y cuándo.** Si se renombra es la decisión 2 de la fase 0; cuándo, la 16. Lo que cambia según la respuesta:
-- **Sí:** la fase va después de las fases 1 a 8 y antes del primer contexto del bloque 12, para que `customers`, `leasing` y `collections` nazcan con `reference::acl`. Si el bloque 12 empezara antes, cada contexto nuevo sumaría su `"location::acl"` y su `ExternalLocationService`, y el renombre crecería.
-- **No:** la fase no se hace, y el mapa objetivo y `contextos/` vuelven a decir `location` donde ya dicen `reference`.
-
-En los dos casos no se hace a mitad de otra fase: es el cambio con más archivos y menos efecto sobre el modelo, y toca archivos de casi todos los contextos.
-
-**El tamaño real.**
-- **Backend:** 275 archivos del paquete (215 de código y 60 de pruebas). Fuera de él lo importan 23: 7 de código (los tres `ExternalLocationService` y los cuatro adaptadores de `CurrencyUsage`) y 16 de pruebas. `ExternalLocationService` aparece en 64 archivos, `LocationContextFacade` en 21 y los ids `LOC-R` en 38.
-- **Frontend:** los 145 archivos de la carpeta `location`, 72 que la importan y 16 que usan las rutas `/location/…`: `app.routes.ts`, `app-navigation.ts`, `app.spec.ts`, `app-shell.spec.ts`, `e2e/screens.ts`, ocho specs de e2e, `e2e-live/location.live.spec.ts` y la ficha del país (`country-profile-view.ts` y su spec).
-
-**Qué cambia.**
-- **Backend:**
-  - el paquete y el `displayName`;
-  - `"location::acl"` en los `package-info.java` de `fleet`, `organization`, `procurement` y `legacyimport` (si todavía existe);
-  - los `ExternalLocationService` de `fleet`, `organization` y `procurement` pasan a `ExternalReferenceService`, por la regla `External<Contexto>Service`, con nombre de bean explícito (§5): `fleetExternalReferenceService`, `organizationExternalReferenceService` y `procurementExternalReferenceService`. El de `organization` hoy no lo tiene;
-  - las pruebas.
-- **Conservan su nombre**, para acotar el cambio: `LocationContextFacade` y su implementación, `LocationDataVersions` y `JdbcLocationDataVersions`, `LocationDocumentKinds` y los ids `LOC-R*` de las reglas. La skill `backend-module` nombra esas clases por el contexto, así que anota la excepción, para que la revisión de arquitectura no la marque.
-- **Frontend:** la carpeta `location`, las rutas `/location/…` con sus redirecciones, el menú, `e2e/screens.ts` y las specs.
-- **Documentación:** `contextos/location.md`, el árbol del README del backend, el mapa vigente y las cuatro copias de las skills.
-
-**Qué no cambia:**
-- las rutas de la API, las tablas, los códigos de los permisos y los nombres de las imágenes de referencia;
-- los `@Tag` de OpenAPI (`Countries`, `Currencies`, `Exchange rates`, `Geo Divisions`, `Geo Division Levels`, `Tax ID Types`), los códigos de `LocationDocumentKinds` (`currencies`, `countries`…) y las claves de primer nivel de `es.json`, que no dicen «location»;
-- la propiedad `location.exchange-rates.confirmation-threshold` y su variable `LOCATION_EXCHANGE_RATE_CONFIRMATION_THRESHOLD`, que documenta el README: renombrarlas obliga a revisar la configuración de cada entorno (hoy `.do/app.yaml` no la define y rige `0.03`);
-- el prefijo del candado consultivo `location.exchange-rates.series:` de `ExchangeRateRepositoryImpl`: durante un despliegue, dos instancias con prefijos distintos no se esperarían al registrar una tasa de la misma serie;
-- todo lo que es `Location` de `organization`: la tabla `locations`, `/organization/locations`, `LocationCommandServiceImpl` y la clave `locations` de `es.json`. El renombre no se hace reemplazando «location» en todo el árbol.
-
-**Depende de** las fases 1 a 8. No espera a la fase 10, que no escribe código.
+El responsable decidió el 19/11/2026 no renombrar `location` a `reference` (decisiones 2 y 16 de la fase 0). El contexto conserva su nombre, su paquete, sus rutas del frontend, su fachada y los ids `LOC-R` de sus reglas; el mapa objetivo vuelve a llamarlo `location` en todas sus secciones; y los contextos del bloque 12 nacen con `location::acl`. La fase no se hace, y su número no se reutiliza. El choque de nombre con `Location` de `organization` se queda: cada uno vive en su contexto, y la tabla `locations` y `/organization/locations` son de `organization`.
 
 ### Fase 10 — Preparar el bloque 12
 
 Sin código. Se responden las preguntas del bloque 12, se registran como decisiones del diccionario y, con ellas, se diseñan los contextos nuevos. No depende de otra fase: corre en paralelo con las demás (§7) y termina antes de construir el primer contexto del bloque 12.
 
-**Las preguntas del negocio.** Vienen del mapa objetivo (§7, punto 8) y de las decisiones abiertas del diccionario (§14, el GPS de D-260). Las responde el responsable; la segunda columna dice a quién consulta. Los dueños de la identidad del cliente y de `advisor_assignments` son decisiones de diseño, más abajo.
+**Las preguntas del negocio.** Vienen del mapa objetivo (§7, punto 8). La del GPS al terminar el contrato ya está respondida: al traspasar la unidad al cliente, el GPS se retira antes de cerrar el traspaso y vuelve al inventario, disponible para otra unidad, y el cliente pasa por el taller (D-264, que se construye con el monitoreo). Las demás las responde el responsable; la segunda columna dice a quién consulta. Los dueños de la identidad del cliente y de `advisor_assignments` son decisiones de diseño, más abajo.
 
 | Pregunta | Con quién | Qué cambia según la respuesta |
 |---|---|---|
@@ -1725,7 +1503,6 @@ Sin código. Se responden las preguntas del bloque 12, se registran como decisio
 | Quién emite los comprobantes de cada cuota y con qué proveedor de facturación electrónica | Contabilidad | La *Anticorruption Layer* de facturación de `collections` |
 | Cuándo procede la resolución y qué pasa con la deuda y con la unidad | El área comercial, contabilidad y el área legal y documentaria | El puerto de la mora y el camino de `fleet` que pide la resolución |
 | El regreso automático a Disponible a las 48 horas de la firma: regla del contrato (la oferta vence) o de la unidad (la reserva vence) | El área comercial | Si sigue en `StatusToleranceBreachTask` de `fleet` (D-164) o pasa a `leasing` |
-| El GPS al terminar el contrato (D-260): al traspasar la unidad al cliente, se retira y vuelve al inventario, o se va con la unidad | El área legal y documentaria, que lleva el traspaso | Hoy, en En traspaso, el retiro se permite y no se exige. Si se retira, se exige allí, antes de Inactivo, y el GPS vuelve al inventario de `equipment`; si se va, sale del inventario con la unidad. Qué registra `equipment` en cada caso va con la decisión 11 de la fase 0 |
 
 **Las decisiones de diseño.** Las propone quien diseña el bloque 12 y las aprueba el responsable:
 - **El servicio publicado de `fleet` para las transiciones comerciales** —reservar, firmar, entregar, resolver y completar—, que llamará `leasing`. Con él se fija qué caminos manuales quedan para una persona y cuáles pide solo `leasing`: hoy «Firma de contrato» (`FIRMA_CONTRATO`) la registra una persona con `stock.vender` (D-218, D-251).
@@ -1740,7 +1517,7 @@ Sin código. Se responden las preguntas del bloque 12, se registran como decisio
   - qué alcance le da la RLS, que hoy filtra por empresa (`access_scope_reaches(company_id)`) y tendría que filtrar por cliente;
   - qué cadena de seguridad lo autentica, aparte de la de los colaboradores.
 - **El dueño de `advisor_assignments`.** El diccionario la pone en el bloque 3b, de `organization` e `iam`, aunque se construya con el bloque 12 (§3, ajuste 2); el mapa objetivo, en `leasing` (§3.2). O una decisión la pasa a `leasing`, o el mapa objetivo la devuelve a `organization`. Hasta entonces manda el diccionario.
-- **Los montos del bloque 12.** `leasing` (precio, inicial y cuota) y `collections` (cuotas y pagos) implementan `CurrencyUsage` de `reference`, como `procurement` y `fleet`. Sin eso, LOC-R05 dejaría cambiar los decimales de una moneda que usan los contratos.
+- **Los montos del bloque 12.** `leasing` (precio, inicial y cuota) y `collections` (cuotas y pagos) implementan `CurrencyUsage` de `location`, como `procurement` y `fleet`. Sin eso, LOC-R05 dejaría cambiar los decimales de una moneda que usan los contratos.
 - **El *Published Language* del cronograma** que `leasing` entrega a `collections`, y el puerto de `leasing` por el que `collections` responde la mora.
 - **La conciliación de la inicial (D-31):** quién la hace y por qué fachada. `procurement::acl` ya publica el costo de cada unidad (fase 5), y hoy `reporting` muestra la diferencia por inicial.
 - **Las cuentas bancarias en la cobranza:**
@@ -1759,10 +1536,11 @@ Sin código. Se responden las preguntas del bloque 12, se registran como decisio
 - D-223 y D-239, el traspaso;
 - D-250, el contrato en el historial de la unidad;
 - D-260, los equipos de seguridad de una unidad con un cliente;
+- D-264, el GPS que se retira antes de cerrar el traspaso y ningún dispositivo instalado en una unidad que sale de la flota;
 - §5.11, `advisor_assignments` y el esbozo de `contracts`, que «se define completo en el bloque 12».
 
 **Qué queda escrito al terminar:**
-- **En el diccionario:** una decisión con número por cada pregunta del negocio y cada decisión de diseño. La del GPS sale de «Decisiones abiertas» (§14).
+- **En el diccionario:** una decisión con número por cada pregunta del negocio y cada decisión de diseño.
 - **En el mapa objetivo:** §7, punto 8, cerrado, y §2, §3 y §4 con lo decidido: el dueño de la identidad del cliente, el de `advisor_assignments`, los puertos y las relaciones de los contextos nuevos.
 - **Un `contextos/<contexto>.md` por cada contexto nuevo**, con sus reglas.
 - **Las familias de permisos del catálogo** y sus pares incompatibles (D-117, D-119).
@@ -1774,7 +1552,7 @@ Sin código. Se responden las preguntas del bloque 12, se registran como decisio
 
 **Terminado cuando** cada pregunta tiene su decisión con número y cada contexto nuevo tiene su documento, sin código.
 
-Después, cada contexto nuevo se construye con el orden de la skill `backend-module`: `customers` (mínimo), `leasing`, `collections`, `titletransfer`, el dueño de la identidad del cliente si es un contexto aparte, y el portal. Si la fase 9 se hace, va antes del primero (decisión 16 de la fase 0).
+Después, cada contexto nuevo se construye con el orden de la skill `backend-module`: `customers` (mínimo), `leasing`, `collections`, `titletransfer`, el dueño de la identidad del cliente si es un contexto aparte, y el portal. Cada uno nace con `location::acl`: `location` no se renombra (decisiones 2 y 16 de la fase 0).
 
 ---
 
@@ -1801,7 +1579,7 @@ Después, cada contexto nuevo se construye con el orden de la skill `backend-mod
 
 **Documentación**
 - [ ] Lo movido pasa al mapa vigente, a `contextos/` y al diccionario §3, en el mismo cambio, y en el mapa objetivo queda marcado «Integrada en la fase n (fecha)».
-- [ ] Una decisión del diccionario o del mapa vigente que la fase contradice o precisa queda precisada o reemplazada por una nueva en el mismo cambio, porque si no coinciden manda el diccionario: D-129 y D-200 en la fase 1, D-254 en la 2, D-200 en la 3 y en la 4, D-203 en la 5 y la decisión 2 del mapa vigente en la 7.
+- [ ] Una decisión del diccionario o del mapa vigente que la fase contradice o precisa queda precisada o reemplazada por una nueva en el mismo cambio, porque si no coinciden manda el diccionario: D-129 y D-200 en la fase 1, D-254 en la 2, D-200 en la 4 y en el borrado 3b, D-203 en la 5 y la decisión 2 del mapa vigente en la 7.
 - [ ] Las convenciones, si cambió un recurso, una ruta de módulo o la tabla de rutas por contexto.
 - [ ] Las cuatro copias de las skills, a mano mientras sean locales (decisión 15), y el README del backend.
 
@@ -1809,7 +1587,7 @@ Después, cada contexto nuevo se construye con el orden de la skill `backend-mod
 
 ## 6. Vuelta atrás
 
-Las fases 1 a 7 y la 9 no cambian datos ni esquema: deshacer una es revertir su commit de integración en el backend, en el frontend y en la documentación. Eso deshace solo la última fase integrada; una anterior se corrige hacia adelante, porque las siguientes se construyen sobre ella. Mientras las skills sean copias locales (decisión 15), se restauran a mano.
+Las fases 1, 2 y 4 a 7, y el borrado 3b, no cambian datos ni esquema: deshacer una es revertir su commit de integración en el backend, en el frontend y en la documentación. Eso deshace solo la última fase integrada; una anterior se corrige hacia adelante, porque las siguientes se construyen sobre ella. Mientras las skills sean copias locales (decisión 15), se restauran a mano.
 
 La fase 8 va en dos entregas:
 - la primera deja de escribir dos columnas. Revertirla antes de eliminarlas exige recalcularlas, porque dejaron de escribirse (fase 8 §8.7);
@@ -1826,17 +1604,17 @@ El trabajo previo de D-260 no es una fase y no se revierte: se corrige hacia ade
 | 1–2 | 0, 1 y 6 |
 | 2–4 | El trabajo previo de D-260, en sus dos entregas: la segunda, la que borra las columnas, antes de empezar la 2 |
 | 4–7 | 2 |
-| 7–8 | 3 |
-| 8–10 | 4 |
-| 11–12 | 5 |
-| 12–14 | 7 |
-| 14–15 | 8, primera entrega (la segunda, una entrega después) |
+| 7–9 | 4 |
+| 9–11 | 5 |
+| 11–13 | 7 |
+| 13–14 | 8, primera entrega (la segunda, una entrega después) |
 | Después de la 2 | El monitoreo del GPS, si se construye entonces: corre las fases siguientes tantas semanas como dure, y la 8 va antes o después de él (§2) |
-| Después de la 8 y antes del bloque 12 | 9, si se hace (decisión 16) |
 | Después de la puesta en marcha, con la carga inicial cerrada | 3b |
 | En paralelo, con el negocio | 10 |
 
 Cada fase empieza cuando termina la anterior, con su costo máximo y semanas de cinco días: una semana que aparece dos veces es la que termina una fase y empieza la siguiente. El trabajo previo de D-260 está en el calendario aunque no entre en los días de las fases (§3), porque la fase 2 no empieza sin él.
+
+Desde el 19/11/2026 el calendario termina en la semana 14 y no en la 15. Sale la semana 7 a 8 de la fase 3, de 7 días como máximo, y la 4 empieza al terminar la 2: con los máximos de §3, la 2 termina el día 31, la 4 ocupa los días 32 a 43, la 5 del 44 al 52, la 7 del 53 al 61 y la primera entrega de la 8 del 62 al 66, 7 días antes que antes. Sale también la fila de la fase 9, que iba después de la 8 sin fecha. El trabajo funcional que se decidió para justo después de D-260 (§3) no tiene días en el plan, así que el calendario no lo cuenta.
 
 ---
 
@@ -1852,12 +1630,11 @@ Cada fase empieza cuando termina la anterior, con su costo máximo y semanas de 
 | La versión de los datos de una exportación deja de cubrir una tabla y el documento se reutiliza viejo | Cada fase que parte un `DataVersions` compone las versiones de los dos contextos y prueba la exportación después de cambiar un dato de cada uno |
 | La fachada de un contexto crece sin control | Un miembro nuevo solo con un consumidor que lo use (skill `backend-module`, paso 12) |
 | Conflictos con trabajo funcional en paralelo | Una fase a la vez, ramas cortas, sin trabajo funcional en el área que se mueve; las fases 4 y 5, en ese orden |
-| El monitoreo del GPS y la fase 8 cambian las mismas clases | La fase 8 va antes o después del monitoreo, nunca durante; mientras dura, las fases 3 a 7 no tocan `equipment` ni la instalación (§2) |
+| El monitoreo del GPS y la fase 8 cambian las mismas clases | La fase 8 va antes o después del monitoreo, nunca durante; mientras dura, las fases 4 a 7 no tocan `equipment` ni la instalación (§2) |
 | La fase 2 espera a D-260, y D-260 a dos preguntas abiertas del diccionario | La decisión 10 se resuelve en la fase 0, y el trabajo previo de D-260 tiene su lugar en el calendario (§7) |
 | Las skills y el mapa quedan atrás del código | Se sincronizan en la fase 0 y se actualizan en cada fase, en las cuatro copias. Son locales y la rama no las lleva: se actualizan a mano el día que se integra, o se versionan (decisión 15) |
 | `dev` se despliega antes del CI | El CI corre en la rama antes de integrar a `develop` |
-| El backend y el frontend se despliegan por separado, con minutos de diferencia | Primero el backend cuando el contrato no cambia; en tres pasos cuando cambia (§2) |
-| Las fases que cambian el recurso de la unidad (la 4 o la 5, solo con su opción B) | Se integran en tres pasos (§2), con las convenciones §4.2 acordadas en orden |
+| El backend y el frontend se despliegan por separado, con minutos de diferencia | Primero el backend, porque ninguna fase cambia el contrato; un cambio que lo cambiara iría en tres pasos (§2; convenciones §14.14) |
 | La fase 7 debilita una regla de seguridad | Pruebas de caracterización antes de mover, bean único, prueba de reversión, carreras y revisión de arquitectura antes de integrar |
 
 ---
@@ -1869,13 +1646,13 @@ Cada fase empieza cuando termina la anterior, con su costo máximo y semanas de 
 Cinco auditorías en paralelo verificaron la versión 2 contra el mapa objetivo, contra el código de `develop` y contra la rama de D-260: la cobertura del mapa; las fases 0, 1 y 3; la fase 2, D-260 y la fase 8; las fases 4 y 5; y las fases 6, 7, 9 y 10. Dieron 119 hallazgos: 2 bloqueantes, 58 importantes y 59 menores. Esta versión aplica los que se confirmaron contra el código, y lo que pide una respuesta del responsable pasó a la fase 0 (decisiones 9 a 16). Lo principal:
 - **El trabajo previo de D-260** tiene su propia sección, antes de la fase 2: la rama corregida, la numeración de las migraciones, el modelo de la configuración, el único lugar donde `fleet` cruza lo que aplica con lo que se exige, las marcas de los estados, el paso automático por `PIERDE_REQUISITO`, la API, el frontend y las pruebas que cambian de resultado. Va en dos entregas, las dos antes de la fase 2, y tiene su lugar en §3 y en el calendario.
 - **La fase 2 mueve también las marcas de equipo** de la rama (`EquipmentBrand`, `equipment_brands`, V139). Sin ellas, `EquipmentModel` habría quedado en `equipment` leyendo el interior de `vehiclecatalog`, y `ModularityTests` fallaba. Su inventario se vuelve a tomar después de D-260.
-- **La fase 3** tiene un contrato completo de `procurement::acl`: los tipos de la petición, los rechazos con su línea y su campo, también los de `fleet`, y el orden de los candados del pago.
+- **La fase 3** tiene un contrato completo de `procurement::acl`: los tipos de la petición, los rechazos con su línea y su campo, también los de `fleet`, y el orden de los candados del pago. Después la decisión 4 reemplazó la fase por el borrado 3b, y ese contrato no se construye.
 - **La fase 4** empieza caracterizando, y la redirección de las rutas viejas conserva sus parámetros.
 - **La fase 7** devuelve el `409` de un bloqueo concurrente sin convertirlo en `500`: la marca de reversión la pone la transacción de `organization`.
 - **La fase 8** inyecta sus dos puertos como bean obligatorio, con su prueba de cableado, y su consulta de control corre con el alcance de sistema, porque las tablas tienen RLS forzado.
 - **La fase 10** parte de los puertos que ya existen: `UnitContracts` se suma al historial (D-250), no lo reemplaza.
 - **El despliegue:** backend y frontend se despliegan por separado, así que §2 fija el orden de integración. Hay una sola instancia (`instance_count: 1`), y la segunda entrega de la fase 8 se condiciona a eso (§6).
-- **El mapa objetivo:** las capas de §5 ya no contradicen sus relaciones; §4 suma las relaciones que el plan convierte en `allowedDependencies`; `legacyimport`, `equipment` y `shared` coinciden con lo que el plan construye.
+- **El mapa objetivo:** las capas de §5 ya no contradicen sus relaciones; §4 suma las relaciones que el plan convierte en `allowedDependencies`; `legacyimport`, `equipment` y `shared` coinciden con lo que el plan construye. Desde la decisión 4, `legacyimport` no se forma.
 
 ### La auditoría del 18/11/2026 (versión 2)
 
@@ -1886,13 +1663,13 @@ Cada fase se verificó contra el código: las clases, los consumidores, las fach
 | 0 y todas | Las skills eran «tres copias»; son cuatro y ya divergían. `ForeignAclStaysInTranslationLayerTests` tiene los contratos de plataforma escritos a mano | Se sincronizan en la fase 0; la fase 1 suma `audit` e `imports` a la prueba |
 | 1 | `imports` depende de `audit`, y las dos fachadas no exponían lo que usan sus consumidores (Modulith no expone subpaquetes ni los tipos de las firmas) | `audit` primero; `imports` con `{"audit::acl", "documents::acl"}`; las fachadas, con la lista completa de tipos |
 | 2 | El inventario lee empresas y ubicaciones de `organization` y la placa de la unidad de `fleet`; el catálogo de equipos usa el interior de `vehiclecatalog`; la versión de la habilitación mezcla tablas de los dos catálogos; un bean sin nombre impediría arrancar | `equipment` depende de `organization`; la placa llega por un puerto que implementa `fleet`; `vehiclecatalog::acl` suma los tipos de vehículo; las versiones se parten y se componen; nombres de bean explícitos |
-| 3 | Los writers de compras usaban las filas del libro que la fase sacaba de `procurement`, y `procurement::acl` necesitaba más de tres miembros | Una capa anticorrupción de verdad: `procurement::acl` habla su lenguaje, `legacyimport` traduce, y el registro de la factura sigue llamando a `fleet` para no invertir el orden de los candados |
+| 3 | Los writers de compras usaban las filas del libro que la fase sacaba de `procurement`, y `procurement::acl` necesitaba más de tres miembros | Una capa anticorrupción de verdad: `procurement::acl` habla su lenguaje, `legacyimport` traduce, y el registro de la factura sigue llamando a `fleet` para no invertir el orden de los candados. Desde el 19/11/2026 la fase la reemplaza el borrado 3b (decisión 4) |
 | 4 | Faltaban dependencias de `financing` (`iam::acl`, `audit::acl`); `fleet` lee por SQL la tabla que se muda; el recurso de la unidad cambiaba sin decirlo | Dependencias completas; miembros nuevos en la fachada de `fleet`; la opción A no cambia el recurso |
 | 5 | La brecha de días se perdía en la ficha o se duplicaba; `procurement` no tenía cómo resolver la unidad | La brecha sigue en `fleet` (opción A); `fleet::acl` suma la unidad que la sesión ve |
 | 6 | Mover las cuentas bancarias a cuentas por pagar contradecía el propio mapa: la cobranza también las usará | Se quedan en `organization`, con un puerto por consumidor (`BankAccountUsage`), el patrón de `CurrencyUsage` |
 | 7 | Las negativas estaban mal: con el plan, un administrador de empresa no podría registrar salidas y quien sale con un rol reservado conservaría el acceso | Las tres negativas son de `organization`; el puerto de `iam` solo bloquea la cuenta, aplica la guardia del último superadministrador y las consecuencias |
 | 8 | La escritura de las banderas es lo que hoy serializa una corrección del catálogo con la primera unidad; un puerto que solo lee reabría la carrera | La corrección toma la fila `FOR UPDATE` antes de preguntar, el puerto lee con el alcance de sistema y va por lote |
-| 9 | Subestimada | 6–10 días, con su tamaño real |
+| 9 | Subestimada | 6–10 días, con su tamaño real. Desde el 19/11/2026 la fase salió del plan (decisiones 2 y 16) |
 
 ### Precisiones sobre el libro
 
