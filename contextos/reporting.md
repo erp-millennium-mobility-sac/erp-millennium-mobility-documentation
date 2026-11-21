@@ -1,6 +1,6 @@
 # Contexto `reporting` — ERP Millennium Mobility
 
-**Fuente:** diccionario de datos, D-232 a D-237, con D-239 y D-248; §10.5 y §11.9 del diccionario, P11 de [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), la guía funcional y la plantilla del cliente `STOCK_MILLENNIUM_2026_EXPORTABLE FINAL.xlsx`. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Fuente:** diccionario de datos, D-232 a D-237, con D-239, D-248 y D-280; §10.5 y §11.9 del diccionario, P11 de [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md), la guía funcional y la plantilla del cliente `STOCK_MILLENNIUM_2026_EXPORTABLE FINAL.xlsx`. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 La capa de lectura: los reportes que cruzan contextos. Lee por SQL y nunca escribe.
 
@@ -15,14 +15,14 @@ La capa de lectura: los reportes que cruzan contextos. Lee por SQL y nunca escri
 
 `reportes.ver` lo siembra V120 en `SUPERADMIN`, `ADMIN_EMPRESA`, `OPERACIONES` y `CONTABILIDAD` (D-232).
 
-**Dónde vive (D-232).** Un módulo `reporting`, capa de lectura: no escribe, no tiene tablas propias ni pantallas de escritura. Lee por SQL los datos de los contextos y pide a `fleet::acl` las reglas que tienen dueño, porque escribirlas de nuevo en SQL daría otro número y un reporte nunca debe decir otra cosa que la ficha de la unidad:
+**Dónde vive (D-232).** Un módulo `reporting`, capa de lectura: no escribe, no tiene tablas propias ni pantallas de escritura. Lee por SQL los datos de los contextos y pide a sus dueños, por sus fachadas, las reglas que tienen dueño, porque escribirlas de nuevo en SQL daría otro número y un reporte nunca debe decir otra cosa que la ficha de la unidad:
 
 | Regla | Dueño | Por dónde llega |
 |---|---|---|
 | Estado de habilitación con lo que falta, entrega vigente, primera entrega, fecha base y brecha de días | `fleet` | `FleetContextFacade.fetchReportFacts` |
-| Proveedor, factura, notas, valor del vehículo, valores en moneda funcional, pagos que alcanzan la unidad y la inicial congelada | `procurement`, que lo calcula | `FleetContextFacade.fetchPurchaseCosts`, por el puerto `UnitPurchases` de `fleet` |
+| Proveedor, factura, notas, valor del vehículo, valores en moneda funcional, pagos que alcanzan la unidad y la inicial congelada | `procurement`, que lo calcula | `ProcurementContextFacade.fetchUnitPurchaseCosts`, la fachada de `procurement` (D-280; antes de la fase 5 del plan de migración, por `fleet`) |
 
-`reporting` depende solo de `shared`, `documents::acl` y `fleet::acl`. Lo que llega de `fleet` lo traduce su `ExternalFleetService` a registros propios (`ReportUnitFacts`, `ReportUnitPurchase`), y ninguna otra clase nombra esos tipos. Cada consulta suya corre contra el esquema de Flyway en una prueba de integración (`ReportsIntegrationTests`).
+`reporting` depende solo de `shared`, `documents::acl`, `fleet::acl` y `procurement::acl`. Lo que llega de `fleet` lo traduce su `ExternalFleetService` a `ReportUnitFacts`, y lo que llega de `procurement`, su `ExternalProcurementService` a `ReportUnitPurchase`; ninguna otra clase nombra esos tipos. Cada consulta suya corre contra el esquema de Flyway en una prueba de integración (`ReportsIntegrationTests`).
 
 **Queda fuera, y por qué:**
 - **Costo por día paralizada:** el sistema no guarda ningún costo diario de una unidad detenida. Calcularlo sería inventar el dato (D-235).
@@ -127,8 +127,8 @@ Las pruebas del backend son del módulo `reporting`, salvo `ModularityTests`, qu
 
 | Id | Regla | Fuente | Capa | Prueba | Estado |
 |---|---|---|---|---|---|
-| RPT-R01 | `reporting` no escribe, y depende solo de `shared`, `documents::acl` y `fleet::acl` | D-232 | Servicio | `ModularityTests` | ✅ |
-| RPT-R02 | Las reglas con dueño se piden a `fleet::acl`: habilitación, entrega vigente, brecha y montos | D-232 | Servicio | `ReportsIntegrationTests` | ✅ |
+| RPT-R01 | `reporting` no escribe, y depende solo de `shared`, `documents::acl`, `fleet::acl` y `procurement::acl` | D-232, D-280 | Servicio | `ModularityTests` | ✅ |
+| RPT-R02 | Las reglas con dueño se piden a su dueño: a `fleet::acl`, la habilitación, la entrega vigente y la brecha; a `procurement::acl`, el costo de compra, sus notas y sus pagos | D-232, D-280 | Servicio | `ReportsIntegrationTests` | ✅ |
 | RPT-R03 | Un reporte es de una empresa que el llamante lee con `reportes.ver`; si no, `404 COMPANY_NOT_FOUND`. Una asignación acotada a marcas lee solo esas | D-233 | Servicio | `ReportsIntegrationTests` | ✅ |
 | RPT-R04 | Las unidades anuladas no cuentan | D-233 | Servicio | `ReportsIntegrationTests` | ✅ |
 | RPT-R05 | El exportable conserva los 52 encabezados y el orden de la plantilla, en cualquier idioma | D-234 | Servicio | `ReportsIntegrationTests` | ✅ |
@@ -136,11 +136,12 @@ Las pruebas del backend son del módulo `reporting`, salvo `ModularityTests`, qu
 | RPT-R07 | Robado, Pérdida total, En traspaso e Inactivo no cuentan como paralizadas: son de familia terminal. Sí se cuentan en Unidades por estado | D-235, D-239 | Dominio, Servicio | `FleetIndicatorsPolicyTests`, `ReportsIntegrationTests` | ✅ |
 | RPT-R08 | La diferencia por inicial exige `stock.ver_costos` en la empresa y totaliza por moneda | D-236 | Servicio, Frontend | `ReportsIntegrationTests`, `reports.spec.ts` | ✅ |
 | RPT-R09 | Cada tabla que muestra un documento tiene sus casillas en `data_versions` | D-237 | Base | Ninguna nombra las tres tablas que se versionan para el exportable | ⚠️ |
-| RPT-R10 | La diferencia por inicial es la inicial del cliente congelada al saldar, la de la imputación que salda, que una nota posterior no achica: «Diferencia por inicial» lista los saldados con inicial mayor que cero, y la columna 45 del exportable la lee. El diseño del exportable va en su versión 2. La inicial llega de `fleet`, que la responde congelada | D-248, D-236 | Servicio | `ReportsIntegrationTests` | ✅ |
+| RPT-R10 | La diferencia por inicial es la inicial del cliente congelada al saldar, la de la imputación que salda, que una nota posterior no achica: «Diferencia por inicial» lista los saldados con inicial mayor que cero, y la columna 45 del exportable la lee. El diseño del exportable va en su versión 2. La inicial llega de `procurement::acl`, que la responde congelada | D-248, D-236, D-280 | Servicio | `ReportsIntegrationTests` | ✅ |
 
 ## 5. Relación con otros contextos
 
-- **`fleet::acl`:** `FleetContextFacade.fetchReportFacts(companyId)`, los hechos de cada unidad de la empresa, y `fetchPurchaseCosts(vehicleIds)`, la compra de cada unidad, que `fleet` obtiene de `procurement` por el puerto `UnitPurchases` (sección 1).
+- **`fleet::acl`:** `FleetContextFacade.fetchReportFacts(companyId)`, los hechos de cada unidad de la empresa (sección 1).
+- **`procurement::acl`:** `ProcurementContextFacade.fetchUnitPurchaseCosts(vehicleIds)`, la compra de cada unidad con línea vigente, por su `ExternalProcurementService` (D-280, fase 5 del plan de migración; antes la leía por `fleet`, que la obtenía de `procurement` por su puerto `UnitPurchases`). `ReportsIntegrationTests` fija las columnas de compra y de pago del stock, la diferencia por inicial y la brecha, celda por celda, con `stock.ver_costos` en todas las marcas y en una (`thePurchaseColumnsOfTheReportsComeFromTheCostOfEachUnit`). `ReportingDataVersions` no cambió: ya nombraba las tablas de compras.
 - **Las cesiones de `financing`:** la columna 33 lee `vehicle_fund_assignments` por SQL, como modelo de lectura (*Conformist*), porque `financing` no tiene fachada (D-279). `ReportsIntegrationTests` la prueba: `SI` con una cesión abierta, `NO` sin cesión o con la cesión cerrada.
 - **`documents::acl`:** el exportable de stock es un documento generado (D-106), con su tipo `stock` en `ReportingDocumentKinds` y la versión de sus datos por `ReportingDataVersions`.
 - **`shared`:** el alcance de quien llama (`CurrentAccessScope`) y los permisos de `PermissionCodes`.
