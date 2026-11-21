@@ -115,7 +115,7 @@ En un monolito modular ninguna frontera exige otra base de datos ni otro desplie
 
 ### 3.9 `organization` — Organización
 
-- **Responsabilidad.** Empresas, marcas comerciales, sedes, ubicaciones, las cuentas bancarias de la empresa y los colaboradores con su historial de ingresos, **incluidas su salida y su regreso**, que hoy ordena `iam`.
+- **Responsabilidad.** Empresas, marcas comerciales, sedes, ubicaciones, las cuentas bancarias de la empresa y los colaboradores con su historial de ingresos, **incluidas su salida y su regreso**, que hoy ordena `iam`. Integrada en la fase 7 (21/11/2026): `organization` sirve la salida y el regreso (`EmployeeTenureCommandService`), con sus negativas, y declara `EmployeeAccountConsequences`, que implementa `iam`; las rutas, el permiso, los cuerpos y las negativas no cambiaron (D-281).
 - **Declara puertos.** `EmployeeAccountConsequences`, que implementa `iam`: bloquear la cuenta, la guardia del último superadministrador y las consecuencias de la salida y el regreso sobre la cuenta. Las negativas de la operación son de `organization`. Y `BankAccountUsage`, que implementan `procurement` y, después, `collections`: si una cuenta está en uso, para que no cambie su número ni su moneda (ORG-R65). Integrada en la fase 6 (19/11/2026): el puerto se llamaba `BankAccountPayments`, y las cuentas no cambiaron de contexto.
 - **Implementa puertos.** `AuditCompanyLookupPort` de `audit`: la empresa y su zona, para la bitácora y las cargas.
 - **Por qué.** El caso de uso pertenece al contexto dueño del término (cap. 4 y 14), y el cambio entra por la raíz `Employee` (cap. 6). Las cuentas bancarias se quedan: son de lo que la empresa tiene, y las van a usar los pagos y los cobros, dos contextos hermanos y opuestos; cada uno responde por un puerto, como `CurrencyUsage` (cap. 14 y 16).
@@ -123,7 +123,7 @@ En un monolito modular ninguna frontera exige otra base de datos ni otro desplie
 ### 3.10 `iam` — Identidad y acceso
 
 - **Responsabilidad.** Las cuentas de los colaboradores, sus credenciales y sesiones, el freno del inicio de sesión, la activación, los roles, los permisos, las asignaciones y los bloqueos.
-- **Implementa puertos.** `EmployeeAccountConsequences` de `organization` (fase 7 del plan), `AuditActorLookupPort` de `audit` (el nombre de una cuenta) y los puertos del alcance de `shared`: `CurrentAccessScope`, `ProtectedAccounts` y `PendingAccountActivations`.
+- **Implementa puertos.** `EmployeeAccountConsequences` de `organization` (fase 7 del plan), `AuditActorLookupPort` de `audit` (el nombre de una cuenta) y los puertos del alcance de `shared`: `CurrentAccessScope`, `ProtectedAccounts` y `PendingAccountActivations`. Integrada en la fase 7 (21/11/2026): `EmployeeAccountConsequencesService`, que corre solo dentro de la transacción de `organization`, y `iam` ya no sirve las rutas de la salida y el regreso (D-281).
 - **Por qué.** Es un *Generic Subdomain* (cap. 15): se aísla y se congela su alcance. No se estira para los clientes, porque su modelo exige que toda cuenta pertenezca a un colaborador (D-38). Su vocabulario del alcance, `AccessScope` y `PermissionCodes`, vive en `shared`, el *Shared Kernel* de todos.
 
 ### 3.11 `location` — Datos de referencia
