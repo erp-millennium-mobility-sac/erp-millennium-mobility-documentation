@@ -6,7 +6,7 @@
 
 ## 1. Qué es y qué no es
 
-`vehiclecatalog` responde con qué se describe una unidad: de qué tipo es, de qué marca y de qué modelo y de qué color. El equipamiento que se le instala —sus tipos, sus marcas y sus modelos— es del contexto `equipment` desde la fase 2 del plan de migración ([equipment.md](equipment.md), D-278), y qué equipo exige la habilitación lo dice `fleet` (D-260). Sus catálogos son del sistema, no de cada empresa (D-15): un Chevrolet Sail es el mismo en Perú y en Colombia (VCT-R01). Los escribe quien tiene crear, editar o desactivar de su familia —con la semilla, solo el superadministrador— y los leen los siete roles del sistema (VCT-R02). No llama a ningún contexto; `fleet`, `procurement` y `equipment` lo usan por su fachada.
+`vehiclecatalog` responde con qué se describe una unidad: de qué tipo es, de qué marca y de qué modelo y de qué color. El equipamiento que se le instala —sus tipos, sus marcas y sus modelos— es del contexto `equipment` desde la fase 2 del plan de migración ([equipment.md](equipment.md), D-278), y qué equipo exige la habilitación lo dice `fleet` (D-260). Sus catálogos son del sistema, no de cada empresa (D-15): un Chevrolet Sail es el mismo en Perú y en Colombia (VCT-R01). Los escribe quien tiene crear, editar o desactivar de su familia —con la semilla, solo el superadministrador— y los leen los siete roles del sistema (VCT-R02). No llama a ningún contexto; `fleet`, `procurement` y `equipment` lo usan por su fachada, y si un modelo ya tiene unidades se lo pregunta a `fleet` por un puerto suyo, `VehicleModelUsage` (VCT-R38).
 
 **Las cuatro tablas que posee**
 
@@ -14,7 +14,7 @@
 |---|---|---|
 | `vehicle_types` | Los tipos de vehículo —`AUTO`, `MOTO`, `TRIMOTO`—, con su nombre y el nombre comercial con que los conoce la operación | §7.1 |
 | `vehicle_brands` | Las marcas del vehículo: CHEVROLET, TVS, BAJAJ, HYUNDAI | §7.2 |
-| `vehicle_models` | Los modelos de cada marca, con su tipo, su cilindraje, su combustible, si traen pantalla de fábrica y si ya tienen unidades | §7.3, D-107 |
+| `vehicle_models` | Los modelos de cada marca, con su tipo, su cilindraje, su combustible y si traen pantalla de fábrica. Si ya tienen unidades lo responde `fleet` (VCT-R38), y la columna que lo guardaba ya no se escribe | §7.3, D-282 |
 | `colors` | Los colores | §7.4 |
 
 **Lo que parece suyo y no lo es**
@@ -22,7 +22,7 @@
 | Parece de `vehiclecatalog` | Es de | Por qué |
 |---|---|---|
 | La marca comercial: Lizzo, Lima Bikes | `organization` (§6.3) | Es bajo qué nombre coloca Millennium la unidad, no quién la fabrica. Una moto TVS King vendida bajo Lima Bikes usa las dos tablas |
-| Las unidades de un modelo | `fleet` (§8.1) | `vehiclecatalog` solo sabe si un modelo tiene alguna, porque `fleet` se lo avisa (D-107). Nunca lee las tablas de `fleet` |
+| Las unidades de un modelo | `fleet` (§8.1) | `vehiclecatalog` solo pregunta si un modelo tiene alguna, por su puerto `VehicleModelUsage`, que `fleet` implementa (VCT-R38, D-282). Nunca lee las tablas de `fleet` |
 | Los estados del vehículo, los motivos y los tipos de documento | `fleet` (mapa §6.4) | Son de los bloques 6 y 9 |
 | Los tipos, las marcas y los modelos de equipamiento, a qué tipos de vehículo aplica cada tipo, y el equipo físico en el almacén de una empresa | `equipment` (§7.5, §11.4; D-254, D-278) | Salieron de este catálogo en la fase 2 del plan de migración. `equipment` lee de aquí, por la fachada, los tipos de vehículo y, de cada modelo, su tipo y su pantalla de fábrica |
 | El equipamiento instalado en una unidad | `fleet` (§11.4) | La instalación apunta al tipo de equipamiento de `equipment` |
@@ -40,7 +40,7 @@
 | Modelo | La denominación oficial dentro de una marca: `SAIL SEDAN 1.5L LT MT` de CHEVROLET. El nombre solo identifica junto a la marca | El modelo de equipamiento |
 | Cilindraje | La cifra comercial del modelo en cc, entera: 125, 200, 1500 | La cifra técnica de la ficha (199,26) |
 | Pantalla de fábrica | Que el modelo ya trae la pantalla instalada | Que el equipo pantalla aplique a su tipo, que lo dice `equipment` (§7.5) |
-| Modelo con unidades | Un modelo del que `fleet` ya registró al menos una unidad. Desde entonces su tipo de vehículo queda fijo (D-107) | Un modelo activo, que solo dice si se sigue comprando |
+| Modelo con unidades | Un modelo del que `fleet` ya registró al menos una unidad, aunque esté anulada. Desde entonces su tipo de vehículo queda fijo (D-282) | Un modelo activo, que solo dice si se sigue comprando |
 | Desactivar | Dejar de ofrecer un registro para lo nuevo; lo que ya lo usa lo conserva | Borrar, que no existe |
 
 Las palabras del equipamiento —marca y modelo de equipamiento, telemático, aplicabilidad, el código que lee el programa y el equipamiento con instalaciones— están en [equipment.md](equipment.md).
@@ -188,7 +188,7 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | VCT-R11 | El combustible es uno de la lista cerrada, guardado en minúsculas y sin tildes, o vacío | §7.3 | Base, Dominio, Servicio | `VehicleModelConstraintTests`, `VehicleModelCommandServiceImplTests`, `FuelTypeTests` | ✅ |
 | VCT-R12 | El combustible de un modelo nuevo no se propone: nace vacío y se elige | D-109 | Servicio, Frontend | `vehicle-model-form-dialog.spec.ts`, `vehicle-model-assembler.spec.ts`, `VehicleModelCommandServiceImplTests`, `e2e/vehicle-catalog.spec.ts` | ✅ |
 | VCT-R13 | La marca de un modelo no cambia | §7.3 | Dominio, Servicio, Frontend | `VehicleModelCommandServiceImplTests`, `VehicleModelsControllerTests`, `vehicle-model-form-dialog.spec.ts` | ✅ |
-| VCT-R14 | El tipo de vehículo de un modelo se corrige mientras el modelo no tenga unidades; desde la primera queda fijo. `fleet` avisa la primera unidad por la fachada, en su misma transacción | D-107, §7.3 | Base, Dominio, Servicio, Frontend | `VehicleModelTests`, `VehicleModelCommandServiceImplTests`, `VehicleModelsControllerTests`, `VehicleCatalogContextFacadeTests`, `VehicleCatalogMigrationTests`, `VehicleRetiredReferencesTests` (`fleet`), `vehicle-model-form-dialog.spec.ts`, `brands-and-models.store.spec.ts`, `e2e/vehicle-catalog.spec.ts` | ✅ |
+| VCT-R14 | El tipo de vehículo de un modelo se corrige mientras el modelo no tenga unidades; desde la primera queda fijo. Si las tiene se lo pregunta a `fleet` (VCT-R38): la corrección bloquea el modelo `FOR UPDATE` antes de preguntar, así una unidad en curso la hace esperar, y una que llega durante la corrección la espera; solo pregunta si el tipo cambia. La lista calcula `vehicleTypeLocked` con una pregunta por página; la fachada no lo calcula ni pregunta | D-282, §7.3 | Base, Dominio, Servicio, Frontend | `VehicleModelTests`, `VehicleModelCommandServiceImplTests`, `VehicleModelQueryServiceImplTests`, `VehicleModelsControllerTests`, `VehicleModelTypeLockTests`, `VehicleRetiredReferencesTests` (`fleet`), `vehicle-model-form-dialog.spec.ts`, `brands-and-models.store.spec.ts`, `e2e/vehicle-catalog.spec.ts` | ✅ |
 | VCT-R15 | Un modelo nuevo es de una marca activa y de un tipo activo; al editarlo, un tipo nuevo tiene que estar activo, y el inactivo que ya tenía se conserva. El diálogo de un modelo nuevo ofrece solo las marcas activas | D-108, D-84 | Servicio, Frontend | `VehicleModelCommandServiceImplTests`, `VehicleModelsControllerTests`, `vehicle-model-form-dialog.spec.ts`, `brands-and-models.store.spec.ts`, `brands-and-models-view.spec.ts`, `e2e/vehicle-catalog.spec.ts` | ✅ |
 | VCT-R16 | Una unidad nueva no se registra con un modelo inactivo, ni con uno cuya marca o tipo estén inactivos | D-108, §8.1 | Servicio, en `fleet` (FLT-R07), con los estados que da la fachada | `VehicleCatalogContextFacadeTests`, `VehicleRetiredReferencesTests` (`fleet`) | ✅ |
 | VCT-R17 | Que un modelo traiga la pantalla de fábrica sale de su dato, nunca de comparar textos, y la fachada lo responde con su tipo de vehículo. Si el equipo pantalla aplica a ese tipo lo dice `equipment` (VCT-R28), y si se exige, `fleet` con su configuración (D-260) | §7.3, §7.5, D-165 | Base, Servicio | `VehicleModelTests`, `VehicleCatalogContextFacadeTests` | ✅ |
@@ -202,6 +202,7 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | VCT-R29 | Un modelo es a gas si su combustible es `gnv` o `glp`; vacío no lo es. La fachada lo responde, en lote, con el tipo de vehículo y la pantalla de fábrica del modelo | §7.3, D-166, D-109 | Servicio | `VehicleCatalogContextFacadeTests` | ✅ |
 | VCT-R31 | La versión de lo que la habilitación nombra del catálogo —los modelos y sus tipos de vehículo— la da la fachada; la del equipamiento y su aplicabilidad, `equipment` (EQP-R10) | D-128 | Servicio | `VehicleCatalogContextFacadeTests` | ✅ |
 | VCT-R32 | La fachada lista, en una consulta por clase de dato, los modelos que una unidad nueva puede tomar —activos, de una marca activa y de un tipo de vehículo activo— y los colores activos. Es lo que la plantilla de las líneas de una factura nombra y lo que su importación resuelve, por nombre | D-108; decisión del responsable del 04/11/2026 | Servicio | `PurchaseInvoiceLinesIntegrationTests` (`procurement`; PRC-R155, PRC-R157 de [procurement.md](procurement.md)) | ✅ |
+| VCT-R38 | Si un modelo ya tiene unidades lo responde `fleet` por el puerto `VehicleModelUsage`, por lote: cuenta toda unidad, de cualquier empresa y también anulada. `vehiclecatalog` pregunta con alcance `SYSTEM`, solo salen identificadores, y el puerto tiene un solo bean, obligatorio. Preguntan solo las pantallas del catálogo —sus listas y su exportación, la lectura de un modelo y la respuesta de sus comandos—; la fachada nunca, porque la leen otros contextos dentro de sus transacciones, y entrar ahí al alcance `SYSTEM` escribiría y vaciaría lo que leyeron: responde el modelo con su marca y su tipo (`VehicleModelReference`) | D-282 | Servicio | `VehicleModelUsageAdapterTests` (`fleet`), `VehicleModelUsageWiringTests` (`fleet`), `FleetContextFacadeImplTests` (`fleet`: una sola elevación por llamada) | ✅ |
 
 VCT-R18 a VCT-R20, VCT-R28, VCT-R30 y VCT-R33 a VCT-R37 son del catálogo de equipos: están en [equipment.md](equipment.md), con su número, desde la fase 2 del plan de migración (D-278).
 
@@ -209,7 +210,7 @@ VCT-R18 a VCT-R20, VCT-R28, VCT-R30 y VCT-R33 a VCT-R37 son del catálogo de equ
 
 ## 5. Relación con otros contextos
 
-`vehiclecatalog` no llama a ningún otro contexto: sus exportaciones las pide al módulo `documents` (D-125), y la versión de sus datos sale de los contadores de `data_versions` (D-128). El mapa le permite usar `location` (mapa §4), y no lo usa. La única escritura de la fachada, `markModelsInUse`, va en el mismo sentido que las lecturas: `fleet` llama a `vehiclecatalog`, y `vehiclecatalog` no llama a `fleet` ni lee sus tablas (mapa §6.4). Tampoco llama a `equipment`, que lo lee por la fachada. La única lectura de una tabla ajena es la de la migración que marcó, al crear la columna, los modelos que ya tenían unidades.
+`vehiclecatalog` no llama a ningún otro contexto: sus exportaciones las pide al módulo `documents` (D-125), y la versión de sus datos sale de los contadores de `data_versions` (D-128). El mapa le permite usar `location` (mapa §4), y no lo usa. Si un modelo ya tiene unidades lo pregunta por `VehicleModelUsage`, un puerto que declara en su `acl` y que implementa `fleet`, como `location` con `CurrencyUsage`: `vehiclecatalog` no llama a `fleet` ni lee sus tablas, y `fleet` ya dependía de él (mapa §6.4, D-282). Tampoco llama a `equipment`, que lo lee por la fachada. La única lectura de una tabla ajena es la de la migración que marcó, al crear la columna, los modelos que ya tenían unidades; desde la fase 8 del plan esa columna ya no se escribe, y sale en la entrega siguiente.
 
 **La fachada `VehicleCatalogContextFacade`** (detalle en mapa §5.1). La usan `fleet`, `procurement` y `equipment`.
 
@@ -221,10 +222,13 @@ VCT-R18 a VCT-R20, VCT-R28, VCT-R30 y VCT-R33 a VCT-R37 son del catálogo de equ
 | `fetchVehicleModelSummariesByPublicIds`, `fetchColorSummariesByPublicIds` | Los modelos y los colores que nombra un pedido, como las unidades nuevas de una factura | `procurement` |
 | `fetchActiveVehicleModelSummaries()`, `fetchActiveColorSummaries()` | Los modelos que una unidad nueva puede tomar y los colores activos, para la plantilla de las líneas de una factura y su importación (VCT-R32) | `procurement` |
 | `fetchDataVersion()` | La versión de los tipos, las marcas, los modelos y los colores, para no reutilizar un documento generado cuando uno cambia (D-106, D-128) | `fleet`, `procurement`, `equipment` |
-| `markModelsInUse(…)` | Marca que los modelos de las unidades que `fleet` registra ya tienen unidades, sea una sola o un lote, de una vez. Es idempotente y corre en la transacción de quien llama: si el alta falla, ningún modelo queda marcado (VCT-R14) | `fleet` |
 | `fetchVehicleTypeSummariesByPublicIds`, `fetchVehicleTypeSummariesByIds` | Los tipos de vehículo que nombra un pedido o una lista, en una lectura, activos o no, con su código y su nombre: los tipos a los que aplica un tipo de equipamiento | `equipment` |
 | `fetchModelEnablementFactsByIds(…)` | Lo que la habilitación necesita de este catálogo para cada modelo de un lote: su tipo de vehículo, si es a gas y si trae la pantalla de fábrica (VCT-R17, VCT-R29). Qué equipo aplica a ese tipo lo dice `equipment`, y qué se exige, `fleet` con su configuración (D-260). Un modelo cuyo tipo no existe queda fuera | `fleet` (si es a gas), `equipment` (el tipo y la pantalla de fábrica) |
 | `fetchEnablementDataVersion()` | La versión de los modelos y sus tipos que nombra la lista de habilitación de `fleet` (VCT-R31) | `fleet` |
+
+La fachada ya no recibe que un modelo tiene unidades, y tampoco lo pregunta: lee los modelos como referencias —el modelo con su marca y su tipo (`VehicleModelReference`), sin bloqueo— y responde sin entrar al alcance `SYSTEM` dentro de la transacción de quien la llama (D-282).
+
+**El puerto que declara: `VehicleModelUsage`**, en `vehiclecatalog::acl`, que implementa `fleet` (`VehicleModelUsageAdapter`): cuáles de un lote de modelos tienen al menos una unidad, de cualquier empresa y también anulada (`modelIdsWithUnits`). `vehiclecatalog` inyecta un solo bean, nunca una lista: sin él la aplicación no arranca, y `VehicleModelUsageWiringTests` lo vigila. Pregunta con alcance `SYSTEM`, porque las unidades tienen Row Level Security, y solo desde sus pantallas: una vez por página para `vehicleTypeLocked` —en la lista, en la exportación, en la lectura de un modelo y en la respuesta de sus comandos—, y al corregir un modelo solo si su tipo cambia, con el modelo ya bloqueado `FOR UPDATE` (VCT-R14, VCT-R38).
 
 **Frontend.** `VehicleCatalogFacade` ofrece vistas mínimas de los catálogos: a `fleet`, los tipos de vehículo activos, las marcas, los colores y los modelos —los activos de una marca y todos, para el filtro de Logística › Habilitación—; y a `equipment`, todos los tipos de vehículo, activos o no, con su propia carga, porque el diálogo de un tipo de equipamiento ofrece también los inactivos que ya tiene. Cada catálogo que ofrece tiene su propia carga y su propio error, apartados de los de las pantallas de catálogos: una lectura de otro contexto nunca deja su error ni sus filas en ellas.
 
@@ -239,6 +243,7 @@ VCT-R18 a VCT-R20, VCT-R28, VCT-R30 y VCT-R33 a VCT-R37 son del catálogo de equ
 | El catálogo maestro de modelos: los dos catálogos entregados no coinciden, así que el equipo prepara la lista de sus diferencias, el negocio elige el nombre de cada modelo y valida el catálogo, y solo ese se carga (§7.3, D-273) | Antes de la carga inicial; criterio de cierre del paso |
 | Validar este documento | El responsable |
 | Una prueba propia de los dos miembros de la fachada de VCT-R32, que hoy prueba su consumidor | Sin fecha |
+| Retirar `vehicle_models.has_units`, que ya nadie escribe ni lee desde que `vehiclecatalog` pregunta por `VehicleModelUsage` (D-282) | La entrega N+1 de la fase 8 del plan, cuando la entrega N esté desplegada en `dev` con su CI en verde |
 
 ---
 

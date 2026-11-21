@@ -393,7 +393,7 @@ El tipo de una ubicación viaja en minúsculas, como lo escribe el diccionario (
   **De los catálogos.**
   - `isoCodesLocked` del país dice si sus códigos ISO todavía se pueden corregir: no, desde que tiene escalones, direcciones, tipos de documento tributario o tasas de cambio (diccionario §4.2, D-47, D-155);
   - `codeLocked` del tipo de equipamiento dice si su código todavía se puede corregir (diccionario §7.5, D-74);
-  - `vehicleTypeLocked` del modelo dice si su tipo de vehículo todavía se puede corregir: es verdadero desde que el modelo tiene su primera unidad (diccionario §7.3, D-107);
+  - `vehicleTypeLocked` del modelo dice si su tipo de vehículo todavía se puede corregir: es verdadero desde que el modelo tiene su primera unidad (diccionario §7.3, D-282);
   - `codeLocked` del tipo de documento del vehículo: verdadero si el código es `TIVE` o si un documento usa el tipo (D-74);
   - `codeLocked` del fondo dice si su código todavía se puede corregir: es verdadero desde que una cesión lo usa (diccionario §2.4, §12.1);
   - `codeLocked` del tipo de orden dice lo mismo de su código: es verdadero desde que una plantilla lo usa (diccionario §9.2);
@@ -1061,7 +1061,7 @@ Todo error responde el mismo recurso, también los que ocurren antes del control
 - `PUT /roles/{id}/permissions` exige `permissionCodes`, también vacío (`400`), y valida cada elemento: un código nulo o en blanco responde `400 VALIDATION_ERROR` en vez de buscarse en el catálogo. La documentación de `context` en `ErrorResource` (§7.1) nombra `ROLE_PERMISSIONS_NOT_HELD`, junto a `EMPLOYEE_ACCOUNT_IDENTITY_MISMATCH`; las formas de los demás (`IncompatiblePairs`, `SystemScopePermissions` y `ReservedHolders`) las documentan las respuestas `422` de `POST /roles`, `PUT /roles/{id}/permissions` y `POST /users/{id}/role-assignments`.
 - Leen `GET /roles`, `GET /roles/{id}`, `GET /permissions` y `GET /permission-matrix` quienes tienen `seguridad.ver_roles`, que la semilla da a los tres administradores; sin él, `403 ACCESS_DENIED`. `GET /permissions` y la matriz no ofrecen los ocho códigos gruesos (D-130). Las escrituras exigen, con alcance sistema, `seguridad.crear_roles`, `editar_roles`, `desactivar_roles` o `marcar_permisos_de_roles`, según la operación: el administrador de accesos y el de empresa reciben `403` en cada una (D-130).
 
-**Los códigos de los catálogos de flota** (diccionario §7, D-73, D-74, D-107, D-108, D-130). Los escribe `vehiclecatalog` —y los del equipamiento, `equipment` (D-278)— con el permiso de la familia y de la operación —crear, editar o desactivar tipos, marcas y modelos, colores o equipamiento—; los lee cualquiera con `catalogos.ver` (§9.2).
+**Los códigos de los catálogos de flota** (diccionario §7, D-73, D-74, D-108, D-130, D-282). Los escribe `vehiclecatalog` —y los del equipamiento, `equipment` (D-278)— con el permiso de la familia y de la operación —crear, editar o desactivar tipos, marcas y modelos, colores o equipamiento—; los lee cualquiera con `catalogos.ver` (§9.2).
 
 | `code` | Estado | Operación | Cuándo |
 |---|---|---|---|
@@ -1073,12 +1073,12 @@ Todo error responde el mismo recurso, también los que ocurren antes del control
 | `VEHICLEBRAND_INACTIVE` | `422` | `POST /vehicle-brands/{id}/vehicle-models` | La marca está inactiva: no recibe modelos nuevos (D-108). Sus modelos se siguen editando |
 | `VEHICLEMODEL_NOT_FOUND` | `404` | `/vehicle-models/{id}` | El modelo no existe |
 | `VEHICLEMODEL_CONFLICT` | `409` | `POST /vehicle-brands/{id}/vehicle-models`, `PUT /vehicle-models/{id}` | La marca ya tiene un modelo con ese nombre, en cualquier mayúscula; también en una carrera. Otra marca puede usarlo |
-| `VEHICLEMODEL_TYPE_LOCKED` | `422` | `PUT /vehicle-models/{id}` | El modelo ya tiene unidades y la edición cambia su tipo de vehículo (D-107). El recurso del modelo lo anuncia con `vehicleTypeLocked` (§4.2). Su texto está en `error.vehiclemodel-type-locked.message` |
+| `VEHICLEMODEL_TYPE_LOCKED` | `422` | `PUT /vehicle-models/{id}` | El modelo ya tiene unidades y la edición cambia su tipo de vehículo (D-282). El recurso del modelo lo anuncia con `vehicleTypeLocked` (§4.2). Su texto está en `error.vehiclemodel-type-locked.message` |
 | `COLOR_NOT_FOUND` | `404` | `/colors/{id}` | El color no existe |
 | `COLOR_CONFLICT` | `409` | `POST /colors`, `PUT /colors/{id}` | Otro color tiene ese nombre, una vez recortado y en mayúsculas; también en una carrera |
 | `EQUIPMENTTYPE_NOT_FOUND` | `404` | `/equipment-types/{id}`; el alta de un modelo de equipamiento | El tipo de equipamiento no existe |
 | `EQUIPMENTTYPE_CONFLICT` | `409` | `POST /equipment-types`, `PUT /equipment-types/{id}` | Otro tipo de equipamiento tiene ese código; también en una carrera |
-| `EQUIPMENTTYPE_CODE_LOCKED` | `422` | `PUT /equipment-types/{id}` | Se corrige el código de `GPS` o de `PANTALLA`, que leen la pantalla de fábrica, la telemetría del GPS, la carga inicial y los reportes y quedan fijos desde la semilla (D-74), o el de un tipo que ya se instaló en una unidad, fijo desde su primera instalación (D-185). El recurso lo anuncia con `codeLocked` (§4.2) |
+| `EQUIPMENTTYPE_CODE_LOCKED` | `422` | `PUT /equipment-types/{id}` | Se corrige el código de `GPS` o de `PANTALLA`, que leen la pantalla de fábrica, la telemetría del GPS, la carga inicial y los reportes y quedan fijos desde la semilla (D-74), o el de un tipo que ya se instaló en una unidad, fijo desde su primera instalación (D-282). El recurso lo anuncia con `codeLocked` (§4.2) |
 | `VALIDATION_ERROR` | `400` | Las altas y las ediciones | El formato: un nombre o un código vacío o más largo que su columna, un combustible fuera de la lista (en minúsculas: `gasolina`, `gnv`, `glp`, `diesel`, `electrico`, `hibrido`), un cilindraje que no es un entero mayor que cero o que lleva un modelo eléctrico, un tipo de equipamiento que no aplica a ningún tipo de vehículo |
 
 - Un combustible vacío se acepta: el modelo nuevo no lo propone (D-109).
