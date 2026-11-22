@@ -1,6 +1,6 @@
 # Procesos y pantallas — ERP Millennium Mobility
 
-**Fuente:** diccionario de datos v1.61 y sus decisiones (§14), la política de acceso de [convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §9.2, el menú del frontend (`app-shell/app-navigation.ts`) y su `DESIGN.md`. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Fuente:** diccionario de datos (versión vigente) y sus decisiones (§14), la política de acceso de [convenciones de la API](convenciones-de-la-api-millennium-mobility.md) §9.2, el menú del frontend (`app-shell/app-navigation.ts`) y su `DESIGN.md`. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 El diccionario documenta los datos y sus reglas, pero no los procesos ni las pantallas (§1). Este documento cubre ese hueco: qué hace la empresa con el sistema, en qué orden, quién lo hace y en qué pantalla.
 
