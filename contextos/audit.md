@@ -1,6 +1,6 @@
 # Contexto `audit` — ERP Millennium Mobility
 
-**Fuente:** diccionario de datos v1.65 (§13, D-102, D-105, D-129, D-149, D-161, D-193, D-198 y D-262), el [mapa de contextos](../mapa-de-contextos-millennium-mobility.md) (§5.1, §5.3 y §6.5) y el código de `develop`. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Fuente:** diccionario de datos (versión vigente; §13, D-102, D-105, D-129, D-149, D-161, D-193, D-198 y D-262), el [mapa de contextos](../mapa-de-contextos-millennium-mobility.md) (§5.1, §5.3 y §6.5) y el código de `develop`. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 **Cómo leerlo.** `audit` es la bitácora de cambios, un módulo de la plataforma desde la fase 1 del plan de migración (D-262); antes vivía en `shared`. Las columnas de `change_logs` están en el diccionario (§13.1), la ruta y sus errores en las convenciones (§2.2 y §7.2), y la pantalla Seguridad › Bitácora de cambios en procesos y pantallas.
 
