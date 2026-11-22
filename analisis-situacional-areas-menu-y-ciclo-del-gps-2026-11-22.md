@@ -1,6 +1,6 @@
 # Análisis situacional — áreas, menú y ciclo de compra del GPS — ERP Millennium Mobility
 
-**Estado:** versión 2, 22/11/2026. Es la base del [plan de implementación](plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md) y no decide nada por sí solo. Recoge la [auditoría del mismo día](auditoria-del-plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md) y las decisiones que el responsable aprobó ese día (Q1 a Q27, en el plan, §2).
+**Estado:** versión 3, 22/11/2026 (el primer tramo, §7). Es la base del [plan de implementación](plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md) y no decide nada por sí solo. Recoge la [auditoría del mismo día](auditoria-del-plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md) y las decisiones que el responsable aprobó ese día (Q1 a Q27, en el plan, §2).
 
 **Fuente:** el código de `develop` del backend (`ed7ccda7`) y del frontend (`ee7736af`) y la documentación de `master` (`e71fdb4`), los tres sin cambios pendientes; el [diccionario de datos](diccionario-de-dtos-millennium-mobility.md) 1.79; las reglas de arquitectura de las skills `backend-module` y `frontend-feature`; el [plan de migración a los contextos objetivo](plan-de-migracion-a-los-contextos-objetivo-2026-11-18.md), por su forma de trabajo; cuatro revisiones de solo lectura hechas el 22/11/2026 —el núcleo de las áreas (`shared`, `iam`, `organization`, `documents`), las áreas en compras, bitácora y reportes, el ciclo del GPS y el frontend—, con sus puntos críticos verificados a mano; y la auditoría de la versión 1, con cinco revisiones más y el correo al cliente del 16/11/2026. Las líneas citadas (L) son las de esos commits: se comprueban otra vez al abrir cada fase, porque el código sigue cambiando.
 
@@ -542,6 +542,8 @@ El costo es que compras por área cubre también las facturas, notas y pagos de 
 | 6 | Áreas: catálogo, asignación y sesión | Es la base de la fase 7 |
 | 7 | Compras por área y «Asignar área» | Aísla a Monitoreo de Habilitación en todo compras, también en lo de equipos y en lo ya emitido |
 
+**El primer tramo (Q28, Q29).** Después, el mismo día, el responsable precisó la prioridad: primero el flujo operativo hasta el ingreso de los IMEIs —la fase 0 reducida, la compra de equipos (fase 2) y el ingreso por escaneo sin fabricante con el reemplazo de un fallado (fase 3a)—; la SIM, la API del fabricante, la instalación, el menú y las áreas van después, en el orden que él diga. La columna del reemplazo pasa a V149, así que ninguna migración cambia de número (plan, §5 y §9).
+
 ---
 
 ## 8. Registro
@@ -550,3 +552,4 @@ El costo es que compras por área cubre también las facturas, notas y pagos de 
 |---|---|---|
 | 1 | 22/11/2026 | Primera versión, con cuatro revisiones de solo lectura |
 | 2 | 22/11/2026 | Recoge la auditoría y las decisiones del responsable del mismo día: la plantilla común con la orden del área de quien la emite, varias áreas por persona, «Asignar área», la sesión que conserva las asignaciones con área, el historial del equipo, la vinculación completa de lo instalado, el escaneo por modelo y los demás hallazgos A-H14 a A-H19 y C-H18 a C-H32; corrige los hechos que la auditoría desmintió; el orden pasa a menú → GPS → áreas, con V148 a V166 |
+| 3 | 22/11/2026 | El primer tramo del responsable: fase 0 reducida, fase 2 y fase 3a (§7) |
