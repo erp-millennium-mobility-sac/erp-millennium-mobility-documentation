@@ -1,6 +1,6 @@
 # Contexto `iam` — ERP Millennium Mobility
 
-**Fuente:** diccionario de datos v1.61 (§2.5, §2.6, §3, §5.1 a §5.13 y las decisiones que cita cada regla), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md) §4, §5, §6.2 y §11, [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md) §2.2, §7, §9 y §14, [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md) P1 y P2, y el código de `develop`. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Fuente:** diccionario de datos (versión vigente; §2.5, §2.6, §3, §5.1 a §5.13 y las decisiones que cita cada regla), [mapa de contextos](../mapa-de-contextos-millennium-mobility.md) §4, §5, §6.2 y §11, [convenciones de la API](../convenciones-de-la-api-millennium-mobility.md) §2.2, §7, §9 y §14, [procesos y pantallas](../procesos-y-pantallas-millennium-mobility.md) P1 y P2, y el código de `develop`. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 **Cómo leerlo.** Lo que cita una sección (§n) o una decisión (D-n) del diccionario está decidido. Las DP-n que se citan aquí (DP-1 a DP-5, DP-12 y DP-13) son las decisiones de la revisión de seguridad del 31/10/2026, que el diccionario registra junto a D-144, D-145 y D-147; este documento dice el contenido de cada una donde se aplica. Lo que no cita nada describe el código. Las rutas, sus cuerpos y sus errores están en las convenciones (§2.2, §7.2, §9); las variables de entorno y sus valores por omisión, en el README del backend.
 

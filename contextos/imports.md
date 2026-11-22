@@ -1,6 +1,6 @@
 # Contexto `imports` — ERP Millennium Mobility
 
-**Fuente:** diccionario de datos v1.65 (§11.8, D-125, D-189, D-200, D-201 y D-262), el [mapa de contextos](../mapa-de-contextos-millennium-mobility.md) (§5.1, §5.3 y §6.5) y el código de `develop`. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Fuente:** diccionario de datos (versión vigente; §11.8, D-125, D-189, D-200, D-201 y D-262), el [mapa de contextos](../mapa-de-contextos-millennium-mobility.md) (§5.1, §5.3 y §6.5) y el código de `develop`. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 **Cómo leerlo.** `imports` es el registro de las cargas de archivos, un módulo de la plataforma desde la fase 1 del plan de migración (D-262); antes vivía en `shared`. Sus reglas son las **SHR-R01 a SHR-R13 del diccionario, §11.8**, que conservan su número: este documento las cita y no las copia. Las columnas de `import_batches` están en el diccionario (§11.8), la ruta y sus errores en las convenciones (§2.2 y §7.2), y la pantalla Logística › Cargas de archivos en procesos y pantallas.
 

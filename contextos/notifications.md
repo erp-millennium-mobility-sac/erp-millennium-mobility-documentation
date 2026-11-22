@@ -1,6 +1,6 @@
 # Contexto `notifications` — ERP Millennium Mobility
 
-**Fuente:** diccionario de datos v1.61 (§2.5, §2.7, §11.3, §14, D-63, D-125, D-143, D-242, D-243 y D-255 a D-258) y el código de `develop`. Si este documento y el diccionario no coinciden, manda el diccionario.
+**Fuente:** diccionario de datos (versión vigente; §2.5, §2.7, §11.3, §14, D-63, D-125, D-143, D-242, D-243 y D-255 a D-258) y el código de `develop`. Si este documento y el diccionario no coinciden, manda el diccionario.
 
 **Cómo leerlo.** El canal de correo está construido, con dos casos de `iam`: el enlace para restablecer la contraseña ([iam.md](iam.md), F8 y F13) y el código para activar una cuenta (F14). El SMS, el push, los webhooks y las pantallas están diseñados y sin código: el documento los marca como previstos. Las columnas de sus tablas están en el diccionario (§2.7, D-242), y la configuración de cada entorno, en el README del backend.
 
