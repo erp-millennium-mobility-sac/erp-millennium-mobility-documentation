@@ -243,7 +243,6 @@ La fachada ya no recibe que un modelo tiene unidades, y tampoco lo pregunta: lee
 | El catálogo maestro de modelos: los dos catálogos entregados no coinciden, así que el equipo prepara la lista de sus diferencias, el negocio elige el nombre de cada modelo y valida el catálogo, y solo ese se carga (§7.3, D-273) | Antes de la carga inicial; criterio de cierre del paso |
 | Validar este documento | El responsable |
 | Una prueba propia de los dos miembros de la fachada de VCT-R32, que hoy prueba su consumidor | Sin fecha |
-| Retirar `vehicle_models.has_units`, que ya nadie escribe ni lee desde que `vehiclecatalog` pregunta por `VehicleModelUsage` (D-282) | La entrega N+1 de la fase 8 del plan, cuando la entrega N esté desplegada en `dev` con su CI en verde |
 
 ---
 

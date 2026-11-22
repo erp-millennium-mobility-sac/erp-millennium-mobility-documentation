@@ -229,7 +229,6 @@ Sin miembros de los modelos ni de las marcas: ningún otro contexto los lee. Tam
 | Qué | Quién y cuándo |
 |---|---|
 | El inventario unido a la instalación: instalar elige un equipo Disponible de la empresa y lo pasa a Instalado, el motivo del retiro decide adónde vuelve, y una unidad con equipos instalados no se anula ni pasa a Inactivo. Solo `fleet` instala y retira, y `equipment` escribe sus filas por su fachada (FLT-R152 a FLT-R154; plan §2.6; D-263, D-264) | El equipo, con el módulo de monitoreo |
-| Retirar `equipment_types.has_installations`, que ya nadie escribe ni lee desde que `equipment` pregunta por `EquipmentTypeUsage` (D-282) | La entrega N+1 de la fase 8 del plan, cuando la entrega N esté desplegada en `dev` con su CI en verde |
 | Las pruebas que faltan: la carrera del nombre de una marca y de un modelo (EQP-R05) y una prueba del backend que nombre `requires_telematics` (VCT-R35) | Sin fecha |
 | Validar este documento | El responsable |
 
