@@ -1,0 +1,1516 @@
+# Plan de implementación — áreas, menú y ciclo de compra del GPS — ERP Millennium Mobility
+
+**Estado:** versión 2, 22/11/2026. Recoge la [auditoría del mismo día](auditoria-del-plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md) y las decisiones que el responsable aprobó ese día (§1 y §2). Cambia el orden de la versión 1: primero el menú, después el ciclo del GPS y al final las áreas. Cada fase se abre comprobando otra vez las rutas y las líneas que cita.
+
+**Fuente:** el [análisis situacional del 22/11/2026](analisis-situacional-areas-menu-y-ciclo-del-gps-2026-11-22.md), con el inventario de `develop` (backend `ed7ccda7`, frontend `ee7736af`) y de la documentación (`e71fdb4`); la auditoría del plan, del mismo día; las decisiones del responsable del 22/11/2026; el [diccionario de datos](diccionario-de-dtos-millennium-mobility.md) 1.79; las reglas de arquitectura de las skills `backend-module`, `frontend-feature` y `architecture-review`; y la forma de trabajo del [plan de migración a los contextos objetivo](plan-de-migracion-a-los-contextos-objetivo-2026-11-18.md), que este plan sigue.
+
+**Objetivo.** Construir de punta a punta tres frentes —el menú por procesos, el ciclo de compra del GPS con su SIM, su instalación y su historial, y las áreas como dimensión del aislamiento de datos— en ocho fases pequeñas que dejan el sistema funcionando y en verde al final de cada una.
+
+**Cómo leerlo.** Las rutas van abreviadas como en el análisis: `B/` es `erp-millennium-mobility-backend/src/main/java/ky/millennium/mobility/erp/`, `M/` sus migraciones, `T/` sus pruebas, `F/` es `erp-millennium-mobility-frontend/src/app/` y `E/` su carpeta `e2e/`. Cada fase dice, en este orden: su objetivo, lo que la rige, sus migraciones, el backend, la API y los errores, el frontend, las pruebas, la documentación, el orden de los commits y cuándo está terminada. Las fases, las migraciones y las decisiones de la versión 1 cambiaron de número: la equivalencia está en el §12. **«Con acceso a todas las áreas»** dice de una asignación que no está limitada a un área (en la pantalla, «Todas las áreas»); **«general»** dice de un documento que no tiene área y que leen todas.
+
+---
+
+## 1. Lo que decidió el responsable el 22/11/2026
+
+### Áreas
+
+| # | Decisión |
+|---|---|
+| A1 | Cada empresa tiene sus propias áreas, configurables: se agregan, se renombran y se desactivan; nunca se borran |
+| A2 | La asignación de un rol lleva un área opcional; vacía significa todas, también las que se creen después |
+| A3 | El área separa todo compras: plantillas, órdenes, facturas, notas de crédito, pagos y lo que se debe. Proveedores y tipos de orden siguen compartidos: un proveedor lo usan varias áreas |
+| A4 | Un documento sin área es general: lo leen todas las áreas y solo lo escribe quien tiene acceso a todas las áreas |
+| A5 | La frontera entre áreas la defiende el código, como la marca (D-102); la base sigue defendiendo solo la empresa |
+| A6 | El área también oculta los datos de las facturas de otra área en el costo de compra de la unidad y del equipo y en el reporte de stock |
+| A7 | Un pago es de un área; mezclar áreas se rechaza; pagar con el saldo del proveedor exige acceso a todas las áreas |
+| A8 | El inventario de vehículos y el de equipos siguen compartidos entre áreas |
+| A9 | Una persona puede tener acceso a algunas áreas: se le otorga el mismo rol una vez por área, y el diálogo de otorgar acepta varias áreas a la vez. Tener todas las áreas de hoy no es tener acceso a todas las áreas: eso lo da solo la asignación sin límite, que incluye las futuras |
+| A10 | Una plantilla puede servir a todas las áreas. El área de la plantilla dice quién la usa (general = todas); el área de la orden es la de quien la emite |
+| A11 | Lo que ya existe también se separa: una operación única, «Asignar área», le da su área a una orden general, con sus facturas, notas y pagos, y a una factura general sin orden |
+
+### Menú
+
+| # | Decisión |
+|---|---|
+| B1 | El menú se ordena por procesos: Flota, Monitoreo, Compras, Finanzas, Herramientas, Administración, Catálogos y Seguridad |
+| B2 | Sin las etiquetas ADMIN y SUPER |
+| B3 | Monitoreo es un grupo propio; la compra del GPS sigue en Compras, filtrada por área, y la instalación en Habilitación. El menú es el mismo para todas las áreas: el área filtra lo que hay dentro de cada pantalla |
+
+### Ciclo de compra del GPS
+
+| # | Decisión |
+|---|---|
+| C1 | La orden de compra tiene líneas de equipo: un modelo del catálogo de equipamiento, la cantidad y el precio |
+| C2 | Una factura es de vehículos o de equipos, nunca de los dos; una orden también (Q24) |
+| C3 | Una línea de factura por cada equipo físico; el formulario acepta «50 × modelo» y lo abre en líneas; una factura de equipos admite hasta 500 |
+| C4 | Cada línea crea su equipo «Por ingresar», sin ubicación ni identificadores; el proveedor sale de la factura. La factura se registra sin los datos de los GPS y se completan después |
+| C5 | Al llegar el producto se escanea el QR, que llena solo el IMEI; la API del fabricante completa el resto (serial, modelo, firmware, SIM). Si algo no cuadra, el equipo queda en «Revisar»; si la API no responde, se completa a mano con permiso |
+| C6 | El costo de compra del GPS queda en el equipo y nunca se suma a una unidad; la instalación conserva solo su costo de mano de obra |
+| C7 | Faltantes: si la factura trae menos, la orden queda con pendiente; si la factura trae todo y llega menos, los que faltan siguen por ingresar, con un aviso de antigüedad, y una nota de crédito «anulación de equipo» los anula |
+| C8 | Cumplir una orden con faltante pide un motivo, y la orden muestra «Cumplida con faltante: N». Vale para toda orden |
+| C9 | Solo hay notas de crédito: D-23 no cambia |
+| C10 | Fallados: el proveedor a veces los reemplaza (otro IMEI, sin factura nueva) y a veces emite una nota de crédito; el sistema tiene los dos caminos |
+| C11 | La SIM es un registro propio con la historia de su asignación al GPS; viene con el GPS; se exige para instalarlo, no para que esté Disponible |
+| C12 | La API para completar los datos la expone el fabricante del GPS |
+| C13 | Cada equipo tiene su historial: sus estados, con quién y por qué, y en qué unidad estuvo y cuándo se retiró o reemplazó. Es lo que anunció al cliente el correo del 16/11/2026 |
+
+---
+
+## 2. Las preguntas, resueltas el 22/11/2026
+
+El responsable aprobó las recomendaciones de la auditoría. El plan está escrito con estas respuestas.
+
+| # | Pregunta | Decisión | La usa |
+|---|---|---|---|
+| Q1 | ¿Cómo se llama el grupo de compras? | «Compras» | Fase 1 |
+| Q2 | ¿Dónde van Por pagar, Pagos a proveedores y Fondos? | En un grupo «Finanzas» | Fase 1 |
+| Q3 | ¿Qué pantallas de mantenimiento se muestran solo a quien escribe? | Solo Catálogos; Empresas y Ubicaciones siguen con la lectura. Como hoy solo el superadministrador escribe catálogos (D-150), solo él los ve, también por dirección: Contabilidad deja de ver Tipos de cambio, y Operaciones y el administrador de empresa, Estados y motivos y Requisitos de equipos. Se enmiendan D-141, §5.6 y DP-18 | Fase 1 |
+| Q4 | ¿Se muestran ya las opciones de Monitoreo que no existen? | No: cada opción aparece cuando su pantalla existe | Fase 1 |
+| Q5 | ¿El acceso sale del área del colaborador o de la asignación? | De la asignación. El área del colaborador es informativa y se propone al otorgarle un rol | Fase 6 |
+| Q6 | ¿Quién crea y cambia las áreas? | El superadministrador y el administrador de cada empresa, con una asignación de toda la empresa y con acceso a todas las áreas | Fase 6 |
+| Q7 | ¿Una nota o un pago puede juntar áreas? | No: incluye documentos de una sola área, y lo general cuenta como un valor propio | Fase 7 |
+| Q8 | ¿Quién escribe lo compartido de compras? | Cualquier comprador crea proveedores y les agrega contactos; editar o desactivar un proveedor, sus contactos o un tipo de orden pide acceso a todas las áreas | Fase 7 |
+| Q9 | ¿Quién ve el saldo a favor de un proveedor? | Quien puede usarlo: una asignación de `pagos.ver` con acceso a todas las áreas. Para los demás, el saldo y el total que se le debe al proveedor no viajan | Fase 7 |
+| Q10 | ¿Alguna regla fuera de compras mira el área? | No | Fase 7 |
+| Q11 | ¿Las exportaciones de compras llevan el área? | Sí: una columna «Área» | Fase 7 |
+| Q12 | ¿Cómo se paga una factura de equipos? | Como un todo, sin imputación por equipo. La base no exige imputaciones, así que no hay migración de pagos | Fase 2 |
+| Q13 | ¿Cómo se registra el reemplazo de un GPS fallado? | El equipo nuevo apunta al que reemplaza; la línea de la factura no se toca | Fase 3 |
+| Q14 | ¿Quién escribe un documento de equipos, que no tiene marca? | Una asignación de todas las marcas, en toda escritura: registrar, modificar, anular, la nota y el pago | Fase 2 |
+| Q15 | ¿Qué pasa con los equipos al anular una factura de equipos? | Se anulan los que siguen por ingresar, al anular la factura y con la nota «anulación de la factura»; los ya recibidos quedan, sin factura vigente | Fase 2 |
+| Q16 | ¿Un equipo devuelto al proveedor puede volver? | Sí, reparado, a Disponible; salvo que otro equipo ya lo haya reemplazado | Fases 2 y 3 |
+| Q17 | En «Revisar» por otro modelo, ¿qué se corrige? | El modelo del equipo, dentro del mismo tipo; la línea conserva el modelo del comprobante | Fase 3 |
+| Q18 | ¿Qué se guarda al cumplir una orden con faltante? | Solo el motivo; el faltante se calcula | Fase 2 |
+| Q19 | ¿Qué permisos nuevos y quién los tiene? | `stock.ingresar_equipamiento` (fase 2) y `stock.crear_sims`, `stock.editar_sims`, `stock.cambiar_estado_sims` (fase 3), para el superadministrador, el administrador de empresa y Operaciones | Fases 2 y 3 |
+| Q20 | ¿La factura cobra la SIM aparte? | No: viene incluida en el precio del GPS | Fase 3 |
+| Q21 | ¿Qué fabricante, con qué API? | **Pendiente de información:** nombre, documentación, credenciales de prueba, límites y si consulta por equipo o por lote. Sin ella se construye todo menos el adaptador | Fase 3 |
+| Q22 | ¿Cómo se lee el QR? | Lector USB o Bluetooth como forma principal; la cámara como apoyo, con una librería cargada solo en esa pantalla, y el sitio la habilita (`camera=(self)`) | Fase 3 |
+| Q23 | ¿Qué pasa con lo que ya existe? | Se separa por área con la operación «Asignar área» (A11). Las plantillas de hoy pueden quedar generales, como formatos comunes | Fase 7 |
+| Q24 | ¿Una orden puede mezclar vehículos y equipos? | No: una orden es de un solo tipo, y la factura vinculada tiene el tipo de su orden | Fase 2 |
+| Q25 | Sin la API del fabricante, ¿cómo se completan cientos de equipos? | Con el proveedor `manual`, la pantalla de ingreso toma el IMEI, el serial y el ICCID de cada equipo y lo deja Disponible; con un fabricante, solo el IMEI, y el resto lo completa la API | Fase 3 |
+| Q26 | ¿En qué orden van los frentes? | Menú → GPS → áreas. El monitoreo es la próxima etapa anunciada al cliente; no hay producción, así que el aislamiento no protege todavía datos reales; y «Asignar área» le da su área después a lo que se registre antes | Todas |
+| Q27 | Con una plantilla general, ¿de qué área es la orden? | De quien la emite: su área si está limitado a una; a elegir entre las suyas si tiene varias; un área o «General» si tiene acceso a todas las áreas | Fase 7 |
+
+**Pendiente del responsable, antes de la fase 0:** mirar en GitHub, pestaña Actions del frontend, el estado de `develop` (la fase 0, paso 1, explica por qué el análisis lo da en rojo) y conseguir lo de Q21.
+
+---
+
+## 3. Lo que no cambia
+
+| Qué | Por qué se mantiene |
+|---|---|
+| **La frontera entre empresas** | RLS, `DatabaseAccessScope`, `AccessScopeJpaTransactionManager` y las funciones de V29 no cambian. Ninguna política de la base mira el área |
+| **Las rutas existentes** | El menú cambia de grupo, no de dirección; ninguna ruta de la API ni del frontend se renombra. Las rutas nuevas se agregan |
+| **Los códigos de permisos, de errores y las claves de mensajes existentes** | Son contratos por nombre con el catálogo, el frontend y las pruebas. Solo se agregan; las únicas claves que salen son las del menú viejo que nadie más usa |
+| **Los datos existentes** | Ninguna migración le da un área a una fila: lo que existe queda general hasta que alguien con acceso a todas las áreas use «Asignar área» (fase 7). Solo tres migraciones mueven datos: V148, que llena el tipo de cada línea y de cada orden desde lo que ya tienen; V150, que abre la historia de cada equipo con su estado de hoy; y V154, que lleva el ICCID y el IMSI de cada equipo a su SIM |
+| **El aislamiento fuera de compras** | Vehículos, fondos, inventario de equipos, cargas, catálogos y organización no miran el área (Q10) |
+| **Las reglas de las facturas de vehículos** | D-153, D-160, D-161, D-191, D-193, D-248, las imputaciones por unidad y la regla del concesionario siguen iguales para las facturas de vehículos |
+| **El orden de los candados existente** | Cada candado nuevo va al final de su cadena (empresa → sede → marca → área; la unidad y su instalación antes que el equipo; el equipo antes que su pedido al fabricante y que su SIM) y se prueba |
+
+---
+
+## 4. Cómo se trabaja
+
+- **Una fase, una rama por repositorio**, en un worktree bajo `.wt/`, y una base de verificación propia, `erp_mm_<fase>_verify`, creada con su dueña (`erp_mm_owner`). Al integrar se borran el worktree, la rama y la base.
+- **Cada push a `develop` despliega `dev`:** el backend en App Platform y el frontend en Cloudflare Pages, por separado. Por eso cada fase integra primero el backend, que acepta lo viejo y lo nuevo, y después el frontend. La rama de la documentación se integra a `master` el mismo día que la del backend.
+- **Un cambio incompatible de la API va en tres pasos** (convenciones de la API, §1): el backend acepta las dos formas, el frontend pasa a la nueva y el backend retira la vieja. En este plan solo lo es el cuerpo de la instalación (fase 4, con su tercer paso en la 5).
+- **El CI corre en la rama antes de integrar** (*Run workflow*). `gh` no está autenticado en la máquina de trabajo: el resultado lo mira el responsable en GitHub. El e2e del frontend solo corre si pasan el build y las unitarias (`needs: build`): una unitaria en rojo esconde el e2e entero.
+- **Las pruebas, a la medida del cambio.** En local, en una base nueva de `erp_mm_owner`, con las dos cuentas y nunca con el `.env` remoto: las pruebas del contexto que cambia, las de sus consumidores, las de arquitectura y `ErpMillenniumMobilityBackendApplicationTests`. Las fases 2 a 7 cambian el esquema o la seguridad, así que corren además la suite completa del backend. En el frontend: el build, las specs de lo que cambia y `lint:styles`. El e2e lo corre el CI.
+- **La excepción de las imágenes de referencia.** El CI del e2e corre en `windows-latest` y compara imágenes `*-win32.png`. Una fase que cambia una pantalla a propósito regenera sus imágenes en la máquina de trabajo (Windows) con `npm run e2e:update -- e2e/visual.spec.ts e2e/permission-matrix.spec.ts`, en un commit propio y después de revisar una muestra. La fase 1 lo hace con todas las pantallas del menú; las demás, solo con las pantallas que cambian. Una imagen que cambia sin que la fase lo diga es una regresión.
+- **Primero se caracteriza.** Las pruebas de caracterización de compras de la fase 0 pasan sin cambios al terminar las fases 2 a 4 y la 7; la fase 4 escribe las suyas de la instalación antes de tocarla.
+- **Cada fachada nueva trae su prueba de contrato**, en el módulo que la ofrece.
+- **Toda tarea programada nueva** empieza con `SingleInstanceRun.runAlone` y entra en la lista exacta de `DeadlockRetryTests` (L123-126). **Toda variable nueva** va en `.env.example`, en `.do/app.yaml` y en el README.
+- **El diccionario manda.** Cada fase actualiza en el mismo cambio el diccionario, `contextos/`, las convenciones y `procesos-y-pantallas`, y pasa su decisión de «Decidido y por construir» a «cerradas».
+- **Las cuatro copias locales de las skills** (`.claude` y `.cursor` del backend y del frontend) se actualizan a mano el día que integra cada fase; nunca se versionan (decisión 15 del plan de migración).
+
+---
+
+## 5. Las fases
+
+| Fase | Qué | Contextos | Migraciones | Costo | Riesgo | Depende de |
+|---|---|---|---|---|---|---|
+| 0 | Preparación | Frontend (catálogo simulado, e2e), documentación | — | 1 a 2 días | Bajo | — |
+| 1 | Menú por procesos | Frontend: `app-shell`, `shared`, `iam` (matriz) y las rutas de los catálogos; diccionario (D-141) | — | 2 a 4 días | Bajo | 0 |
+| 2 | Compra de equipos e historia del equipo | `procurement`, `equipment`, `iam`; frontend `procurement`, `equipment` | V148 a V153 | 14 a 18 días | **Alto** | 0 |
+| 3 | Ingreso por escaneo, API del fabricante y SIM | `equipment`, `procurement`, `iam`; frontend `equipment`, `app-shell` | V154 a V156 | 9 a 13 días, y 2 a 4 más para el adaptador | Medio | 2; Q21 para el adaptador |
+| 4 | Instalación unida al inventario e historial del equipo (D-263, D-264) | `fleet`, `equipment`; frontend `fleet`, `equipment` | V157, V158 | 8 a 11 días | Medio | 3 |
+| 5 | Limpieza | `equipment`, `procurement`, `fleet` | V159 | Menos de 1 día | Bajo | 3 en `dev` con su CI en verde; 4 integrada |
+| 6 | Áreas: catálogo, asignación y sesión | `shared`, `iam`, `organization`, `documents`; frontend `organization`, `iam` | V160 a V163 | 5 a 7 días | Medio | 0 |
+| 7 | Compras por área y «Asignar área» | `procurement`, `audit`, `reporting`, `iam`; frontend `procurement`, `iam`, `change-log` | V164 a V166 | 12 a 16 días | **Alto** | 6 |
+
+---
+
+## 6. Fase por fase
+
+### Fase 0 — Preparación
+
+**Objetivo.** Empezar con el CI del frontend en verde de verdad —unitarias y e2e—, las decisiones escritas y las pruebas que fijan el comportamiento de hoy.
+
+**Pasos:**
+
+1. **El CI del frontend, en verde.** `stock.anular_lectura_kilometraje` llegó con V145 (D-267) y está en `F/iam/application/permission-codes.ts` L103, pero no en `seedPermissions` de `E/support/permission-catalog.ts`; `F/iam/application/permission-codes.spec.ts` «names only permissions of the catalog» falla desde `3f47a838` (20/11), integrado en `f614aa34`. Como el e2e de `.github/workflows/ci.yml` tiene `needs: build` y `build` corre `ng test` (L40-41), el e2e no corre en `develop` desde entonces: cinco integraciones del frontend llegaron sin él. Rama `fix/permission-catalog-mileage-annulment`:
+   - agregar el permiso a `seedPermissions`, con su categoría (`desactivar_anular`). La matriz simulada no se toca: el superadministrador recibe todos los permisos y el administrador de empresa los de inventario por `STOCK_OF_STEP_5` (L269);
+   - ajustar lo que cambia con un permiso más: `E/roles.spec.ts` L160 («39 de 39» → «40 de 40») y L184 («6 de 39» → «6 de 40»), `E/permission-matrix.spec.ts` L316 («22/39» → «22/40»);
+   - correr el **e2e completo** en la rama (*Run workflow*), arreglar lo que esté en rojo por las integraciones que llegaron sin e2e —por ejemplo `vehicle-profile-mileage`, que D-267 pudo mover con la columna de acciones— y regenerar, en un commit propio y después de mirarlas, las nueve imágenes que cambian por el conteo (`permission-matrix-expanded`, `permission-matrix` y `role-profile`, en sus tres anchos) y las que el e2e señale;
+   - se integra antes de la fase 1, para que la regeneración del menú no esconda una regresión anterior.
+2. **El fabricante (Q21):** nombre, documentación de la API, credenciales de prueba, límites de uso y si la consulta es por equipo o por lote.
+3. **Las decisiones en el diccionario**, en «Decidido y por construir» de §14, versión 1.80:
+
+   | Decisión | Qué recoge | Se cierra en |
+   |---|---|---|
+   | D-283 | La compra de equipos: tipo de línea y de orden, factura de equipos, equipo por ingresar, el aviso de antigüedad, la nota «anulación de equipo», la anulación de la factura y «Anular y copiar», pago a nivel de factura, costo del equipo, la historia de estados; enmienda D-173 y precisa D-160, D-187 y D-254 | Fase 2 |
+   | D-284 | Cumplir una orden con faltante pide su motivo | Fase 2 |
+   | D-285 | El ingreso por escaneo, la API del fabricante, el reemplazo y la SIM | Fase 3 |
+   | D-286 | El historial del equipo en sus unidades y la vinculación de lo ya instalado, también lo de la carga inicial; precisa D-206, D-263 y D-264 | Fase 4 |
+   | D-287 | Las áreas: catálogo por empresa, área en la asignación (una asignación por área; «todas las áreas»), regla de lectura y escritura, el área del colaborador, la sesión | Fase 6 |
+   | D-288 | Compras por área: la plantilla dice quién la usa y la orden es del área de quien la emite, facturas, notas, pagos, Por pagar, bitácora, costo, reporte y «Asignar área» | Fase 7 |
+
+   El menú no es una decisión nueva: va en `DESIGN.md` y en `procesos-y-pantallas`, y la fase 1 enmienda D-141.
+4. **Pruebas de caracterización de compras**, en `develop`, contra el código de hoy, con asignaciones limitadas a una marca:
+   - las listas, la lectura por identificador y la exportación de plantillas, órdenes, facturas, notas, pagos y Por pagar, y `GET /suppliers/{id}/payables`;
+   - el costo de una unidad y el reporte de stock;
+   - la bitácora de un registro con marca;
+   - dos asignaciones de marcas distintas en la misma empresa (la unión de hoy);
+   - la forma de la llave de `DocumentScopes` (`DocumentScopesTests`).
+
+   Casi todas existen como `*AccessPolicyTests` y pruebas de integración de cada lista; se agregan las que falten. Pasan sin cambios al terminar las fases 2, 3, 4 y 7.
+
+**Terminada cuando:** el CI del frontend está en verde en `develop`, con el e2e corrido entero; las decisiones están escritas en el diccionario; y las pruebas de caracterización están en verde en `develop`.
+
+---
+
+### Fase 1 — Menú por procesos
+
+**Objetivo.** El menú ordenado por procesos, sin etiquetas, con Catálogos para quien puede escribir en él, y la matriz de permisos agrupada igual.
+
+**Lo que la rige.** B1 a B3; Q1 a Q4; D-117 (el menú decide por permiso); la regla de que una opción y su ruta piden lo mismo.
+
+**Migraciones y backend.** Ninguno.
+
+**Frontend.**
+
+1. **`F/app-shell/app-navigation.ts`.** El menú nuevo, con las rutas de hoy:
+
+   | Grupo | Icono | Opción | Ruta | Se ve con |
+   |---|---|---|---|---|
+   | — | `home` | Inicio | `/home` | Cualquier sesión |
+   | Flota | `local_shipping` | Inventario | `/fleet/vehicles` | `stock.ver` |
+   | | | Habilitación | `/fleet/enablement` | `stock.ver` |
+   | Monitoreo | `sensors` | Equipos | `/equipment/inventory` | `stock.ver` |
+   | Compras | `shopping_cart` | Proveedores | `/procurement/suppliers` | `compras.ver` |
+   | | | Plantillas de OC | `/procurement/purchase-order-templates` | `compras.ver` |
+   | | | Órdenes de compra | `/procurement/purchase-orders` | `compras.ver` |
+   | | | Facturas | `/procurement/invoices` | `compras.ver` |
+   | | | Notas de crédito | `/procurement/credit-notes` | `compras.ver` |
+   | Finanzas | `account_balance` | Por pagar | `/procurement/payables` | `pagos.ver` |
+   | | | Pagos a proveedores | `/procurement/supplier-payments` | `pagos.ver` |
+   | | | Fondos | `/financing/funds` | `fondos.ver` |
+   | Herramientas | `build` | Reportes | `/reports` | `reportes.ver` |
+   | | | Cargas de archivos | `/imports` | `habilitacion.ver_cargas` |
+   | | | Bitácora de cambios | `/change-log` | `bitacora.ver` |
+   | Administración | `settings` | Empresas | `/organization/companies` | `configuracion.ver_estructura` |
+   | | | Ubicaciones | `/organization/locations` | `configuracion.ver_estructura` |
+   | | | Colaboradores | `/organization/employees` | `configuracion.ver_datos_personales_colaboradores` |
+   | Catálogos › Generales | `category` | Monedas | `/location/currencies` | `catalogos.ver` y alguno de `crear_monedas`, `editar_monedas`, `desactivar_monedas` |
+   | | | Tipos de cambio | `/location/exchange-rates` | `catalogos.ver` y alguno de `registrar_tipo_cambio`, `corregir_tipo_cambio` |
+   | | | Países | `/location/countries` | `catalogos.ver` y alguno de `crear_paises`, `editar_paises`, `desactivar_paises` |
+   | Catálogos › Flota | | Tipos de vehículo | `/vehicle-catalog/vehicle-types` | `catalogos.ver` y alguno de `crear_tipos_vehiculo`, `editar_tipos_vehiculo`, `desactivar_tipos_vehiculo` |
+   | | | Marcas y modelos | `/vehicle-catalog/brands-and-models` | `catalogos.ver` y alguno de `crear_marcas_y_modelos`, `editar_marcas_y_modelos`, `desactivar_marcas_y_modelos` |
+   | | | Colores | `/vehicle-catalog/colors` | `catalogos.ver` y alguno de `crear_colores`, `editar_colores`, `desactivar_colores` |
+   | | | Tipos de equipamiento | `/equipment/types` | `catalogos.ver` y alguno de `crear_equipamiento`, `editar_equipamiento`, `desactivar_equipamiento` |
+   | | | Estados y motivos | `/fleet/vehicle-statuses` | `catalogos.ver` y alguno de `crear_estados`, `editar_estados`, `desactivar_estados` |
+   | | | Tipos de documento | `/fleet/document-types` | `catalogos.ver` y alguno de `crear_tipos_documento`, `editar_tipos_documento`, `desactivar_tipos_documento` |
+   | | | Requisitos de equipos | `/fleet/equipment-requirements` | `catalogos.ver` y `editar_tipos_documento` |
+   | Seguridad | `shield` | Usuarios | `/iam/users` | Como hoy: `ver_cuentas` con alcance sistema y alguno de `asignar_roles`, `bloquear_cuentas`, `restablecer_contrasenas` |
+   | | | Roles y permisos | `/iam/roles` | `seguridad.ver_roles` |
+
+   - Todos los códigos de Catálogos son `catalogos.*` y salen de `PermissionCodes.Catalogs`; los retirados (`gestionar_generales`, `gestionar_flota`, `gestionar_estados`) no cuentan.
+   - Un ayudante nuevo junto a `anyOf` (L66): `writersOf(read, ...writes)` = `{ permissions: { allOf: [read], anyOf: writes } }`.
+   - El comentario de cabecera pasa de cuatro grupos a ocho, cada uno con la pregunta que responde.
+   - Siguen siendo 30 opciones.
+2. **Las rutas de Catálogos piden lo mismo que su opción**, también sus páginas hijas (la ficha de un país nuevo sigue pidiendo además `crear_paises`, D-141): `F/location/presentation/location.routes.ts` (L22-24, L47-91), `F/vehiclecatalog/presentation/vehiclecatalog.routes.ts` (L22-24, L56-69), `F/equipment/presentation/equipment.routes.ts` (L30-32) y `F/fleet/presentation/fleet.routes.ts` (L58-94). El guard, la precarga (`screen-preloading.ts` L72) y la paleta de comandos (`layout.ts` `paletteOptions` L99) las siguen solos.
+3. **Sin etiquetas.** Sale `badge` de `AppNavigationGroup` (L59) y de los tres grupos que la usan (Configuración L214, Catálogos L283 y Seguridad L390), de `NavigationGroup` (`F/shared/presentation/components/layout/navigation.ts` L37-38), su dibujo en `layout.html` (L84-86), su estilo en `layout.scss` (L200-225) y las claves `navigation.badge.*`.
+4. **Textos (`public/i18n/es.json`).**
+   - Nuevas: `navigation.monitoring` «Monitoreo», `navigation.finance` «Finanzas», `navigation.tools` «Herramientas», `navigation.administration` «Administración».
+   - Cambian: `navigation.equipment-inventory` «Equipos»; `navigation.equipment-types` «Tipos de equipamiento»; `modules.equipment-inventory.title` «Equipos», con una descripción de 90 caracteres o menos; los títulos de las rutas de `equipment.routes.ts` (L50, L57).
+   - Salen `navigation.logistics`, `configuration`, `organization` y `purchasing-and-fleet` si un `grep` no encuentra otro uso.
+5. **La matriz de permisos**, agrupada como el menú, y sin la palabra «área» para los grupos:
+   - `permission-matrix-groups.ts`: `AREA_ORDER` pasa a `GROUP_ORDER` = Flota, Monitoreo, Compras, Finanzas, Herramientas, Administración, Catálogos, Seguridad; solo Catálogos conserva secciones (Generales, Flota); las pantallas de cada grupo siguen el orden del menú.
+   - Dónde cae cada permiso (`placePermission`):
+
+     | Permiso | Grupo › pantalla |
+     |---|---|
+     | Los de las cargas (`FILE_LOAD_PERMISSIONS`, L62-67, que se pregunta primero, como hoy) | Herramientas › Cargas de archivos, también `stock.cargar_migracion_inicial` y `fondos.cargar_archivo_garantia` |
+     | `stock.*` | Flota › Inventario, salvo `stock.*_equipamiento`, que va a Monitoreo › Equipos (una pantalla con clave propia: `equipamiento` ya es «Tipos de equipamiento») |
+     | `habilitacion.*` | Flota › Habilitación |
+     | `compras.*` | Compras › su pantalla (proveedores y plantillas, ahora en Compras) |
+     | `pagos.*` | Finanzas › Pagos a proveedores |
+     | `fondos.*` | Finanzas › Fondos |
+     | `reportes.*` | Herramientas › Reportes |
+     | `bitacora.*` | Herramientas › Bitácora de cambios |
+     | `configuracion.*` | Administración › su pantalla |
+     | Los de colaboradores de `seguridad.*` | Administración › Colaboradores |
+     | Los de roles de `seguridad.*` | Seguridad › Roles y permisos |
+     | El resto de `seguridad.*` | Seguridad › Usuarios |
+     | `catalogos.*` | Catálogos, como hoy, con Requisitos de equipos en Flota |
+
+   - Corrige lo desfasado: Equipos en Monitoreo; Requisitos de equipos y Por pagar como pantallas sin permiso propio (no se dibujan hasta que tengan uno).
+   - Renombra `PermissionPlace.area` → `group`, `AreaRow` → `GroupRow` (definido en `permission-matrix-rows.ts` L13, que usa `AREA_ORDER`, `SECTION_ORDER` y `SCREEN_ORDER` en L108-140) y las claves `iam.permission-matrix.areas` → `groups`, y ajusta `role-access-editor.ts` (L20-23, L159-171) y su html (L45-76), `permission-matrix.ts` (L313-338) y su html (L98-102), `permission-matrix.store.ts` (L123-125) y los textos de la matriz en `es.json` (L765-822).
+   - `PERMISSION_MODULE_ORDER` (`permission-codes.ts` L313-329) deja de decir «seguridad al final, seguida de su bitácora»: la Bitácora pasa a Herramientas. `iam.roles-view.modules.stock` (`es.json` L339, «Logística») pasa a «Flota».
+6. **`DESIGN.md`, revisión 99 «El menú por procesos»:** los grupos, su orden y sus iconos; sin etiquetas (reemplaza la regla 7 «Tag», L329); Catálogos solo para quien escribe; y L416, que todavía nombra los cuatro grupos viejos.
+7. **El diccionario.** Q3 cambia quién abre un catálogo: se enmiendan D-141, §5.6 y DP-18, que dicen que una pantalla de catálogo se abre con `catalogos.ver`. Desde esta fase, la abre quien tiene la lectura y alguna escritura de esa pantalla; con la matriz sembrada, solo el superadministrador.
+
+**Pruebas.**
+
+- Unitarias que cambian: `F/app-shell/app-shell.spec.ts` (un rol con solo `catalogos.ver` ya no ve Catálogos, L91-104; las listas de grupos L106-147 y L175-193; «Organización tiene tres enlaces», L149-173; el grupo de Logística de L195-215, que pasa a Flota, Monitoreo y Finanzas; la Bitácora ahora en Herramientas L217-223; las pruebas «se ofrece con…» L357-361; la igualdad de rutas L384-417; la llave del grupo en L448), `layout.spec.ts` (sin etiqueta, L52 y L248-264), las specs de rutas de `location`, `vehiclecatalog`, `equipment` y `fleet`, `permission-matrix-groups.spec.ts` y `permission-matrix-rows.spec.ts`. `app-shell.spec.ts` afirma además, para cada uno de los siete roles sembrados, los grupos que ve: `renderSignedInAs` (L39-41) ya lee `SEEDED_MATRIX`, y el e2e no tiene sesiones de Operaciones, Contabilidad ni Taller (`E/support/api.ts` L92-103).
+- e2e que cambian: `E/shell.spec.ts` (siguen 30 enlaces; el botón «Logística» de L240-257, L335, L363 y L453 pasa a «Flota» o «Compras»; un rol de solo lectura no ve Catálogos; la prueba de L293, que nombra «Configuración», se renombra), `E/permission-matrix.spec.ts`, `E/roles.spec.ts` (los conteos por grupo), `E/accessibility.spec.ts` L463, y los e2e que abren un catálogo con un rol que solo lee, que pasan al superadministrador o afirman la vuelta a Inicio: `E/exchange-rates.spec.ts` L410-413, `E/vehicle-document-types.spec.ts` L26 y L88-90, `E/vehicle-equipment-requirements.spec.ts` L36-41. `app.spec.ts` L128 (`navigation.logistics`) se renombra.
+- Imágenes de referencia: se regeneran las de escritorio y tableta de todas las pantallas con menú (unas 120: 69 de escritorio y 63 de tableta, menos los seis diálogos y las seis pantallas de acceso), y las de la matriz y la ficha del rol, después de revisar una por grupo.
+
+**Documentación.** `procesos-y-pantallas` §3.1 (la tabla del menú, entera) y su nota de quién ve Catálogos; el diccionario (D-141, §5.6 y DP-18); las cuatro copias de la skill `frontend-feature` (SKILL.md §6, los grupos, y L205: un catálogo ya no se abre solo con `catalogos.ver`).
+
+**Orden de los commits.** (1) El menú, los textos y las etiquetas, con sus specs. (2) El acceso de las rutas de Catálogos, con sus specs. (3) La matriz y su renombre, con sus specs. (4) Los e2e. (5) Las imágenes de referencia, solas. (6) `DESIGN.md`. La documentación, con D-141, en su rama.
+
+**Terminada cuando:** el CI de la rama está en verde (unitarias y e2e) y cada rol sembrado ve exactamente los grupos que le corresponden.
+
+---
+
+### Fase 2 — Compra de equipos e historia del equipo
+
+**Objetivo.** Una orden de equipos; una factura de equipos que crea cada equipo «Por ingresar»; la nota «anulación de equipo» que lo anula; anular la factura o «Anular y copiar» sin duplicar equipos; el pago de la factura como un todo; el costo de cada equipo; cumplir con faltante con su motivo; y la historia de estados de cada equipo, en su propia ficha. Un ingreso a mano completo deja la fase usable sola, antes del escaneo.
+
+**Lo que la rige.** C1 a C4, C6 a C10 y C13; Q12, Q14 a Q16, Q18, Q19 y Q24; D-23, D-153, D-160, D-161, D-173 (enmienda), D-187 (precisión), D-191, D-193, D-211, D-214, D-248, D-254, D-280; reglas 1.4, 4.1, 4.3 y 6.4. Todavía no hay áreas: lo que se registra en esta fase nace general, y la fase 7 le da su área con «Asignar área».
+
+**Migraciones.**
+
+**V148__give_purchase_lines_and_orders_their_kind.sql** (`Context: procurement`). Abre con alcance `SYSTEM` y `lock_timeout` de 5 segundos.
+
+- `purchase_order_items.line_kind VARCHAR(10)`: se llena con `VEHICULO` donde hay `model_id` y `CONCEPTO` en el resto, y queda `NOT NULL` con `CHECK (line_kind IN ('VEHICULO', 'EQUIPO', 'CONCEPTO'))`.
+- `purchase_orders.kind VARCHAR(10) NOT NULL DEFAULT 'VEHICULOS'`, con `CHECK (kind IN ('VEHICULOS', 'EQUIPOS'))` (Q24). Las órdenes de hoy son todas de vehículos.
+- `purchase_invoice_items.line_kind`: se llena con `VEHICULO` donde hay `vehicle_id` y `CONCEPTO` en el resto, y queda igual. `keep_purchase_invoice_item_fiscal_data` compara una lista cerrada de columnas (V103 L215-221), así que el relleno de una columna nueva no la dispara: basta con rellenar antes del `CREATE OR REPLACE` que suma `line_kind` a la lista, sin desactivar nada.
+- `purchase_invoices.kind VARCHAR(10) NOT NULL DEFAULT 'VEHICULOS'`, con `CHECK (kind IN ('VEHICULOS', 'EQUIPOS'))`.
+- `CREATE OR REPLACE` de `keep_purchase_invoice_fiscal_data` (desde V94 L183-200, suma `kind`) y de `keep_purchase_invoice_item_fiscal_data` (desde V103 L209-221, suma `line_kind`).
+- **Compatibilidad hacia atrás:** un disparador `fill_purchase_line_kind()`, `BEFORE INSERT` en las dos tablas de líneas, llena `line_kind` desde la línea cuando llega nulo, para que el código anterior siga insertando durante el despliegue y ante una vuelta atrás. Lo retira la fase 5.
+- Las funciones nuevas, con su línea en `scripts/database/hand-over-database.sql`.
+
+**V149__add_the_purchase_statuses_of_the_equipments.sql** (`Context: equipment`).
+
+- El `CHECK` de `status` suma `PENDING_ARRIVAL`, `RETURNED_TO_SUPPLIER` y `ANNULLED`.
+- `location_id` deja de ser `NOT NULL`, con `fleet_equipments_location_ck CHECK (location_id IS NOT NULL OR status IN ('PENDING_ARRIVAL', 'ANNULLED', 'INSTALLED'))`. Un equipo instalado está en su unidad: la vinculación de lo ya instalado (fase 4) registra equipos que nunca tuvieron una ubicación, y el retiro le da una (fase 4).
+- `fleet_equipments_id_company_uq UNIQUE (id, company_id)`, destino de las llaves de las líneas de factura y de la historia.
+- Los índices únicos del serial y del IMEI se vuelven a crear excluyendo `DISCARDED` y `ANNULLED`, **con los mismos nombres** (`idx_fleet_equipments_serial_unique`, `idx_fleet_equipments_imei_unique`), porque `EquipmentRepositoryImpl` L35-37 los traduce a errores. El del ICCID no cambia hasta la fase 5. `RETURNED_TO_SUPPLIER` conserva sus identificadores, porque el equipo puede volver (Q16).
+
+**V150__create_the_equipment_status_history.sql** (`Context: equipment`).
+
+```
+equipment_status_history
+  id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+  public_id    UUID        NOT NULL DEFAULT uuidv7()
+  company_id   BIGINT      NOT NULL REFERENCES companies (id)
+  equipment_id BIGINT      NOT NULL                  -- (equipment_id, company_id) → fleet_equipments (id, company_id)
+  from_status  VARCHAR(20)                           -- vacío en la fila de apertura
+  to_status    VARCHAR(20) NOT NULL
+  reason       TEXT                                  -- el motivo, si el camino lo pide
+  changed_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+  changed_by   BIGINT      NOT NULL
+  índice (equipment_id, changed_at)
+```
+
+- De solo inserción: la cuenta de la aplicación tiene `SELECT` e `INSERT`, con su línea en `hand-over-database.sql`. RLS de empresa con las políticas de V29. No se exporta.
+- Cada equipo que ya existe recibe una fila de apertura con su estado y su `status_reason` de hoy, firmada con su propio autor (`coalesce(updated_by, created_by)`) y fechada en `updated_at`: así la migración no lee `users`, que es de `iam`.
+- `fleet_equipments.status_reason` sigue siendo el motivo vigente; la historia guarda todos (regla 4.3).
+
+**V151__add_equipment_lines_to_purchases.sql** (`Context: procurement`).
+
+- `purchase_order_items.equipment_model_id BIGINT REFERENCES equipment_models (id)`. El `CHECK` de modelo o concepto (V69 L86-87) pasa a uno por tipo:
+  - `VEHICULO`: con modelo de vehículo, sin modelo de equipo ni concepto;
+  - `EQUIPO`: con modelo de equipo, sin modelo de vehículo, sin año ni concepto;
+  - `CONCEPTO`: con concepto y sin modelos.
+
+  El `CHECK` del año (V82) queda solo para `VEHICULO`. Función nueva `enforce_purchase_order_item_kind()`: una línea `VEHICULO` va solo en una orden `VEHICULOS`, una `EQUIPO` solo en una `EQUIPOS`; un concepto, en las dos.
+- `purchase_invoice_items.equipment_id BIGINT`, con `purchase_invoice_items_equipment_company_fk (equipment_id, company_id) → fleet_equipments (id, company_id)`, y `equipment_model_id BIGINT REFERENCES equipment_models (id)`.
+  - El `CHECK` de vehículo o concepto (V94 L110-114) pasa a uno por tipo: una línea `EQUIPO` tiene equipo y modelo de equipo, sin vehículo, modelo de vehículo, año, marca ni ISC.
+  - Una línea vigente por equipo: índice único parcial sobre `equipment_id` `WHERE status = 'VIGENTE' AND equipment_id IS NOT NULL`.
+  - `keep_purchase_invoice_item_fiscal_data` suma `equipment_id` y `equipment_model_id`.
+- Función nueva `enforce_purchase_invoice_item_kind()`: una línea `VEHICULO` va solo en una factura `VEHICULOS` y una `EQUIPO` solo en una `EQUIPOS` (C2). Y `enforce_purchase_invoice_order_kind()`, `BEFORE INSERT OR UPDATE OF purchase_order_id, kind`: una factura con orden tiene el tipo de su orden. Los disparadores del ISC ya saltan las líneas sin vehículo.
+- El `CHECK` de `credit_notes.reason` (V103 L67) suma `ANULACION_EQUIPO`.
+- Las funciones nuevas suman su línea en `hand-over-database.sql`.
+
+**V152__record_why_an_order_was_fulfilled_short.sql** (`Context: procurement`).
+
+- `purchase_orders.fulfilment_reason VARCHAR(200)`, con `CHECK (fulfilment_reason IS NULL OR (status = 'CUMPLIDA' AND length(btrim(fulfilment_reason)) > 0))`. `CUMPLIDA` es final, así que el `CHECK` no estorba a ningún camino.
+
+**V153__seed_iam_permission_of_the_equipment_arrival.sql** (`Context: iam`). Plantilla: V133.
+
+- `stock.ingresar_equipamiento`, categoría `editar`, marcado en `SUPERADMIN`, `ADMIN_EMPRESA` y `OPERACIONES` (Q19).
+
+**Backend.**
+
+*`equipment`*
+
+- **Los estados:** `EquipmentStatus` suma `PENDING_ARRIVAL`, `RETURNED_TO_SUPPLIER` y `ANNULLED`. Los `switch` no tienen `default`, así que el compilador señala cada uno que falta.
+- **El agregado** (`Equipment`). Cada camino deja su fila en la historia, en la misma transacción: el agregado acumula sus cambios de estado y el repositorio los inserta, como `vehicle_status_history` en `fleet`.
+
+  | Operación | Desde | Hasta | Qué valida |
+  |---|---|---|---|
+  | `purchased(empresa, proveedor, tipo, modelo)` | — | `PENDING_ARRIVAL` | Sin ubicación ni identificadores |
+  | `registerArrival(ubicación, identificadores)` | `PENDING_ARRIVAL` | `AVAILABLE` | EQP-R14 con el dígito verificador del IMEI; en esta fase, el ICCID todavía en el equipo |
+  | `returnToSupplier(motivo)` | `AVAILABLE`, `MAINTENANCE` | `RETURNED_TO_SUPPLIER` | El motivo es obligatorio |
+  | `comeBackRepaired()` | `RETURNED_TO_SUPPLIER` | `AVAILABLE` | Q16; la fase 3 lo rechaza si otro equipo ya lo reemplazó |
+  | `annulPending()` | `PENDING_ARRIVAL` | `ANNULLED` | La pide la anulación de su factura o la nota «anulación de la factura» (Q15) |
+  | `annulCredited()` | `PENDING_ARRIVAL`, `AVAILABLE`, `MAINTENANCE`, `RETURNED_TO_SUPPLIER` | `ANNULLED` | La pide la nota «anulación de equipo»; la fase 3 suma `PENDING_COMPLETION` y `UNDER_REVIEW` |
+
+  El constructor de reconstitución acepta la ubicación nula, y `EquipmentAuditTests` sigue con el constructor de quince argumentos más uno secundario.
+- **El dígito verificador:** `ImeiCheckDigit`, en el dominio, valida en los caminos que escriben un IMEI (alta, ingreso, edición), nunca en el constructor ni al leer: las pruebas que generan `digits(15)` al azar (`EquipmentAuditTests` L57-63 y cinco más) se volverían aleatorias. `updateIdentifiers` (L141-147) valida el IMEI solo si cambia. El rechazo es `EQUIPMENT_IMEI_INVALID`, el código que ya existe.
+- **Las reglas que se reescriben:**
+  - EQP-R13: el alta a mano sigue pidiendo ubicación, y el proveedor sigue siendo opcional (`EquipmentCommandServiceImpl` L96-104); el equipo comprado recibe la ubicación al ingresar.
+  - EQP-R14: lo que exige un tipo telemático para estar Disponible.
+  - EQP-R15: los caminos nuevos.
+  - EQP-R16: qué cambia en cada estado.
+  - Una regla nueva: todo cambio de estado deja su fila en la historia.
+- **El aviso de antigüedad (C7):** el recurso suma `daysPendingArrival` (los días desde que nació, solo por ingresar), y la lista marca y filtra los que pasan de `EQUIPMENT_PENDING_ARRIVAL_WARNING_DAYS` (30 por omisión, a confirmar con el responsable).
+- **La lectura:** `EquipmentView.locationPublicId` acepta el nulo, y también `EquipmentPersistenceEntity` (L33, hoy `nullable = false`), `EquipmentResource` (L23) y `EquipmentViewFactory`, que deja de exigir la ubicación (L92-93) y no mete un nulo en el conjunto de ids (L67). El recurso suma `allowedActions` (`registerArrival`, `edit`, `changeStatus`, `returnToSupplier`, `comeBackRepaired`) y la lista filtra por los estados nuevos.
+- **La fachada** (`EquipmentContextFacade`). Las operaciones nuevas corren con `Propagation.MANDATORY`, en componentes de `application/internal/commandservices` que no se llaman `*CommandServiceImpl`, como `PurchasedUnitRegistrations`:
+
+  | Operación | Para | Qué |
+  |---|---|---|
+  | `registerPurchasedDevices(empresa, proveedor, líneas)` | `procurement` | Por cada línea, crea un equipo por ingresar de su modelo, o vuelve a usar el equipo que la línea nombra (`relinkEquipmentId`) si es de la misma empresa, proveedor y modelo y no está anulado; `procurement` comprueba que ese equipo no tenga otra línea vigente. Devuelve los ids. Exige el modelo y su tipo activos |
+  | `annulPendingDevices(ids)` | `procurement` | Anula los que siguen por ingresar y deja los demás como están; dice qué hizo con cada uno |
+  | `annulCreditedDevices(ids)` | `procurement` | Anula todos, o ninguno: si alguno no se puede anular (instalado o en otro estado), devuelve la lista |
+  | `lockDevicesByIds(ids)` | `procurement` | `FOR NO KEY UPDATE`, en orden de id |
+  | `fetchDevicesByIds(ids)` | `procurement` | Estado, modelo, tipo, serial, IMEI y ubicación |
+  | `fetchSeenDevice(publicId)` | `procurement` | El equipo si la sesión lo ve con `stock.ver`, con su empresa |
+  | `fetchEquipmentModelsByIds` / `ByPublicIds` | `procurement` | Nombre, marca, tipo y si está activo |
+
+  Cada una trae su prueba de contrato. Ninguna necesita la cuenta `SYSTEM`: todas corren dentro del pedido de una persona.
+- **Las rutas nuevas:**
+  - `POST /api/v1/equipments/{id}/arrival` (`stock.ingresar_equipamiento`): ubicación, serial, IMEI e ICCID; el ingreso a mano completo.
+  - `POST /api/v1/equipments/{id}/return-to-supplier` (`stock.cambiar_estado_equipamiento`): con el motivo.
+  - `PATCH /api/v1/equipments/{id}/status` admite el regreso del reparado.
+  - `GET /api/v1/equipments/{id}/status-history` (`stock.ver`): la historia, de la más nueva a la más vieja, con quién y por qué.
+
+*`procurement`*
+
+- **El tipo de la línea:** `LineKind` en `PurchaseOrderItem` y en `PurchaseInvoiceItem`, con `isVehicle()` e `isEquipment()` junto a `isConcept()`, que pasa a ser «tipo concepto». Hoy `!isConcept()` significa «línea de vehículo» en 13 usos de 9 archivos, y cada uno se decide:
+
+  | Uso | Con equipos pregunta |
+  |---|---|
+  | `PurchaseInvoice.checkUnits` L140 (una unidad no se repite) | `isVehicle()`: con `!isConcept()`, dos equipos (vehículo nulo) se tomarían por la misma unidad |
+  | `PurchaseInvoice` L315; `InvoiceUnitCoverages` L97, L112; `SupplierPaymentAllocations` L220; `CreditNoteViewFactory` L228 | `isVehicle()` |
+  | `SupplierPaymentApplications` L330 (las marcas del pago) | `isVehicle()`: un equipo no tiene marca |
+  | `CreditNoteLineEffects` L71 (lo que se le pide a `fleet`) | `isVehicle()`; las líneas de equipo van a la fachada de `equipment` |
+  | `CreditNoteAnnulments` L118, L132 | `isVehicle()`; anular una nota que anuló equipos se rechaza |
+  | `CreditedLines` L85 (lo que falta para anular la factura entera) | `!isConcept()`: vehículo **y** equipo |
+
+  El SQL que filtra `vehicle_id IS NOT NULL` (`JdbcPayableFactsReadRepository` L218, L227, L253; `PurchaseInvoiceJpaRepository` L45, L58) ya es correcto y no cambia.
+- **Las órdenes:**
+  - el tipo se elige al crear y queda fijo; una línea de otro tipo responde `PURCHASEORDER_KIND_MISMATCH` (Q24);
+  - un `ExternalEquipmentService` nuevo en `application/internal/outboundservices/acl`, con nombre de bean explícito, traduce los modelos de la fachada de `equipment`;
+  - `PurchaseOrderLines` resuelve el modelo de equipo; la descripción del PDF (`PurchaseOrderLineDescription` L21-33) dice «Equipo: marca y modelo»;
+  - `OrderInvoicingPolicy.Group` (L31) suma el tipo a la llave, porque los ids de modelo de vehículo y de equipo vienen de tablas distintas y pueden coincidir; `Deviation` (L56, con `int year`) tiene su forma de equipo, sin año;
+  - una consulta nueva cuenta las líneas vigentes de equipo de una orden por modelo, junto a `countCurrentUnitsOfOrder` (`PurchaseInvoiceJpaRepository` L58-60); `PurchaseOrderInvoicingReader` (L33-50) responde también por una orden de equipos;
+  - vincular una orden después de registrar (`PurchaseInvoiceOrderLinks.deviations`, L71-83) compara también modelos de equipo, y exige el mismo tipo.
+- **Cumplir con faltante (D-284):**
+  - `FulfillPurchaseOrderCommand(orderId, motivo)`; `POST /purchase-orders/{id}/fulfillment` acepta un cuerpo opcional `{reason}` (sin cuerpo sigue valiendo);
+  - el pendiente se calcula bajo el candado de la orden; si hay pendiente y el motivo está vacío, `PURCHASEORDER_SHORTFALL_REASON_REQUIRED`;
+  - en una orden solo de conceptos el pendiente no se calcula y el motivo es opcional;
+  - la vista suma `shortfall` (el pendiente, nulo si no se calcula) y `fulfilmentReason` (Q18).
+- **La factura de equipos (D-283):**
+  - el comando suma `kind`; con orden, el tipo es el de la orden (`PURCHASEINVOICE_KIND_MISMATCH`). Las líneas de equipo llegan una por equipo, con su modelo, su monto y, opcional, el equipo que vuelven a usar; el formulario abre la cantidad;
+  - `PurchaseInvoice.MAX_LINES` pasa a depender del tipo (100 de vehículos, 500 de equipos), igual que la validación del recurso (L38), que deja de ser un `@Size` fijo. `InvoiceLineImportPolicy.MAX_ROWS`, `StockRowGroups` (L60) y `PurchaseInvoiceVinChecks.MAX_VINS` (L42) siguen en 100: son solo de vehículos;
+  - el flujo copia el de las unidades:
+    1. los controles;
+    2. los modelos activos;
+    3. las desviaciones de la orden, por modelo de equipo;
+    4. el permiso: toda la empresa y todas las marcas (`actsOnWholeCompanyEveryBrand`, Q14); el área llega en la fase 7;
+    5. `PurchaseInvoiceDevices.register`, que llama a `registerPurchasedDevices` con el proveedor de la factura;
+    6. las líneas con su `equipment_id`;
+    7. guardar;
+    8. los pagos de la orden pasan a la factura (`OrderPaymentTransfers` ya pasa sin unidades, L117-126).
+  - **La inserción de 500.** No hay `hibernate.jdbc.batch_size` y todo id es `IDENTITY`, que Hibernate nunca agrupa; y `bump_data_version` corre una vez por sentencia (V94 L276-281). Los equipos y las líneas se insertan con una sola sentencia de varias filas cada uno (`INSERT … SELECT … FROM unnest(…) RETURNING id`, con `JdbcTemplate`), dentro de los adaptadores de sus repositorios y sin cambiar los agregados; la factura y lo demás siguen por JPA. PRC-R65 conserva su regla —las consultas que no son inserciones no crecen con las líneas— y la meta de tiempo se fija al abrir la fase, midiendo contra `dev` (la latencia real de App Platform a su base), con el corte de 100 segundos de Cloudflare como límite duro;
+  - la ficha de la factura lee el estado y los identificadores de sus equipos por la fachada;
+  - **anular** una factura de equipos sigue las reglas de hoy y además anula los equipos que siguen por ingresar (`annulPendingDevices`, Q15); la nota «anulación de la factura» sobre una factura de equipos hace lo mismo;
+  - **«Anular y copiar»** (D-211, D-214): la copia lleva, en cada línea, el equipo de la línea anulada. Los recibidos vuelven a tener una línea vigente; los por ingresar, que la anulación anuló, nacen otra vez. Ningún equipo se duplica. Un equipo que no se puede volver a usar responde `PURCHASEINVOICE_EQUIPMENT_NOT_RELINKABLE`;
+  - modificar y anular una factura de equipos exigen una asignación de todas las marcas (`PurchaseInvoiceAccessPolicy` L25-44, Q14).
+- **La nota «anulación de equipo»** (`CreditNoteReason` L14-18):
+  - el motivo nuevo exige llevar sus líneas a cero, como la anulación de unidad, y luego llama a `annulCreditedDevices`;
+  - si un equipo no se puede anular (instalado, o en un estado que no lo admite), la nota entera se rechaza y nombra cada equipo con su estado (`CREDITNOTE_EQUIPMENT_NOT_ANNULLABLE`): un instalado se retira antes, distinto de la unidad, que queda retenida;
+  - el motivo tiene que corresponder al tipo de la factura (`CREDITNOTE_REASON_KIND_MISMATCH`);
+  - anular una nota que anuló equipos se rechaza (`CREDITNOTE_EQUIPMENT_ANNULLED`), como D-193;
+  - una nota sobre una factura de equipos admite hasta 500 líneas: `CreditNote.MAX_LINES` no conoce el tipo de la factura, así que el servicio le pasa el límite, y `RegisterCreditNoteResource` (L31, hoy `@Size(max = 100)`) sube a 500 con el control por tipo en el servicio;
+  - escribirla exige una asignación de todas las marcas (`CreditNoteAccessPolicy.writes` L33-36, Q14).
+- **El pago de una factura de equipos (Q12).** No hay migración ni política nueva: la base solo revisa una imputación cuando se inserta (V107 L207-225); `Spreads.of` no devuelve nada sin unidades (`InvoiceUnitCoverages` L67-78); y `AmountOwedPolicy.toBalance` (L112-117) ya pasa el exceso a saldo por factura. Solo cambia:
+  - la regla del canal concesionario `allocationRequired` (`SupplierPaymentAllocations` L77-81) exime las facturas de equipos;
+  - las líneas de equipo quedan fuera de los caminos de unidades (`isVehicle()`, arriba);
+  - un pago que incluye una factura de equipos exige una asignación de todas las marcas (Q14).
+- **El costo de un equipo:**
+  - lo sirve un controlador nuevo de `procurement`, `EquipmentPurchaseCostsController`, en `GET /api/v1/equipments/{id}/purchase-cost` con `stock.ver_costos`. No choca con `EquipmentsController`, que mapea `""`, `/{id}`, `/{id}/status` y las rutas nuevas de esta fase;
+  - lee el equipo con `fetchSeenDevice` (404 si la sesión no lo ve) y exige `stock.ver_costos` en su empresa (403). El área llega en la fase 7;
+  - el costo es el monto de la línea menos sus notas, con la factura, las notas y los pagos de la factura;
+  - el cálculo es el de la unidad (`UnitPurchaseCostCalculator`).
+
+**API y errores.**
+
+| Código | Estado | Cuándo |
+|---|---|---|
+| `PURCHASEORDER_SHORTFALL_REASON_REQUIRED` | 422 | Cumplir con pendiente sin motivo |
+| `PURCHASEORDER_KIND_MISMATCH` | 422 | Una línea de otro tipo que su orden |
+| `PURCHASEINVOICE_KIND_MISMATCH` | 422 | Una línea de otro tipo que su factura, o una orden de otro tipo |
+| `PURCHASEINVOICE_EQUIPMENT_NOT_RELINKABLE` | 422 | El equipo que nombra una línea es de otra empresa, proveedor o modelo, está anulado o ya tiene una línea vigente |
+| `CREDITNOTE_REASON_KIND_MISMATCH` | 422 | «Anulación de unidad» sobre equipos, o «anulación de equipo» sobre vehículos |
+| `CREDITNOTE_EQUIPMENT_NOT_ANNULLABLE` | 422 | La nota anularía un equipo instalado o en un estado que no lo admite; nombra cada uno |
+| `CREDITNOTE_EQUIPMENT_ANNULLED` | 422 | Anular una nota que anuló equipos |
+
+Se reutilizan `EQUIPMENT_IMEI_INVALID`, `EQUIPMENT_STATUS_TRANSITION_INVALID`, `EQUIPMENT_MODEL_INACTIVE` y `EQUIPMENT_TYPE_INACTIVE`. Cada código con sus mensajes en los dos bundles y su lugar en la OpenAPI.
+
+**Frontend.**
+
+- **La orden** (`purchase-order-form.ts`):
+  - el tipo (Vehículos o Equipos) se elige al empezar y queda fijo con la primera línea;
+  - `LineKind` (L117) suma `'equipment'`, con modelo de equipo, cantidad y precio (`LineControls` L119-130, `createLineGroup` L1482-1520, envío L1222-1233, descripción del html L869-949, botones L1010-1027);
+  - `EquipmentFacade` expone los modelos con su propio estado de carga, no el del catálogo (`equipment-inventory-view.ts` L75-81 ya lee esas señales).
+- **Cumplir** (`fulfill()` L1342-1347): con pendiente, un diálogo pide el motivo, copiado de `annul-purchase-invoice-dialog.ts`; la orden muestra «Cumplida con faltante: N» y el motivo.
+- **La factura:**
+  - el tipo se elige al empezar y queda fijo con la primera línea; con orden, es el de la orden;
+  - las líneas de equipo se cargan por modelo, cantidad y monto unitario, se muestran agrupadas por modelo con su cuenta y se envían una por equipo;
+  - el límite es de 500 (`purchase-invoice-lines.ts` `MAX_INVOICE_LINES` L81 pasa a depender del tipo); la importación pegada sigue solo para vehículos;
+  - «Anular y copiar» lleva los equipos de la factura anulada;
+  - la ficha muestra el estado y el IMEI de cada equipo, y la lista filtra por tipo.
+- **La nota:** elegir equipos de una factura de equipos, con el motivo «Anulación de equipo»; hasta 500 líneas (`credit-note-lines.ts` L40).
+- **El pago:** una factura de equipos no muestra el panel de unidades (`payment-document-panel`) y se aplica por monto.
+- **El inventario de equipos:**
+  - los estados nuevos, con sus tonos y textos (`equipment-status.ts` L4-11, `equipment-status-tone.ts`, `equipment-status-dialog.ts` L61-65, `mocks/equipments.ts`);
+  - las acciones de cada fila salen de `allowedActions` del backend (hoy se calculan en `equipment-inventory-view.ts` L147-167);
+  - la columna y el filtro de los días por ingresar, con la marca del aviso;
+  - **la ficha del equipo pasa a ser una página**, `/equipment/inventory/:id`. Hoy es un diálogo (`EquipmentDetailsDialog`, `equipment-inventory-view.ts` L258), y abrir desde él un diálogo de formulario rompe la regla 4.9 de `frontend-rules`. La página muestra sus datos, su factura si se lee y su costo con `stock.ver_costos`, y una pestaña «Historia» con sus estados; desde ella se abren «Registrar ingreso», «Devolver al proveedor» y «Volvió reparado»;
+  - `F/equipment/domain/model/imei.ts`: el dígito verificador, que usa también la fase 3;
+  - `E/screens.ts` suma el inventario y la ficha.
+- **`DESIGN.md`:** una revisión para la ficha del equipo como página.
+
+**Pruebas.**
+
+- Backend, nuevas:
+  - el dominio: los caminos de `Equipment`, su fila de historia en cada uno, y el dígito verificador;
+  - el tipo de la orden y de la factura, y sus límites;
+  - la migración del tipo de línea y de orden (el relleno sin desactivar el disparador fiscal, y el disparador de compatibilidad), la de la historia (la fila de apertura) y los disparadores nuevos;
+  - una línea vigente por equipo;
+  - los 13 usos de `isVehicle()`/`isEquipment()`/`isConcept()`, con una factura de varias líneas de equipo;
+  - **la factura de 500 equipos:** su conteo de sentencias (las de varias filas cuentan una) y una prueba de tiempo con la meta medida al abrir la fase;
+  - «Anular y copiar» sin equipos duplicados, y la nota «anulación de la factura» que anula los por ingresar;
+  - la nota sobre equipos; el pago a nivel de factura, con un proveedor del canal concesionario; el costo de un equipo; cumplir con faltante; el aviso de antigüedad;
+  - el contrato de cada operación nueva de la fachada.
+- Backend, que cambian:
+  - `EquipmentTests`, `EquipmentCommandServiceImplTests`, `EquipmentsIntegrationTests`, `EquipmentsControllerTests`, `EquipmentQueryServiceImplTests`, `EquipmentAuditTests`, `EquipmentMigrationTests`, `EquipmentRowsAreNeverDeletedTests`;
+  - `RowLevelSecurityMigrationTests` (la historia en `COMPANY_TABLES` y su fila en el accesorio; el accesorio de L257, con la ubicación ahora opcional);
+  - las de órdenes, `OrderInvoicingPolicy`, notas y pagos, `PayablesIntegrationTests`;
+  - `PermissionsMigrationTests`, `PermissionCatalogConsistencyTests` y `HandOverDatabaseScriptTests`.
+- Frontend: las specs de los formularios, del inventario, de la ficha, del diálogo de ingreso y de `imei.ts`; e2e `purchase-orders`, `invoice-form`, `credit-notes`, `supplier-payments` y el inventario de equipos; las imágenes de lo que cambia.
+- La suite completa del backend, en local.
+
+**Documentación.**
+
+- Diccionario:
+  - §7.5: los modelos de equipamiento en las órdenes;
+  - §9.2: el tipo de la orden y de la línea, la línea de equipo, `fulfilment_reason` y su regla;
+  - §9.3: el tipo de factura, el límite de 500, la anulación y «Anular y copiar»;
+  - §9.4: el tipo de línea y `equipment_id`;
+  - §9.5: «anulación de equipo» y la nota «anulación de la factura» sobre equipos;
+  - §9.6: el valor de un equipo;
+  - §10: el pago de una factura de equipos;
+  - §11.4: los estados del equipo, la ubicación opcional, el aviso de antigüedad, la tabla `equipment_status_history` y el costo de la instalación, que es solo de mano de obra;
+  - D-283 y D-284 pasan a cerradas, con las precisiones de D-160, D-173, D-187 y D-254.
+- `contextos/procurement.md` y `equipment.md` (EQP-R13 a R16 reescritas, la regla de la historia), las convenciones de la API, `procesos-y-pantallas` (P4, P5 y un proceso nuevo, «Compra e ingreso de equipos»), y la variable del aviso en el README, `.env.example` y `.do/app.yaml`.
+
+**Orden de los commits.**
+
+- Backend:
+  1. V148 y el tipo de línea en todo `procurement` (`isVehicle()`, `isEquipment()` y los 13 usos), sin cambiar comportamiento.
+  2. V149, V150, los estados de compra, la historia y la fachada de `equipment`.
+  3. V151 y las líneas de equipo en órdenes, de un solo tipo.
+  4. La factura de equipos, su inserción de varias filas y «Anular y copiar».
+  5. La nota.
+  6. El pago.
+  7. El costo del equipo.
+  8. V152 y cumplir con faltante.
+  9. V153, el ingreso a mano, la devolución y la ruta de la historia.
+- Frontend:
+  1. Los estados, el inventario y la ficha como página.
+  2. La orden.
+  3. Cumplir.
+  4. La factura.
+  5. La nota.
+  6. El pago.
+  7. Los e2e y las imágenes.
+
+**Terminada cuando:** en `dev` se recorre de punta a punta:
+1. una orden de 100 GPS;
+2. una factura de 98, con 98 equipos por ingresar y la orden con 2 pendientes;
+3. su ingreso a mano;
+4. una factura de 100 con 98 recibidos, el aviso de antigüedad en los 2 que faltan y una nota que los anula;
+5. «Anular y copiar» de una factura con equipos recibidos, sin duplicarlos;
+6. cumplir con motivo;
+7. el pago;
+8. el costo de un equipo;
+9. la historia de cada equipo con todos sus cambios.
+
+La suite completa y el CI están en verde.
+
+---
+
+### Fase 3 — Ingreso por escaneo, API del fabricante y SIM
+
+**Objetivo.** Ingresar los equipos escaneando su QR, modelo por modelo; completar sus datos con la API del fabricante en segundo plano o, sin fabricante, en el mismo escaneo; resolver lo que no cuadra; registrar el reemplazo de un fallado; y llevar la SIM como un registro propio, con su historia junto a cada GPS.
+
+**Lo que la rige.** C5, C10, C11, C12; Q13, Q16, Q17, Q19 a Q22 y Q25; D-42 (lo automático firma como `SYSTEM`); reglas 4.3, 6.3 y 6.4.
+
+**Migraciones.**
+
+**V154__create_equipment_sim_cards_schema.sql** (`Context: equipment`). Abre con alcance `SYSTEM` y `lock_timeout` de 5 segundos.
+
+```
+sim_cards
+  id, public_id (uuidv7), company_id → companies
+  iccid           VARCHAR(20) NOT NULL     -- 19 o 20 dígitos
+  imsi            VARCHAR(15)              -- 15 dígitos
+  msisdn          VARCHAR(20)              -- el número de la línea
+  operator        VARCHAR(60)
+  plan            VARCHAR(100)
+  status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'   -- ACTIVE | SUSPENDED | CANCELLED
+  activation_date DATE
+  created_at, created_by, updated_at, updated_by
+  sim_cards_public_id_uq, sim_cards_iccid_uq (único en todo el sistema), sim_cards_id_company_uq
+  CHECK de formato de iccid e imsi
+
+sim_card_assignments
+  id, public_id, company_id
+  sim_card_id    → sim_cards (id, company_id)
+  equipment_id   → fleet_equipments (id, company_id)
+  period         DATERANGE NOT NULL        -- [inicio, fin)
+  ended_reason   VARCHAR(20)
+  created_at, created_by, updated_at, updated_by
+  EXCLUDE USING gist (sim_card_id WITH =, period WITH &&)
+  EXCLUDE USING gist (equipment_id WITH =, period WITH &&)
+```
+
+- La forma de los períodos es la de V100: inicio incluido y fin excluido. `btree_gist` ya existe (V28).
+- RLS con las políticas de V29 en las dos tablas. La cuenta de la aplicación actualiza solo el período, el motivo y las columnas de registro de una asignación, con permisos por columna como V100 L85. No se exportan, así que no van en `data_versions`.
+- **El traslado de lo que existe**, firmado con el autor de cada equipo (`coalesce(updated_by, created_by)`), sin leer `users`, que es de `iam`:
+  - cada equipo que no está de baja ni anulado y tiene ICCID da una SIM `ACTIVE` de su empresa, con una asignación abierta desde el día de la migración;
+  - un equipo de baja o anulado con un ICCID que nadie más tiene da una SIM `CANCELLED` con una asignación cerrada, `[alta, greatest(último cambio, alta + 1 día))`, para que un equipo creado y cambiado el mismo día no dé un rango vacío;
+  - `fleet_equipments.imsi` es texto libre (`VARCHAR(30)`, V132 L31): un IMSI que no tiene 15 dígitos se traslada vacío y la migración lo nombra en un `RAISE NOTICE`, en vez de romper el `CHECK`;
+  - los ICCID repetidos entre equipos de baja no se trasladan: la migración los nombra en un `RAISE NOTICE` y quedan en las columnas viejas, que no se borran hasta la fase 5 (análisis, C-H10).
+- Desde esta fase la aplicación deja de escribir `fleet_equipments.iccid` e `imsi`.
+
+**V155__add_the_completion_of_the_equipments.sql** (`Context: equipment`).
+
+- El `CHECK` de `status` suma `PENDING_COMPLETION` y `UNDER_REVIEW`.
+- `fleet_equipments.review_reason VARCHAR(20)`, con `CHECK (review_reason IN ('MODEL_MISMATCH', 'UNKNOWN_IMEI', 'SIM_MISMATCH'))`, y presente solo en `UNDER_REVIEW`.
+- `fleet_equipments.replaced_equipment_id BIGINT`, con la llave compuesta `(replaced_equipment_id, company_id) → fleet_equipments (id, company_id)`, único (un equipo se reemplaza una sola vez) y distinto de sí mismo (Q13).
+- `equipment_models.manufacturer_model_code VARCHAR(60)`, opcional: cómo nombra el fabricante el modelo (análisis, C-H15).
+- `equipment_completion_requests`:
+  - columnas: `id`, `public_id`, `company_id`, `equipment_id` (llave compuesta), `imei`, `status` (`PENDING`, `IN_PROGRESS`, `COMPLETED`, `FAILED`, `CANCELLED`), `attempts`, `next_attempt_at`, `last_error_code`, `created_at`, `updated_at`. Como en los correos, `next_attempt_at` hace de reserva: reclamar un pedido lo corre hacia adelante (`Notification.claim` L182-187), sin otra columna;
+  - un pedido abierto por equipo (índice único parcial sobre `PENDING` e `IN_PROGRESS`) y un índice `(status, next_attempt_at)`;
+  - `UNIQUE (id, company_id)`.
+- `equipment_completion_attempts`:
+  - columnas: `id`, `public_id`, `company_id`, `request_id` (llave compuesta), `attempted_at`, `provider`, `outcome` (`COMPLETED`, `NOT_FOUND`, `RETRYABLE`, `REFUSED`), `http_status`, `error_code`, `duration_ms`;
+  - de solo inserción: `SELECT` e `INSERT`, y su línea en `hand-over-database.sql`.
+- Las dos tablas tienen RLS de empresa; la tarea corre con alcance `SYSTEM`.
+
+**V156__seed_iam_permissions_of_the_sim_cards.sql** (`Context: iam`).
+
+- `stock.crear_sims` (`crear`), `stock.editar_sims` (`editar`) y `stock.cambiar_estado_sims`, con la categoría de `stock.cambiar_estado_equipamiento`, marcados en `SUPERADMIN`, `ADMIN_EMPRESA` y `OPERACIONES` (Q19). Leer las SIM es `stock.ver`.
+
+**Backend.**
+
+*La firma de lo automático.* `equipment` suma `iam::acl` a sus `allowedDependencies` para leer la cuenta `SYSTEM` (`IamContextFacade.fetchSystemAccountId()`, hoy solo la usa `fleet` en `ExternalIamService` L37). La tarea del fabricante firma con ella lo que escribe —`updated_by` del equipo, `created_by` de una SIM nueva, que no admite nulo— porque fuera de una sesión `CurrentUserAuditorAware` no devuelve a nadie y una actualización conservaría en silencio al autor anterior. `iam` no depende de `equipment`, así que no hay ciclo; `ModularityTests` lo comprueba.
+
+*El ingreso y lo que sigue, en `equipment`*
+
+| Operación | Desde | Hasta | Ruta y permiso |
+|---|---|---|---|
+| Escaneo, con fabricante | `PENDING_ARRIVAL` | `PENDING_COMPLETION` | `POST /api/v1/equipments/{id}/arrival-scan` `{imei, locationId}`, `stock.ingresar_equipamiento`. Valida el dígito verificador y la unicidad, y crea el pedido al fabricante en la misma transacción |
+| Escaneo, sin fabricante (Q25) | `PENDING_ARRIVAL` | `AVAILABLE` | La misma ruta con `{imei, serialNumber, iccid?, locationId}`: con el proveedor `manual`, el escaneo trae también el serial —y el ICCID si la SIM viene— y el equipo queda Disponible, sin pasar por «Por completar». Con un fabricante configurado, esos campos se ignoran |
+| Completar a mano | `PENDING_COMPLETION`, `UNDER_REVIEW` | `AVAILABLE` | `POST /api/v1/equipments/{id}/completion` `{serialNumber, firmware, …}`, `stock.editar_equipamiento`. Cancela el pedido abierto |
+| Resolver la revisión | `UNDER_REVIEW` | `AVAILABLE` o `RETURNED_TO_SUPPLIER` | `POST /api/v1/equipments/{id}/review-resolution` `{outcome: CONFIRM \| CHANGE_MODEL \| RETURN, equipmentModelId}`, `stock.editar_equipamiento`. El modelo se corrige solo aquí y dentro del mismo tipo (Q17): `equipment_type_id` no cambia, y la llave de la instalación de la fase 4 lo usa. Cancela el pedido abierto |
+| Reintentar con el fabricante | `PENDING_COMPLETION` | — | `POST /api/v1/equipments/{id}/completion-retry`, `stock.editar_equipamiento` |
+| Reemplazo | `RETURNED_TO_SUPPLIER` | Un equipo nuevo en `PENDING_COMPLETION` (o `AVAILABLE` sin fabricante) | `POST /api/v1/equipments/{id}/replacement` `{imei, locationId, …}`, `stock.ingresar_equipamiento`. El nuevo copia empresa, proveedor, tipo y modelo, y apunta al reemplazado; el reemplazado queda devuelto y sale de las listas por omisión |
+| Saber cómo se ingresa | — | — | `GET /api/v1/equipments/arrival-settings`, `stock.ingresar_equipamiento`: `{completesWithManufacturer}`, para que la pantalla pida o no el serial |
+
+- El ingreso completo a mano de la fase 2 (`/arrival`) sigue.
+- EQP-R14 queda: un tipo telemático exige el serial y el IMEI para estar Disponible; el ICCID pasa a la SIM, que no se exige para estar Disponible (C11).
+- **La máquina de estados, completa:**
+  - `annulCredited()` suma `PENDING_COMPLETION` y `UNDER_REVIEW`: una nota por un equipo desconocido para el fabricante tiene que poder anularlo;
+  - `comeBackRepaired()` se rechaza si otro equipo apunta a este como reemplazado (`EQUIPMENT_REPLACED`): si no, una línea tendría dos equipos vivos y su costo se contaría dos veces;
+  - la nota «anulación de equipo» sobre la línea de un equipo reemplazado anula el extremo vivo de la cadena —el reemplazo—, no el que quedó en el proveedor;
+  - cada camino deja su fila en la historia de la fase 2.
+- **El escaneo va por modelo.** Una factura puede traer varios modelos (C3), y el costo del equipo sale de su línea. La pantalla elige el siguiente equipo por ingresar **del modelo que se está escaneando**; con un solo modelo no se pregunta. Si dos personas escanean la misma factura y chocan en el mismo equipo, la segunda recibe `EQUIPMENT_STATUS_TRANSITION_INVALID` y la pantalla pasa al siguiente.
+
+*La SIM, en `equipment`*
+
+- Los agregados `SimCard` y `SimCardAssignment`, este con su propio repositorio, como la historia de la instalación.
+- Las rutas:
+
+  | Método | Ruta | Permiso |
+  |---|---|---|
+  | `GET` | `/api/v1/sim-cards` | `stock.ver` |
+  | `POST` | `/api/v1/sim-cards` | `stock.crear_sims` |
+  | `GET` | `/api/v1/sim-cards/{id}` | `stock.ver` |
+  | `PATCH` | `/api/v1/sim-cards/{id}` | `stock.editar_sims` (`PATCH`, como el equipo, `EquipmentsController` L107) |
+  | `PATCH` | `/api/v1/sim-cards/{id}/status` | `stock.cambiar_estado_sims` |
+  | `GET` | `/api/v1/sim-cards/{id}/assignments` | `stock.ver` |
+  | `POST` | `/api/v1/equipments/{id}/sim-assignment` `{iccid}` o `{simCardId}` | `stock.editar_sims` |
+  | `POST` | `/api/v1/equipments/{id}/sim-assignment/end` `{reason}` | `stock.editar_sims` |
+
+- Una SIM en un solo GPS y un GPS con una sola SIM a la vez; la base lo respalda con los `EXCLUDE`.
+- Una SIM nueva escaneada valida el dígito verificador del ICCID.
+- **El ICCID que todavía llega al equipo.** `POST /equipments`, `PATCH /equipments/{id}` y `/arrival` siguen aceptando `iccid`, para no romper el frontend anterior: el backend busca o crea la SIM de la empresa y la asigna. EQP-R14 deja de exigirlo al crear (`EquipmentCommandServiceImpl` L364-369); la búsqueda por ICCID (`EquipmentJpaRepository` L78), `existsByIccid` (L61-66) y la traducción de la restricción (`EquipmentRepositoryImpl` L35-37) pasan a la SIM. La fase 5 retira el campo.
+- El recurso del equipo suma su SIM vigente (ICCID, número, operador), el estado de su completado, `reviewReason`, a quién reemplazó y quién lo reemplazó.
+
+*El pedido al fabricante, en `equipment`*, con el patrón de los correos:
+
+| Pieza | Qué es |
+|---|---|
+| Puerto `DeviceRegistry` (`application/internal/outboundservices/registry`) | `lookup(imei)` responde `Found(serial, código del modelo, firmware, iccid, imsi)`, `NotFound`, `Retryable(código)` o `Refused(código)` |
+| `ManualDeviceRegistry` (`infrastructure/providers`) | El proveedor por omisión (`equipment.device-registry.provider=manual`): no llama a nadie ni crea pedidos; el escaneo trae el serial (Q25) |
+| El adaptador del fabricante | `RestClient` con timeouts del JDK (5 s para conectar, 10 s para leer); 408, 429 y 5xx se reintentan, otro 4xx se rechaza, 404 es `NotFound`. Espera Q21 |
+| `DeviceRegistryProviderCheck` | Al arrancar, como `EmailProviderCheck`: un proveedor que no es `manual` exige su dirección y sus credenciales. El proveedor se elige con `@ConditionalOnProperty`, como los tres de correo |
+| `DeviceCompletionTask` (`application/internal/scheduledtasks`, proceso `equipment.device-completion`) | `runAlone` → alcance `SYSTEM` → reclama los pedidos debidos con `FOR UPDATE SKIP LOCKED`, corriendo su `next_attempt_at`, en una transacción corta → llama al fabricante **fuera de toda transacción** → anota el intento y aplica el resultado en otra transacción corta, firmado por `SYSTEM` |
+| La aplicación del resultado | Primero vuelve a leer, bajo candado, el equipo y luego el pedido (siempre en ese orden; y el equipo antes que su SIM): si el equipo ya no está por completar o el pedido fue cancelado, el resultado se descarta. `Found`: guarda serial y firmware; si el modelo tiene código del fabricante y no coincide → `UNDER_REVIEW` `MODEL_MISMATCH`; el ICCID busca o crea la SIM de la empresa y la asigna si el equipo no tiene una; si tiene otra, o si ese ICCID ya es de otra empresa (el índice es único en todo el sistema) → `UNDER_REVIEW` `SIM_MISMATCH`; si todo cuadra → `AVAILABLE`. `NotFound` → `UNDER_REVIEW` `UNKNOWN_IMEI` |
+| Reintentos | Una espera que se duplica de 1 minuto a 1 hora, copiada de `RetryPolicy`; agotados, el pedido queda `FAILED` y el equipo por completar, con «el fabricante no respondió» y el completado a mano disponible |
+| `DeviceCompletionFailureWatchTask` (proceso `equipment.device-completion-watch`) | Una línea `ERROR` por revisión cuando los fallos de la última hora llegan al umbral; no toca `/actuator/health` |
+| Métrica | Contador `equipment.device_registry.lookups` con `provider`, `outcome` y `error_code` |
+| El planificador | Hoy tiene un solo hilo (`SchedulingConfiguration` no fija `spring.task.scheduling.pool.size`): una llamada de 5 s + 10 s atrasaría los correos y los vencimientos. Se fija el tamaño del grupo y cada corrida reclama a lo sumo un lote acotado |
+| Variables | `EQUIPMENT_DEVICE_REGISTRY_PROVIDER` (`manual` por omisión), su dirección y sus credenciales (los nombres finales con el adaptador), `EQUIPMENT_DEVICE_COMPLETION_INTERVAL` (`PT30S`), `EQUIPMENT_DEVICE_COMPLETION_MAX_ATTEMPTS` (`8`), `EQUIPMENT_DEVICE_COMPLETION_ALERT_FAILURES_PER_HOUR` (`3`), en el README, `.env.example` y `.do/app.yaml` |
+
+- **El catálogo:** el diálogo del modelo de equipamiento (Catálogos › Tipos de equipamiento) suma «Código del fabricante», con `catalogos.editar_equipamiento`.
+
+*`procurement`*
+
+- La ficha de la factura muestra los estados nuevos.
+- El costo de un equipo de reemplazo sigue la cadena hasta el equipo original: una operación nueva de la fachada de `equipment`, `fetchPurchaseRoots(ids)`.
+- **Las facturas con equipos por ingresar,** para la pantalla de ingreso: `GET /api/v1/purchase-invoices` acepta `kind=EQUIPOS` y `pendingArrival=true`, y responde, por factura, cuántos equipos de cada modelo siguen por ingresar. Como el filtro cruza contextos, se aplica antes de paginar: `procurement` pide a la fachada de `equipment` los ids de los equipos por ingresar de las empresas que lee (`fetchPendingArrivalDeviceIds`, que son a lo sumo unos cientos), filtra en SQL las facturas cuyas líneas vigentes los nombran y recién entonces pagina.
+
+**API y errores.**
+
+| Código | Estado | Cuándo |
+|---|---|---|
+| `SIMCARD_NOT_FOUND` | 404 | La SIM no existe o no se lee |
+| `SIMCARD_CONFLICT` | 409 | El ICCID ya existe |
+| `SIMCARD_ICCID_INVALID` | 422 | El ICCID no tiene el formato o no pasa el dígito verificador |
+| `SIMCARD_NOT_ACTIVE` | 422 | Se asigna una SIM suspendida o cancelada |
+| `SIMCARD_ALREADY_ASSIGNED` | 422 | La SIM ya está en otro GPS |
+| `EQUIPMENT_SIM_ALREADY_ASSIGNED` | 422 | El GPS ya tiene una SIM |
+| `EQUIPMENT_REPLACED` | 422 | «Volvió reparado» de un equipo que otro ya reemplazó |
+
+Se reutilizan `EQUIPMENT_IMEI_INVALID` y `EQUIPMENT_STATUS_TRANSITION_INVALID`. `EQUIPMENT_ICCID_INVALID` se conserva mientras el frontend lo nombre.
+
+**Frontend.**
+
+- **«Ingreso de equipos»** (`F/equipment/presentation/views/equipment-arrivals-view`, ruta `/equipment/arrivals`, con `stock.ingresar_equipamiento`):
+  1. Elegir una factura con equipos por ingresar (de `ProcurementFacade`).
+  2. Si la factura tiene más de un modelo, elegir el modelo que se va a escanear (la caja); el contador es por modelo.
+  3. Elegir la ubicación, que se recuerda durante la sesión en un store en memoria: la skill prohíbe guardarla en el navegador (§3, L87).
+  4. Escanear: un campo con el foco puesto para el lector (cada lectura termina con Enter; también se escribe a mano), y «Usar cámara», que carga la librería de lectura solo al pulsarlo (`BarcodeDetector` donde existe).
+  - Cada lectura busca en el contenido el número de 15 dígitos que pasa el dígito verificador (`imei.ts`), y lo envía para el siguiente equipo por ingresar de ese modelo.
+  - Sin fabricante (`arrival-settings`), la misma fila pide después el serial y, si la SIM viene, su ICCID, también por escaneo; el equipo queda Disponible.
+  - Un contador («37 de 100») y, por cada lectura, una fila con su resultado (ingresado, repetido, inválido, ya registrado), en una lista y no en una tabla, para no abrir otra excepción a `mm-data-manager`.
+  - Mientras haya lecturas sin enviar, la pantalla se registra como trabajo sin guardar.
+  - Al terminar, un resumen.
+- **La cámara en el sitio desplegado.** `public/_headers` (L10) envía `Permissions-Policy: camera=()` a todo `/*`, y en una aplicación de una sola página no sirve un encabezado por ruta: pasa a `camera=(self)`. El e2e no lo detecta, porque el servidor de desarrollo no aplica `_headers`; se comprueba en `dev`.
+- **La librería de la cámara**, con su versión exacta, cargada perezosamente. Los presupuestos de `angular.json` (L46-57) solo miden el paquete inicial: se suma un presupuesto de tipo `bundle` para su trozo perezoso, y `npm audit` sigue en cero.
+- **«SIM»** (ruta `/equipment/sim-cards`, con `stock.ver`): la lista en `mm-data-manager` (ICCID, número, operador, estado, GPS actual); la ficha como página, `/equipment/sim-cards/:id`, con la historia de sus asignaciones, como la historia de estados de la unidad; los diálogos de alta, edición y estado. Desde la ficha del equipo: «Asignar SIM» (escaneando el ICCID) y «Retirar SIM».
+- **El inventario y la ficha del equipo:** los estados «Por completar» y «Revisar» (con su causa), sus filtros, y las acciones que dice el backend: completar datos, resolver la revisión, reintentar con el fabricante, registrar el reemplazo, volvió reparado, asignar SIM. La pestaña de la SIM en la ficha.
+- **El menú:** Monitoreo suma «Ingreso de equipos» (`stock.ingresar_equipamiento`) y «SIM» (`stock.ver`). La matriz pone `stock.ingresar_equipamiento` en Monitoreo › Ingreso de equipos y `stock.*_sims` en Monitoreo › SIM.
+- **`DESIGN.md`:** una revisión para la pantalla de escaneo, su lista y la cámara, y otra para la SIM.
+- Cada ruta nueva va en `environment.ts` y en `environment.development.ts`.
+
+**Pruebas.**
+
+- Backend:
+  - la SIM: dominio, servicio, integración, RLS y auditoría;
+  - la migración V154, con el traslado, los equipos de baja y anulados, los IMSI inválidos, el rango de un solo día y los ICCID repetidos;
+  - la tarea con un `DeviceRegistry` de prueba: encontrado, otro modelo, otra SIM, ICCID de otra empresa, desconocido, reintentable, agotado, y un resultado que llega después de un completado a mano;
+  - que corre en una sola instancia y fuera de la transacción del escaneo: las dos tareas nuevas entran en la lista exacta de `DeadlockRetryTests` (L123-126);
+  - el vigilante y la métrica; la comprobación de arranque;
+  - el escaneo con y sin fabricante (dígito verificador, repetido, estado equivocado, permiso, modelo), el reemplazo y su costo, «volvió reparado» de un reemplazado, la nota sobre la cadena, la revisión dentro del tipo;
+  - `ModularityTests` con `iam::acl` en `equipment`;
+  - `EquipmentRowsAreNeverDeletedTests` con las tablas nuevas, `RowLevelSecurityMigrationTests` con las cuatro (y `sim_card_assignments` en `COLUMN_UPDATE_TABLES`, L90), `HandOverDatabaseScriptTests`, `PermissionsMigrationTests`;
+  - la suite completa, en local.
+- Frontend: las specs de la pantalla de ingreso (la extracción del IMEI, el Enter del lector, el modelo, el contador, el modo sin fabricante, los errores), de `imei.ts`, de la SIM y del inventario; e2e del ingreso (el lector simulado escribiendo y pulsando Enter; la cámara no se prueba en e2e), de la SIM y del inventario; `E/screens.ts` y las imágenes de las pantallas nuevas.
+
+**Documentación.**
+
+- Diccionario:
+  - §11.4: los estados de completado, la revisión, el reemplazo y el escaneo por modelo;
+  - §11.4.1 `sim_cards` y §11.4.2 `sim_card_assignments`;
+  - §2.7: los pedidos al fabricante y sus intentos;
+  - §7.5: el código del fabricante;
+  - §5.6: los permisos;
+  - D-285 pasa a cerradas.
+- `contextos/equipment.md`: los agregados, las reglas, los puertos, la integración y la dependencia de `iam::acl`.
+- El README del backend: las variables, el proveedor, el vigilante y cómo encenderlo.
+- `procesos-y-pantallas`: el proceso «Ingreso de equipos» y las pantallas nuevas. Las convenciones de la API: las rutas.
+
+**El adaptador real,** cuando llegue Q21: el adaptador del fabricante, sus pruebas contra respuestas grabadas (`MockRestServiceServer`), su sección «El fabricante» en el README, y el cambio de `EQUIPMENT_DEVICE_REGISTRY_PROVIDER` en App Platform.
+
+**Orden de los commits.**
+
+- Backend:
+  1. V154 y la SIM.
+  2. V155, los estados de completado, el reemplazo y la máquina de estados completa.
+  3. `iam::acl` en `equipment`, el escaneo con y sin fabricante y el completado a mano.
+  4. El puerto, el proveedor manual, la tarea, el vigilante, la métrica y el planificador.
+  5. V156 y las rutas de la SIM.
+  6. Las facturas por ingresar en `procurement`.
+- Frontend:
+  1. La pantalla de ingreso y `_headers`.
+  2. La SIM.
+  3. El inventario y la ficha.
+  4. El menú y la matriz.
+  5. Los e2e y las imágenes.
+
+**Terminada cuando:** en `dev`, con el proveedor `manual`, se escanea una factura de dos modelos, modelo por modelo, y sus equipos quedan Disponibles con su serial; la cámara abre en un teléfono; con un `DeviceRegistry` de prueba, la suite recorre todos los resultados; la SIM tiene su historia; la suite completa y el CI están en verde.
+
+---
+
+### Fase 4 — Instalación unida al inventario e historial del equipo (D-263, D-264)
+
+**Objetivo.** Instalar es elegir un equipo Disponible del inventario y, si es telemático, con su SIM activa; retirar lo devuelve al estado que dice su motivo; una unidad con equipos instalados no se anula ni sale de la flota; los GPS ya instalados —también los de la carga inicial— quedan enlazados a su equipo; y cada equipo muestra en qué unidades estuvo y cuándo se retiró o reemplazó (C13).
+
+**Lo que la rige.** D-263, D-264, D-206, FLT-R152 a FLT-R154, la fase 2 §2.6 del plan de migración; C11, C13; reglas 1.2 y 1.3.
+
+**Antes de tocar nada:** las pruebas de caracterización de la instalación de hoy, en `develop`.
+
+**Migraciones.**
+
+**V157__key_the_equipments_for_their_installation.sql** (`Context: equipment`).
+
+- `fleet_equipments_id_company_type_uq UNIQUE (id, company_id, equipment_type_id)`, destino de la llave de la instalación.
+- `fleet_equipments_current_vehicle_fk (current_vehicle_id, company_id) → vehicles (id, company_id)`, que reemplaza la llave simple de V132 L34. El `CHECK` que ata Instalado a `current_vehicle_id` (V132 L49-51) no cambia.
+- **Un modelo «Sin modelo registrado» por cada tipo telemático** de `equipment_types`, inactivo para las compras: `equipment_model_id` no admite nulo (V132 L22), y una instalación vieja solo sabe su tipo y su serial. Lo usa solo la vinculación de lo ya instalado; el modelo se corrige después desde la ficha del equipo.
+
+**V158__link_the_installations_to_the_inventory.sql** (`Context: fleet`).
+
+- `vehicle_equipments.equipment_id BIGINT`, con `vehicle_equipments_equipment_fk (equipment_id, company_id, equipment_type_id) → fleet_equipments (id, company_id, equipment_type_id)`. `vehicle_equipments` ya tiene `equipment_type_id` (V100). Queda vacío solo en lo de fábrica.
+- Una instalación abierta por equipo: índice único parcial sobre `equipment_id` `WHERE equipment_id IS NOT NULL AND upper_inf(period)`.
+- El `CHECK` de `removal_reason` (V100 L47-48) suma `sin_falla`.
+- `UPDATE (equipment_id)` para la cuenta de la aplicación, como V119 con el serial, para enlazar lo ya instalado.
+
+**Backend.**
+
+*`fleet`*
+
+- **Instalar** (`VehicleEquipmentInstallations.check` L70-110):
+  - el pedido suma `equipmentId`. Es el **primer paso** del cambio incompatible: el backend acepta el equipo y el serial;
+  - el equipo tiene que verse, ser de la empresa de la unidad, estar Disponible y ser de un tipo que aplica;
+  - un tipo telemático exige una SIM activa asignada (`EQUIPMENT_SIM_REQUIRED`);
+  - después de los candados de la unidad y de la instalación (`lockedWithItsUnit`, `VehicleEquipmentCommandServiceImpl` L238-249), `installDevice` de `equipment` bloquea el equipo y lo pasa a Instalado, con su unidad.
+- **Retirar y reemplazar** (`VehicleEquipmentCommandServiceImpl`): los motivos falla, robo, reemplazo y sin falla. `releaseDevice` lo devuelve a Mantenimiento (falla), De baja (robo) o Disponible (reemplazo, sin falla), en la ubicación actual de la unidad; si la unidad no tiene ubicación, el retiro la pide. Un GPS heredado sin serial o sin IMEI que volvería a Disponible queda «Por completar» (EQP-R14). Reemplazar elige otro equipo.
+- **D-264:**
+  - `VehicleAnnulments` suma la retención `DEVICES_INSTALLED`;
+  - **el paso a Inactivo** con equipos instalados se rechaza (`VEHICLE_DEVICES_INSTALLED`) donde ocurre: en `VehicleMovements` (L131, L150, con `TransferExitPolicy`), y `VehicleAllowedActions` (L124) deja de ofrecerlo. Cubre también el camino «Devolución al proveedor» de D-265 (`StatusChangeReasonCommandServiceImpl` L83). `VehicleTransfers` solo registra los datos del notario; cerrar un traspaso sale a Inactivo por `VehicleMovements`, así que la misma regla exige retirar antes el GPS;
+  - `ReturnedUnits` retiene la unidad que una nota devuelve si tiene equipos instalados (análisis, C-H12), con la causa que informará D-266.
+- **El historial del equipo en sus unidades (C13).** `fleet` es dueño de las instalaciones y `equipment` no puede leerlas (`fleet` depende de `equipment`, no al revés). Así que `fleet` sirve `GET /api/v1/equipments/{id}/installations` (`stock.ver`), en un controlador propio, como `procurement` sirve el costo del equipo: lee el equipo con `fetchSeenDevice` de la fachada de `equipment` (404 si la sesión no lo ve) y lista cada instalación con su unidad (VIN y placa), su inicio, su fin, el motivo del retiro y quién instaló y retiró.
+- **La vinculación de lo ya instalado** (análisis, C-H13; D-286):
+  - `linkLegacyInstalledDevice(empresa, tipo, serial, unidad, cuenta SYSTEM)` de la fachada de `equipment`, con un resultado por caso. El serial es único en todo el sistema (V132 L55-57):
+
+    | El serial | Resultado |
+    |---|---|
+    | No existe | Registra el equipo Instalado en esa unidad, con el modelo «Sin modelo registrado» de su tipo, sin ubicación ni proveedor, firmado por `SYSTEM`, y abre su historia |
+    | Existe en la misma empresa y tipo, Disponible | Lo instala en esa unidad |
+    | Existe en la misma empresa y tipo, ya instalado en esa unidad | Lo enlaza: es idempotente |
+    | Existe en otra empresa, en otro tipo o en otro estado | No enlaza; se informa |
+
+  - `InstalledGpsInventoryLinking`, de `fleet`: un proceso único e idempotente que corre después del arranque, sin demorarlo (al estar lista la aplicación, en segundo plano), en una sola instancia (`fleet.installed-gps-linking`) y con alcance `SYSTEM`. Para cada instalación abierta de GPS sin equipo y con serial, pide a `equipment` el enlace y escribe `equipment_id`. Las que no tienen serial y las que no se enlazan se listan en el registro, con su causa. En cada arranque posterior no encuentra nada que hacer;
+  - **completar el serial después** (`PUT /vehicle-equipments/{id}/serial`, `VehicleEquipmentCommandServiceImpl` L200-223, que hoy solo escribe el serial) enlaza en la misma transacción, con los mismos casos;
+  - **la carga inicial** crea las instalaciones de GPS solo con su tipo y su fecha, sin serial (`MigratedUnitRegistrations` L68, L226, L342-348; D-206): quedan sin equipo hasta que alguien completa su serial, y entonces se enlazan. Así ningún GPS escapa de D-264 por haber llegado después del arranque.
+
+*`equipment`*
+
+- `installDevice`, `releaseDevice(destino, ubicación)` y `linkLegacyInstalledDevice` en la fachada, con `Propagation.MANDATORY` y el equipo bloqueado `FOR NO KEY UPDATE`; cada uno deja su fila en la historia.
+- El cambio de estado a mano rechaza un equipo Instalado (`EQUIPMENT_INSTALLED`) y deja de ofrecer el paso de Instalado a Mantenimiento (`Equipment.moveToMaintenance`, L192-199).
+
+**API y errores.**
+
+| Código | Estado | Cuándo |
+|---|---|---|
+| `EQUIPMENT_NOT_AVAILABLE` | 422 | El equipo elegido no está Disponible |
+| `EQUIPMENT_SIM_REQUIRED` | 422 | Un equipo telemático sin SIM activa |
+| `EQUIPMENT_INSTALLED` | 422 | Cambiar a mano el estado de un equipo instalado |
+| `VEHICLE_DEVICES_INSTALLED` | 422 | Anular, pasar a Inactivo o cerrar el traspaso de una unidad con equipos instalados; nombra los equipos |
+
+**Frontend.**
+
+- **El diálogo de instalación** (`vehicle-equipment-dialog.ts`, formulario L113-131, envío L257-288): una búsqueda (`mm-search-select`) de los equipos Disponibles de la empresa de la unidad y del tipo elegido, que muestra su SIM. Es el **segundo paso**: el frontend envía el equipo.
+- `REMOVAL_REASONS` (`vehicle-equipment.entity.ts` L8) y `EquipmentRemovalReason` (L5) suman `sin_falla`; el retiro pide la ubicación cuando la unidad no tiene una.
+- Los errores nuevos, y `complete-equipment-serial-dialog`, que queda para lo instalado sin serial y ahora también enlaza.
+- **La ficha del equipo** suma la pestaña «Instalaciones», con lo que responde `GET /equipments/{id}/installations`: junto a la pestaña «Historia» de la fase 2, es el historial que anunció el correo del 16/11.
+
+**Pruebas.**
+
+- La caracterización, sin cambios.
+- FLT-R152 a FLT-R154.
+- Las retenciones de anulación, Inactivo (también por «Devolución al proveedor»), traspaso y nota.
+- La vinculación: cada caso de la tabla, idempotente, el serial completado después y una instalación de la carga inicial que se enlaza al completar su serial.
+- La ruta de las instalaciones de un equipo (404 si no se ve).
+- El orden de los candados.
+- `VehicleEquipmentIntegrationTests`, `VehicleEquipmentAuditTests`, `COLUMN_UPDATE_TABLES` de `RowLevelSecurityMigrationTests`.
+- e2e `enablement.spec.ts` (L234-460) y la ficha del equipo.
+- La suite completa, en local.
+
+**Documentación.** D-263 y D-264 pasan a construidas y D-286 a cerradas, con la precisión de D-206; FLT-R152 a FLT-R154 en ✅ en `contextos/fleet.md`; el diccionario §11.4 y §8.3 (la retención); `procesos-y-pantallas` P6 y la ficha del equipo.
+
+**Orden de los commits.**
+1. La caracterización.
+2. V157 y la fachada de `equipment`.
+3. V158, instalar, retirar y reemplazar.
+4. Las retenciones.
+5. La vinculación y el serial completado.
+6. Las instalaciones de un equipo.
+7. El frontend.
+
+**Terminada cuando:** se instala un GPS del inventario con su SIM, se retira con cada motivo, una unidad con GPS no se anula ni pasa a Inactivo, los GPS ya instalados de `dev` quedan enlazados o listados con su causa, completar un serial enlaza, la ficha de cada equipo muestra su historia y sus instalaciones, y la suite y el CI están en verde.
+
+---
+
+### Fase 5 — Limpieza
+
+**Objetivo.** Retirar lo que quedó para la compatibilidad del ciclo del GPS.
+
+**Antes de empezar:**
+- la fase 3 corre en `dev` (`instance_count: 1`) con su CI en verde;
+- ninguna copia anterior a ella se conecta a esa base, tampoco una local con el `.env` remoto;
+- el responsable resolvió los ICCID repetidos que nombró V154;
+- la fase 4 está integrada, con su frontend (el segundo paso de la instalación).
+
+**V159__drop_the_sim_columns_of_the_equipments.sql** (`Context: equipment`, con un paso de `procurement`). Abre con alcance `SYSTEM` y `lock_timeout` de 5 segundos.
+- Retira `fleet_equipments.iccid` e `imsi`, con su índice único (`idx_fleet_equipments_iccid_unique`).
+- Retira el disparador de compatibilidad `fill_purchase_line_kind()` de V148 y su línea en `hand-over-database.sql`. Ese paso es de `procurement`, como V147, que cerró la fase 8 del plan de migración en una sola migración.
+
+**Backend.**
+- El **tercer paso** de la instalación: sale el camino del serial escrito para los tipos del inventario. `complete-equipment-serial-dialog` y su ruta siguen, solo para lo instalado sin serial, que al completarse se enlaza (fase 4).
+- `POST /equipments`, `PATCH /equipments/{id}` y `/arrival` dejan de aceptar `iccid`: la SIM se asigna por sus rutas (fase 3). Sale el uso de `EQUIPMENT_ICCID_INVALID`, y su mensaje cuando el frontend ya no lo nombre.
+
+**Frontend.** Sale lo que quedó del ICCID en el formulario del equipo y el serial escrito del diálogo de instalación.
+
+**Documentación.** El diccionario retira las columnas; precisión en D-285.
+
+**Terminada cuando:** el CI está en verde y `dev` arranca sin las columnas.
+
+---
+
+### Fase 6 — Áreas: catálogo, asignación y sesión
+
+**Objetivo.** Cada empresa administra sus áreas; un colaborador puede tener la suya; la asignación de un rol puede llevar un área —una persona con varias áreas tiene una asignación por área— y la sesión la conoce. **Nada se filtra todavía**: ningún registro tiene área. La pantalla de otorgar un rol ofrece el área recién en la fase 7, para que no exista una asignación con área antes de que compras la respete. La API ya la acepta, sin efecto hasta la fase 7: el resultado es el mismo rol sin área, nunca más acceso.
+
+**Lo que la rige.** A1, A2, A5, A9; Q5, Q6; D-84 (a lo inactivo no se le cuelga nada nuevo); D-102 como molde; reglas 5.5, 5.7 y 5.9; V27, V31.
+
+**Migraciones.**
+
+**V160__create_organization_areas_schema.sql** (`Context: organization`). Plantilla: V108, con V16, V20 y V26.
+
+```
+areas
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+  public_id   UUID         NOT NULL DEFAULT uuidv7()
+  company_id  BIGINT       NOT NULL REFERENCES companies (id)
+  code        VARCHAR(20)  NOT NULL
+  name        VARCHAR(100) NOT NULL
+  is_active   BOOLEAN      NOT NULL DEFAULT TRUE
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+
+  areas_public_id_uq     UNIQUE (public_id)
+  areas_company_code_uq  UNIQUE (company_id, code)
+  areas_id_company_uq    UNIQUE (id, company_id)     -- destino de las llaves compuestas
+```
+
+- Las mismas columnas de registro y los mismos `CHECK` que `commercial_brands` (V16 L20-21): código y nombre no vacíos; el nombre no es único. El formato del código —mayúsculas y dígitos, de 2 a 20— vive en el dominio, como el de la marca (`CommercialBrand` L29, L116-119).
+- Un disparador que impide cambiar la empresa de un área, como V108 L47-60: `keep_area_company()`, con su línea en `hand-over-database.sql` en esta misma fase (`HandOverDatabaseScriptTests` L159).
+- RLS habilitada y forzada, con `areas_select`, `areas_insert` y `areas_update` sobre `access_scope_reaches(company_id)`; los permisos de la cuenta de la aplicación como V108 L73-86.
+- Sus 64 casillas en `data_versions` y sus dos disparadores (`areas_data_version_insert_tg`, `areas_data_version_update_tg`), porque se exporta.
+- Abre con alcance `SYSTEM` y `lock_timeout` de 5 segundos.
+
+**V161__seed_iam_permissions_of_areas.sql** (`Context: iam`). Plantilla: V109.
+
+| Código | Categoría | Se marca en |
+|---|---|---|
+| `configuracion.crear_areas` | `crear` | `SUPERADMIN`, `ADMIN_EMPRESA` |
+| `configuracion.editar_areas` | `editar` | `SUPERADMIN`, `ADMIN_EMPRESA` |
+| `configuracion.desactivar_areas` | `desactivar_anular` | `SUPERADMIN`, `ADMIN_EMPRESA` |
+
+Con `ON CONFLICT (code) DO NOTHING` y las marcas firmadas por `system@millennium.ky`. Leer las áreas es `configuracion.ver_estructura`. No hay pares incompatibles nuevos.
+
+**V162__scope_iam_role_assignments_by_area.sql** (`Context: iam`). Plantilla: V27 L31-57 y V61 L22-29.
+
+- Abre con alcance `SYSTEM` y `lock_timeout` de 5 segundos: vuelve a crear un índice de `user_roles`, que lee cada pedido.
+- `user_roles.area_id BIGINT`.
+- `user_roles_area_same_company_fk FOREIGN KEY (area_id, company_id) REFERENCES areas (id, company_id)`.
+- `user_roles_area_requires_company_ck CHECK (area_id IS NULL OR company_id IS NOT NULL)`: la llave compuesta no lo impide sola, porque una empresa nula la salta.
+- `user_roles_active_scope_uq` se vuelve a crear con el mismo nombre sobre `(user_id, role_id, company_id, branch_id, commercial_brand_id, area_id) NULLS NOT DISTINCT WHERE revoked_at IS NULL`, en esta misma migración (análisis, A-H9).
+
+**V163__add_the_area_of_the_employees.sql** (`Context: organization`).
+
+- Abre con alcance `SYSTEM` y `lock_timeout` de 5 segundos.
+- `employees.area_id BIGINT` y `employees_area_same_company_fk FOREIGN KEY (area_id, company_id) REFERENCES areas (id, company_id)`. Sin índice, como `employees.branch_id` desde V22.
+
+**Backend.**
+
+*`shared`*
+
+- `PermissionGrant`: `@Nullable Long areaId` («un área siempre es de una empresa»), con el constructor de cuatro argumentos conservado. Predicados nuevos:
+
+  | Predicado | Verdadero cuando |
+  |---|---|
+  | `readsBrand(@Nullable brandId)` | La asignación no tiene marca, o el registro no la tiene, o coinciden |
+  | `writesEveryBrand()` | La asignación no tiene marca |
+  | `readsArea(@Nullable areaId)` | La asignación no tiene área, o el registro no la tiene, o coinciden |
+  | `writesArea(@Nullable areaId)` | La asignación no tiene área, o el registro tiene exactamente su área |
+  | `writesEveryArea()` | La asignación no tiene área |
+
+- `AccessScope`:
+  - `anyGrantOf(String permission, Predicate<PermissionGrant> where)`: verdadero con el alcance `SYSTEM`, o cuando **una misma** asignación del permiso cumple `where`. Es la forma de exigir empresa, sede, marca y área a la vez sin sumar asignaciones.
+  - `recordReach(String permission)`: devuelve `RecordReach.Every` con el alcance `SYSTEM` o con una asignación global del permiso; si no, `RecordReach.Some` con una entrada por asignación —empresa, marca y área—, quizá ninguna.
+  - Los métodos de hoy no cambian; el Javadoc (L23-34) suma el área.
+- `RecordReach` (nuevo, en `shared/application/security`): `Every` o `Some(List<Entry(companyId, @Nullable commercialBrandId, @Nullable areaId)>)`. Una fila se alcanza cuando alguna entrada es de su empresa y, en esa entrada, la marca está vacía o coincide (o la fila no tiene marca) y el área está vacía o coincide (o la fila no tiene área).
+
+*`documents`*
+
+- `DocumentScopes.where` (L65-68): `empresa/sede/marca` y, solo si la asignación tiene área, `/área`. Las llaves de hoy no cambian, así que ningún documento generado antes del despliegue responde 404.
+
+*`organization`*
+
+- **El agregado `Area`**, copiado de `CommercialBrand`, con todas sus piezas:
+
+  | Capa | Archivos |
+  |---|---|
+  | Dominio | `Area`; `CreateAreaCommand`, `UpdateAreaCommand`, `ChangeAreaStatusCommand`; `GetAreaByPublicIdQuery`, `GetAreaAggregateByPublicIdQuery`, `GetAreaAggregateForShareQuery`, `GetAreasByIdsQuery`, `SearchAreasByCompanyQuery`, `ExportAreasByCompanyQuery`; `AreaRepository` |
+  | Aplicación | `AreaCommandService` y `AreaCommandServiceImpl`; `AreaQueryService` y `AreaQueryServiceImpl`; `AreaView`, `AreaExportRow`, `AreaViewFactory` |
+  | Infraestructura | `AreaPersistenceEntity` (`AuditableAbstractPersistenceEntity`, como la marca), su ensamblador, `AreaRepositoryImpl`, `AreaJpaRepository` (`lockByPublicId` `FOR NO KEY UPDATE`, `shareByPublicId` `FOR SHARE`, `shareByIds` en orden de id, búsqueda con `fold_search_text`) |
+  | Interfaces | `CompanyAreasController`, `AreasController`, sus recursos y transformadores |
+
+- **Quién escribe un área (Q6):** `anyGrantOf(permiso, g -> g.actsOnWholeCompany(empresa) && g.writesEveryArea())`. Una asignación de sede lee las áreas y no las escribe.
+- **Crear y reactivar** bloquean la empresa `FOR SHARE` y rechazan una empresa inactiva (`COMPANY_INACTIVE`), como la marca.
+- **La fachada** (`OrganizationContextFacade`):
+  - `resolveScope(companyId, branchId, brandId, areaId)`, con el de tres argumentos como `default` que pasa nulo. Bloquea `FOR SHARE` empresa → sede → marca → área; un área de otra empresa responde `AREA_NOT_FOUND`, una inactiva `AREA_INACTIVE`.
+  - `fetchAreaReferencesByIds(Set<Long>)` → nombres en lote (`OrganizationReference`).
+  - `fetchAreaByPublicId(UUID)`, la lectura simple que compras usará en los filtros de sus listas (la pareja de L176 y L259 de la marca).
+  - `fetchAreaByPublicIdForShare(companyId, UUID)` → `Optional<AreaReference>` (id, empresa, si está activa), con `Propagation.MANDATORY`, para las escrituras de compras de la fase 7; el nombre sigue la forma `fetch…ForShare` de la fachada (L241, L268, L278).
+  - Su prueba de contrato y la del orden de los candados (`OrganizationContextFacadeImplLockOrderTests`).
+- **Desactivar un área** deja vigentes las asignaciones limitadas a ella, con su límite, como la marca (facade L235-237, D-84; `CommercialBrandCommandServiceImpl` L117-137 no las toca): a lo inactivo no se le cuelga nada nuevo, pero lo que ya tenía sigue.
+- **El colaborador (Q5):**
+  - `AreaAffiliationPolicy`, copiada de `BranchAffiliationPolicy` (L52-60): un área de otra empresa responde `AREA_OTHER_COMPANY`; una inactiva, `AREA_INACTIVE`, salvo que sea la que ya tiene (D-84).
+  - Registrar bloquea `FOR SHARE` empresa → sede → área. Modificar bloquea antes al colaborador y lee la empresa sin candado (`EmployeeCommandServiceImpl` L223-227), así que su orden es colaborador → sede → área: no se le agrega el candado de la empresa.
+  - El área no decide dónde actúa un permiso (`actsWhere`, L150 y L229-230) ni la zona horaria (L182, L266).
+  - El regreso no mira el área (`EmployeeTenureRules` L131-160), aunque sí vuelve a mirar la sede (L156-161): es una excepción a D-84, escrita en D-287, porque el área es informativa.
+  - La vista, el recurso y la exportación suman el área (código y nombre). No es un dato personal: no se cifra ni se oculta.
+- **Exportación y versión.** El tipo de documento `company-areas` en `OrganizationDocumentKinds` (L22, L42-47), con `DocumentScopes.grantsOf(scope, VIEW_STRUCTURE)`. `OrganizationDataVersions.areas()`, y `areas` en `employees()` y en lo que resuelve la fachada (`JdbcOrganizationDataVersions` L32-50).
+
+*`iam`*
+
+- **Otorgar con área, una o varias (A9):**
+  - `GrantRoleResource` (L31-32) suma `areaIds`, una lista: vacía es «todas las áreas»; con varias, crea una asignación por área en la misma transacción, y si una falla no se crea ninguna. `GrantRoleCommand` (L24-25) lleva un `areaId` por asignación.
+  - `RoleAssignmentCommandServiceImpl`: `scopeMismatch` (L299-314) exige área vacía a un rol de alcance sistema, y como corre antes que el control de la marca (L139 contra L143), ese caso responde `ROLE_ASSIGNMENT_SCOPE_MISMATCH`, como hoy la marca (`RoleAssignmentsIntegrationTests` L390-396); junto al control de la marca (L143-146), `ROLE_ASSIGNMENT_AREA_NOT_ALLOWED` para un rol reservado; `resolveScope` con el área (L147-149). El duplicado (`holds`, L243) ya compara el `RoleScope` completo.
+  - `RoleScope` suma `areaId`; su constructor de tres argumentos queda solo para las pruebas, para que ningún código de producción pierda el área sin error. `RoleAssignment` suma `admitsArea` y `Role` suma `isLimitableToArea()`: un rol reservado no se limita a un área.
+  - `ExternalOrganizationService.resolveScope` de `iam` (L187-190), que hoy arma `new RoleScope(c, b, brand)`, pasa el área; y suma `fetchAreaReferences`, junto a L205-214.
+- **La regla 5.5 y la sesión (análisis, A-H5).** `User.permissionCodesActingOnWholeCompanyAt` (L382-390) se parte en:
+  - el que cuenta para otorgar (`RoleDefinitionPolicy.heldFor`), que excluye las asignaciones con sede, con marca o con área: no se otorga lo que solo se tiene en un área;
+  - el que lee la sesión, que **sí** cuenta las asignaciones con área, porque fuera de compras ningún control del backend mira el área (A-H11): el inventario de equipos pregunta `actsOnWholeCompanyEveryBrand` (`EquipmentCommandServiceImpl` L266) y las cuentas bancarias `actsOnWholeCompany`. Igual `User.permissionCodesActingOnBrandsAt` (L401-411), que alimenta `brandPermissions`. Si la sesión las excluyera, una persona limitada a Monitoreo perdería «Registrar equipo».
+- **Persistencia:** `UserRoleAssignmentPersistenceEntity` (L63-64) suma `areaId` con `updatable = false`; `UserPersistenceAssembler` (L104, L134) lo mapea.
+- **Lectura:**
+  - `RoleAssignmentView`/`Resource` y `UserRoleResource` suman `areaId` y `areaName` (`RoleAssignmentViewFactory` L49-51 y L69, `RoleAssignmentResourceFromViewAssembler`, `UserResourceFromViewAssembler` L41-42).
+  - `RoleView`, `RoleResource` y `RoleDetailResource` suman `limitableToArea` (`RoleViewFactory` L41, `RoleResourceFromViewAssembler` L29 y L50).
+  - Los titulares reservados suman la causa `assignmentLimitedToArea` (`AccountDutiesReader`, `RoleCommandServiceImpl` L291-317, `ReservedHoldersView`, `ReservedHoldersResource`): las causas pasan de tres a cuatro.
+  - La etiqueta del rol en la exportación de cuentas no cambia: hoy nombra solo la empresa, no la sede ni la marca.
+- **El alcance de cada pedido:** `CurrentUserAccessScope` (L115-118) pasa `scope.areaId()` al `PermissionGrant`.
+- **La sesión** (`UserQueryServiceImpl` L134-163, `AuthenticatedUserResourceFromEntityAssembler`): `SessionCompanyView` y `SessionCompanyResource` suman `assignments`, una entrada por asignación vigente en esa empresa con `branchId`, `commercialBrandId` y `areaId` (identificadores públicos o nulos; `iam` ya tiene `fetchBranchReferences`) y sus `permissions`, sin los once códigos de accesos y roles (`withoutTheSystemScopeOnes`). Las asignaciones de alcance sistema no aparecen: las cubre `hasSystemPermission`. `wholeCompanyPermissions` y `brandPermissions` siguen como hoy y cuentan también las asignaciones con área (arriba); solo compras pregunta por `assignments`, desde la fase 7.
+
+**API y errores.**
+
+| Método | Ruta | Permiso | Qué |
+|---|---|---|---|
+| `POST` | `/api/v1/companies/{companyId}/areas` | `configuracion.crear_areas` | `{code, name}` → `201` con el área |
+| `GET` | `/api/v1/companies/{companyId}/areas` | `configuracion.ver_estructura` | Lista paginada; busca por código y nombre; filtra por activa |
+| `GET` | `/api/v1/companies/{companyId}/areas` (`.xlsx`) | `configuracion.ver_estructura` | `303` al documento `company-areas` |
+| `GET` | `/api/v1/areas/{id}` | `configuracion.ver_estructura` | Un área |
+| `PUT` | `/api/v1/areas/{id}` | `configuracion.editar_areas` | `{code, name}` |
+| `PATCH` | `/api/v1/areas/{id}/status` | `configuracion.desactivar_areas` | `{isActive}` |
+
+- El recurso del área: `id`, `companyId`, `code`, `name`, `isActive`, `createdAt`, `updatedAt`.
+- Otorgar un rol suma `areaIds` (opcional; vacío es «todas las áreas») al cuerpo de la ruta de `UserRoleAssignmentsController`; registrar y modificar un colaborador suman `areaId`; las respuestas suman el área donde corresponde.
+
+| Código | Estado | Cuándo |
+|---|---|---|
+| `AREA_NOT_FOUND` | 404 | El área no existe, o es de una empresa que no se lee, o de otra empresa en una asignación |
+| `AREA_CONFLICT` | 409 | El código ya existe en la empresa, también en carrera |
+| `AREA_INACTIVE` | 422 | Se le cuelga algo nuevo a un área inactiva |
+| `AREA_OTHER_COMPANY` | 422 | El área de un colaborador es de otra empresa |
+| `ROLE_ASSIGNMENT_AREA_NOT_ALLOWED` | 422 | El rol es reservado (un rol de alcance sistema con área responde `ROLE_ASSIGNMENT_SCOPE_MISMATCH`, como hoy) |
+
+Cada código con su clave `error.<kebab>.message` en `messages.properties` y `messages_es.properties`, y las de validación `validation.area.*` y de exportación `export.areas.*`.
+
+**Frontend.**
+
+- **La pestaña Áreas** de la ficha de la empresa, copiada de las marcas comerciales:
+  - `F/organization/domain/model/area.entity.ts` y sus comandos;
+  - `infrastructure/api/areas-api-endpoint.ts`, su respuesta, sus pedidos y `assemblers/area-assembler.ts`;
+  - `application/areas.store.ts` (copia de `commercial-brands.store.ts`, con `findAreaChoices`);
+  - `presentation/components/company-areas/*` y `area-form-dialog/*`;
+  - `company-profile-view.ts` suma `'areas'` a `TABBED_SECTIONS` (L52);
+  - `organizationAreasEndpointPath` en `src/environments/environment.ts` y en `environment.development.ts`;
+  - `OrganizationFacade.loadAreaChoices(companyId)` y `CompanyUnits.areas`, y `organization.facade.spec.ts` (L62-76), que fija los miembros de la fachada.
+- **Cuatro pestañas a 375 px** (análisis, B-H4). Los nombres cortos en pantallas angostas ya existen desde la revisión 53 (`company-profile-view.html` L109-126, `es.json` L1456-1458): se suma «Áreas». Una revisión de `DESIGN.md` dice que caben cuatro sin paginación; si no caben, permite las flechas de paginación de Material, y el e2e lo afirma.
+- **El área del colaborador:** un campo opcional «Área» en `employee-form-dialog.ts`, copiado del de la sede (L139-150, L163-165, L431-440, L488, L506; html L58-76), que ofrece las áreas activas y conserva la inactiva que ya tiene. La lista no suma columna en esta fase; el área sale en la ficha y en la exportación.
+- **`iam`, solo lectura en esta fase:** `UserRole` (`user.entity.ts` L8-33), `users-response.ts`, `user-assembler.ts`, `role-assignment.entity.ts`, `role-assignments-response.ts`, `role-assignment-assembler.ts` y `role.entity.ts` suman el área y `limitableToArea`; la sesión lee `assignments` (`authenticated-user-response.ts`, `sign-in-assembler.ts` L30-31, `iam.store.ts` `toSession` L1240-1259). Las listas de asignaciones muestran el área cuando la hay. El diálogo de otorgar no cambia todavía.
+- **Permisos:** `Configuration.CREATE_AREAS`, `EDIT_AREAS`, `DEACTIVATE_AREAS` en `permission-codes.ts` (L71-77) y en el catálogo simulado con sus marcas; en la matriz, la pantalla «Áreas» en Administración, después de Cuentas bancarias.
+- **Textos:** los mensajes de los errores nuevos, en `es.json`.
+
+**Pruebas.**
+
+- Backend, nuevas:
+  - `AreaTests`, `AreaCommandServiceImplTests`, `AreaQueryServiceImplTests`, `AreaAuditTests` (regla 4.8).
+  - `AreaRowLevelSecurityTests`, copiada de `BankAccountRowLevelSecurityTests`.
+  - `AreasIntegrationTests`: el ciclo completo, la exportación que sigue el `303`, una empresa que no ve las áreas de otra, una asignación de sede que no escribe.
+  - `AreaPermissionsSeedMigrationTests`, copiada de `BankAccountPermissionsSeedMigrationTests`.
+  - `PermissionGrantTests` y casos nuevos en `AccessScopeTests` (los de la marca de L175-245 con área, y el caso de dos asignaciones que no se suman).
+  - Un caso con área en `DocumentScopesTests`, con el formato de hoy intacto.
+- Backend, que cambian:
+  - `RowLevelSecurityMigrationTests` (`COMPANY_TABLES` L40-49 con `areas`, su fila en el accesorio, el mapa de inserción, `COMPANY_KEPT_BY_TRIGGER_TABLES` L99-100).
+  - `OrganizationNaturalKeysTests`, `OrganizationRowsAreNeverDeletedTests`, `ParentRowLocksTests` (L95-135), `OrganizationOwnershipKeysMigrationTests`, `OrganizationAccessTests` (el administrador de empresa sí escribe áreas), `CompanyIsolationIntegrationTests`, `OrganizationOpenApiTests`.
+  - `EmployeeTests`, `EmployeeCommandServiceImplTests`, `EmployeeAuditTests`, `EmployeesIntegrationTests` (otra empresa, inactiva, conserva la inactiva, el regreso no la mira), `EmployeeTenureRulesTests`.
+  - `RoleAssignmentsIntegrationTests` (con área, `AREA_NOT_FOUND`, `AREA_INACTIVE`, `ROLE_ASSIGNMENT_AREA_NOT_ALLOWED` para un rol reservado, `ROLE_ASSIGNMENT_SCOPE_MISMATCH` para uno de alcance sistema, el mismo rol en dos áreas en un solo pedido y todo o nada si una falla, el duplicado como `ROLE_ASSIGNMENT_CONFLICT`, y una asignación que sigue vigente después de desactivar su área), `RoleAssignmentScopeMigrationTests`, `RoleDefinitionPolicyTests` (lo que se tiene limitado a un área no cuenta), `GrantPolicyTests`, `UserTest`, `OwnSecurityRolesIntegrationTests`, `AuthenticatedUserIntegrationTests` (L423-484: `assignments` en la sesión, y una asignación con área que conserva `stock.crear_equipamiento` en `wholeCompanyPermissions`), `UsersIntegrationTests`, `RoleCommandServiceImplTests`.
+  - `PermissionsMigrationTests` (`FINE`, `CATEGORIES` y las matrices de `SUPERADMIN` y `ADMIN_EMPRESA`), `PermissionCatalogConsistencyTests`, `HandOverDatabaseScriptTests`, y `T/AccessFixtures.java` (un ayudante `area(...)` y una asignación con área).
+- Frontend: las specs del store, el endpoint, el ensamblador y los componentes nuevos; `company-profile-view.spec.ts`, `employee-form-dialog.spec.ts`, las specs de los ensambladores de `iam`, `iam.store.spec.ts` (la sesión), `permission-codes.spec.ts` y las de la matriz; y una regresión: con una sesión limitada a un área, `equipment-inventory-view` sigue ofreciendo Registrar, Editar y Cambiar estado, y `company-bank-accounts` sus acciones. e2e: `company-profile.spec.ts` (cuatro pestañas), el formulario del colaborador; las imágenes de la ficha de la empresa y la nueva `company-profile-areas`.
+- La suite completa del backend, en local.
+
+**Documentación.**
+
+- Diccionario:
+  - nueva §6.2.2 `areas`;
+  - §2.5: la fila «Una empresa y un área» en «Qué alcanza cada asignación»;
+  - §5.3: `employees.area_id`;
+  - §5.6: los tres permisos y su lugar en la matriz;
+  - §5.7: `user_roles.area_id`, una sección «Limitar el acceso a un área» y sus reglas;
+  - §5.8 regla 6: el área;
+  - la nota técnica de §2.5 suma `areas` a la lista de tablas con RLS;
+  - D-287 pasa a cerradas.
+- El Javadoc de `RoleDefinitionPolicy` (L19-23), `AccessScope`, `RoleScope`, `GrantRoleCommand` y `ReservedHoldersView`.
+- `contextos/organization.md` (el agregado, sus reglas y la fachada) e `iam.md` (la asignación con área, varias áreas, la sesión); las convenciones de la API (las rutas de las áreas); `procesos-y-pantallas` (P1: crear las áreas de cada empresa; §3.2: la pestaña); la skill `backend-module` (`RecordReach`, `anyGrantOf`, el agregado `Area`) y `frontend-feature` (la pestaña), en sus cuatro copias.
+
+**Orden de los commits.**
+
+- Backend:
+  1. V160 y el agregado `Area`, con sus pruebas.
+  2. V161, las constantes y su prueba.
+  3. `PermissionGrant`, `AccessScope`, `RecordReach` y `DocumentScopes`, con sus pruebas.
+  4. V162, la asignación con área y la sesión.
+  5. V163 y el área del colaborador.
+  6. OpenAPI y mensajes.
+- Frontend:
+  1. Códigos de permisos y catálogo simulado.
+  2. La pestaña Áreas.
+  3. El área del colaborador.
+  4. La lectura en `iam`.
+  5. Los e2e y las imágenes.
+
+**Terminada cuando:** las áreas se crean y se mantienen por empresa, con el aislamiento probado; una asignación con área se otorga y se valida por la API; la sesión trae las asignaciones; nada de compras cambió (caracterización en verde); la suite completa y el CI están en verde.
+
+---
+
+### Fase 7 — Compras por área y «Asignar área»
+
+**Objetivo.** Cada documento de compras tiene su área y solo lo ve y lo toca quien la alcanza; una plantilla puede servir a todas las áreas y la orden es del área de quien la emite; lo que ya existe recibe su área con «Asignar área»; la bitácora, las exportaciones, el costo de la unidad y del equipo y el reporte de stock respetan el área; y la pantalla de otorgar un rol ofrece una o varias áreas.
+
+**Lo que la rige.** A3, A4, A6, A7, A9, A10, A11; Q7 a Q11, Q23 y Q27; D-102, D-134, D-224, D-248, D-249, D-280; reglas 4.1, 5.4 y 6.2.
+
+**Migraciones.**
+
+**V164__give_procurement_its_areas.sql** (`Context: procurement`). Abre con alcance `SYSTEM` y `lock_timeout` de 5 segundos. No rellena ninguna fila: `ADD COLUMN` sin valor por omisión no escribe filas, así que no dispara `bump_data_version` ni los `keep_*`.
+
+| Tabla | Cambio |
+|---|---|
+| `purchase_order_templates` | `area_id BIGINT`, `purchase_order_templates_area_company_fk (area_id, company_id) → areas (id, company_id)`. Dice quién usa la plantilla (vacía: todas las áreas); puede cambiar cuando se quiera, porque solo vale para las órdenes futuras |
+| `purchase_orders` | `area_id` con su llave compuesta. Función nueva `enforce_purchase_order_area()`, `BEFORE INSERT OR UPDATE OF area_id, purchase_order_template_id`: al insertar, si la plantilla tiene área, la orden tiene esa; si es general, la orden tiene cualquier área de su empresa o ninguna. Al actualizar, el área solo pasa de vacía a un valor, una vez («Asignar área») |
+| `purchase_invoices` | `area_id` con su llave compuesta. Función nueva `enforce_purchase_invoice_area()`, `BEFORE INSERT OR UPDATE OF purchase_order_id, area_id`: con orden, el área es la de la orden. `CREATE OR REPLACE keep_purchase_invoice_fiscal_data` (desde V148) suma `area_id` a lo que no cambia, salvo el paso de vacía a un valor |
+| `credit_notes` | `area_id` con su llave compuesta. `CREATE OR REPLACE enforce_credit_note_item_invoice` (V103 L111-144) suma: la factura de cada línea tiene el área de la nota (Q7: lo general cuenta como un valor propio). `CREATE OR REPLACE keep_credit_note_data` (V103 L176-191) suma `area_id`, salvo el paso de vacía a un valor |
+| `supplier_payments` | `area_id` con su llave compuesta. `CREATE OR REPLACE keep_supplier_payment_data` desde V110 (L38-56), con `area_id` y la misma salvedad. `CREATE OR REPLACE enforce_payment_application_supplier` (V107 L153-170, `INSERT OR UPDATE OF payment_id, purchase_invoice_id, purchase_order_id`) suma: la factura o la orden de cada aplicación tiene el área del pago; cubre también el paso de un pago de la orden a su factura |
+| Líneas, aplicaciones, imputaciones y usos del saldo | Sin columna: el área va en el encabezado |
+
+Las dos funciones nuevas suman su línea `ALTER FUNCTION … OWNER TO erp_mm_owner` en `scripts/database/hand-over-database.sql`. No hay índices nuevos: las listas ya filtran por empresa, y el área es una condición más sobre pocas filas; si una prueba de conteo o un plan de consulta lo pide, se agrega en la misma fase.
+
+**V165__limit_the_change_log_by_the_area_of_its_record.sql** (`Context: audit`). Copia de V61, pero abre con alcance `SYSTEM` y `lock_timeout` de 5 segundos, que V61 no tiene: `change_logs.area_id`, `change_logs_area_requires_company_ck CHECK (area_id IS NULL OR company_id IS NOT NULL)` y la llave compuesta a `areas`, las dos `NOT VALID` y luego `VALIDATE`, para no bloquear la tabla mientras se revisa; y el índice `(company_id, area_id, changed_at DESC)`. La cuenta de la aplicación sigue con `SELECT` e `INSERT`.
+
+**V166__seed_iam_permission_of_the_area_assignment.sql** (`Context: iam`). Plantilla: V109.
+
+- `compras.asignar_area`, categoría `editar`, marcado en `SUPERADMIN`. Además del permiso, «Asignar área» exige una asignación con acceso a todas las áreas de la empresa.
+
+**Backend.**
+
+*Las políticas de `procurement`* (`B/procurement/application/internal/policies`), reescritas con `anyGrantOf`, de modo que una sola asignación cumpla todo. Cada una distingue dos lecturas: la de la empresa («alguna asignación en ella», para lo que todavía no tiene registro: `payableSupplier` L306, las cuentas de pago L179, `PayableQueryServiceImpl` L99, el registro de una factura L131, `CreditNoteReferences` L58, `SupplierPaymentReferences` L130, `PurchaseInvoiceOrderLinks` L53) y la del registro (empresa, marca si la tiene, y área).
+
+| Política | Leer (`compras.ver` o `pagos.ver`) | Escribir |
+|---|---|---|
+| `PurchaseOrderTemplateAccessPolicy` (L22, L40) | Empresa, `readsBrand(marca)` y `readsArea(área)`. **Usar** una plantilla para emitir es leerla: una general la usan todas las áreas | Toda la empresa; una plantilla sin marca exige `writesEveryBrand()`, una con marca `actsOnBrand`; una con área, `writesArea(área)`; una general, `writesEveryArea()`. Cambiar su área exige escribir en la vieja y en la nueva |
+| `PurchaseOrderAccessPolicy` (L28, L47, L57) | `recordReach` para la lista; la marca de la plantilla y el área **de la orden** para una | Toda la empresa, la regla de marca de hoy (L57-61) y `writesArea(área de la orden)` |
+| `PurchaseInvoiceAccessPolicy` (L18-44) | Empresa y `readsArea`, sin marca, como hoy | Toda la empresa, la marca de cada línea (hoy; todas las marcas en una factura de equipos) y `writesArea`, en la misma asignación; también la factura atrasada |
+| `CreditNoteAccessPolicy` (L20-36) | Empresa y `readsArea` | Toda la empresa, la marca de cada línea y `writesArea` |
+| `SupplierPaymentAccessPolicy` (L21-61) | Empresa y `readsArea` | Toda la empresa, las marcas y `writesArea`. Con el saldo: `writesEveryBrand()` y `writesEveryArea()`. Anular exige lo que exigió registrar |
+| Lo compartido (Q8) | Todos los que leen compras | Crear un proveedor y agregarle un contacto: cualquier asignación del permiso, con o sin área. Editar o desactivar un proveedor, sus contactos o un tipo de orden: `writesEveryBrand()` y `writesEveryArea()` (`SupplierCommandServiceImpl` L315, `SupplierContactCommandServiceImpl`, los tipos de orden) |
+
+*Las lecturas.*
+
+- **El filtro de cada lista pasa a `RecordReach`:**
+  - el de plantillas, que arma `PurchaseOrderTemplateQueryServiceImpl` (L147-168) en `PurchaseOrderTemplateSearchFilter.Reach` (L32), aplicado en `PurchaseOrderTemplateRepositoryImpl` (L135-147);
+  - `PurchaseOrderSearchFilter.Reach` (L37), en `PurchaseOrderRepositoryImpl.matching` (L78-100), con `order.area_id` directo;
+  - `PurchaseInvoiceSearchFilter.companyIds` (L24), en `PurchaseInvoiceRepositoryImpl` (L148, L251-252);
+  - `CreditNoteSearchFilter` (L23), en `CreditNoteRepositoryImpl` (L147, L170-171);
+  - `SupplierPaymentSearchFilter` (L27), en `SupplierPaymentRepositoryImpl` (L176, L229-230);
+  - Por pagar: el alcance que arma `PayableQueryServiceImpl` (L92-95), que hoy pasa un `Set<Long>` de empresas al puerto `PayableFactsReadRepository.openInvoices` (`JdbcPayableFactsReadRepository` L166-210), y su acción `mayPay` (L156).
+
+  Cada entrada se vuelve `company_id = :cN`, con la marca si la tiene, y con `area_id IS NULL OR area_id = :aN` **solo si la asignación tiene área**; sin área no se agrega condición. Las entradas se unen por `OR`, y `Every` no filtra. Nunca se enlaza un nulo: en SQL nativo, `(:a IS NULL OR …)` falla en PostgreSQL con `NamedParameterJdbcTemplate` («could not determine data type of parameter»), y el código ya lo esquiva así (`PurchaseInvoiceJpaRepository` L58). Los repositorios con Criteria ya arman un predicado por entrada con valores literales.
+- **Dos filtros nuevos en cada lista:** `areaId` (un área) y `generalOnly` (solo lo general). `withPaymentStatus` (`PurchaseInvoiceQueryServiceImpl` L125), que copia el filtro campo por campo, copia los nuevos. Las exportaciones pasan los mismos criterios (`PurchaseInvoicesController` L194-198, `PayablesController` L124-126 y los demás).
+- **Las lecturas de un registro** responden 404 si su área no se lee:
+  - la factura por identificador, con su archivo y su XML (`PurchaseInvoiceQueryServiceImpl` L194-200);
+  - la posición de pago de una factura (`SupplierPaymentQueryServiceImpl` L281, L284);
+  - el pago y su archivo (L153, L161);
+  - la nota y su archivo (`CreditNoteQueryServiceImpl` L137);
+  - la plantilla y su documento (L139);
+  - la orden y su PDF (`readOrder` L156-162).
+- **Los documentos por pagar de un proveedor** (`GET /suppliers/{id}/payables`, `SupplierPaymentQueryServiceImpl` L211-274), la fuente del formulario de pago (`F/…/procurement-api.ts` L394). Hoy devuelve las facturas sin filtrar (L225), las órdenes filtradas solo por marca (L235-238) y los orígenes del saldo sin filtrar (L227). Filtra facturas y órdenes por área; `PayableInvoiceView` y `PayableOrderView` suman `area`; acepta `areaId` y `generalOnly`, para que el formulario se quede en una sola área; y los orígenes del saldo solo viajan a una asignación con acceso a todas las áreas (Q9), porque el origen «sin nota» (`creditNoteId` nulo) no tiene área.
+- **La verificación del VIN** (`PurchaseInvoiceVinChecks`): sigue respondiendo `PURCHASEINVOICE_UNIT_CONFLICT`, pero `CurrentInvoiceView` (L134-139) —número, proveedor e identificador de la factura vigente— viaja solo si se lee el área de esa factura.
+- **Los cálculos por proveedor leen todo** (análisis, A-H4): `supplierFactsOf`, `PayablePositions` y `SupplierFacts` no filtran; el área filtra solo las facturas, órdenes y orígenes del saldo que se devuelven.
+- **El saldo a favor (Q9)** y el total que se le debe al proveedor (`SupplierBalanceView.owed`, que suma todas las áreas) viajan solo si `anyGrantOf(pagos.ver, g -> g.actsOn(empresa) && g.writesEveryArea())`; si no, `null`.
+
+*Las vistas y las acciones.*
+
+- Toda vista de plantilla, orden, factura, nota y pago suma el área (identificador público y nombre), con las referencias en lote de `ExternalOrganizationService` (las de la marca están en L95, `fetchCommercialBrandReferencesByIds`; se suma la de las áreas).
+- Las acciones (`PurchaseOrderTemplateViewFactory` L178-209, `PurchaseOrderAllowedActions` L31-43, `PurchaseInvoiceAllowedActions` L37-85, `CreditNoteAllowedActions` L32-43, `SupplierPaymentAllowedActions` L34-45, `SupplierPaymentScopes` L42-70, `SupplierViewFactory` L116) preguntan a las políticas nuevas. «Registrar pago» desde una factura (`PurchaseInvoiceAllowedActions` L80-81) y desde el proveedor (`SupplierViewFactory` L116) exige `pagos.registrar` que escriba en el área del documento.
+- **Los montos de pago en la factura** (`appliedTotal`, `owed`, `toBalance`, `PurchaseInvoiceViewFactory` L196) exigen `pagos.ver` que lea el área de la factura, en la misma asignación.
+- Con Q7, las notas, pagos y aplicaciones anidados comparten el área de su documento. El único cruce que queda es el saldo, que es del proveedor: los rastros de un uso del saldo (`CreditNoteViewFactory.balanceView` L256-265, `BalanceUseContexts`) y las notas que consumió un pago con saldo (`SupplierPaymentViewFactory.balanceSources` L329-345) muestran el documento de origen solo si su área se lee, y si no, solo el monto.
+
+*Los comandos.*
+
+- **Plantillas** (`PurchaseOrderTemplateCommandServiceImpl`):
+  - crear (L82-195) resuelve el área como la marca (L89-103), con `fetchAreaByPublicIdForShare` después de la marca, y rechaza un área inactiva; vacía es «la usan todas las áreas», y solo la crea quien tiene acceso a todas las áreas;
+  - modificar (L216-373) cambia el área **aunque la plantilla tenga órdenes**: cada orden guarda su propia área, así que el cambio solo vale para las futuras. No hay `PURCHASEORDERTEMPLATE_AREA_IN_USE`;
+  - activar (L466-488) exige el área activa;
+  - el agregado suma `changeArea` (junto a `changeBrand`, L167);
+  - `PurchaseOrderTemplateChanges` suma el área a su `Snapshot` (L58-93) y anota el cambio de área como el de la marca (L112-116), con la fila marcada con el área nueva.
+- **Órdenes** (`PurchaseOrderCommandServiceImpl`):
+  - **crear (L177) toma el área de quien emite (Q27):** con una plantilla de un área, esa (otra responde `PURCHASEORDER_AREA_MISMATCH`); con una plantilla general, el `areaId` del pedido, que tiene que ser un área donde quien emite escribe; si no lo manda, el área de quien emite cuando está limitado a una sola; si tiene varias, es obligatorio (`PURCHASEORDER_AREA_REQUIRED`); y vacía, «General», solo para quien tiene acceso a todas las áreas;
+  - emitir comprueba el área activa con candado compartido, junto a `checkIssuingScope` (`PurchaseOrderIssuing` L61-87);
+  - `writeRefusal` (L380-390), que usan modificar, enviar, cumplir y anular, recibe el área de la orden.
+- **Facturas** (`PurchaseInvoiceCommandServiceImpl`):
+  - **registrar (L106-244):**
+    - con orden, lee el área de la orden sin candado antes de `PurchaseInvoiceUnits.resolve` (L177), porque no cambia, y deja el candado de la orden donde está (L185);
+    - un `areaId` en el pedido distinto del de la orden responde `PURCHASEINVOICE_AREA_MISMATCH`;
+    - sin orden, toma el `areaId` del pedido con la regla de la orden, con el área activa;
+    - **la marca y el área se preguntan en la misma asignación**, donde hoy se pregunta la marca: `PurchaseInvoiceUnits` L108 (`registers`) y L114 (`registersOld`). Preguntarlas por separado repetiría en la escritura el error A-H1: «marca X sin área» más «sin marca, área P» registrarían una factura de X en P. Una factura de equipos, con todas las marcas (Q14).
+  - **modificar (L285-365):** vincula solo una orden con la misma área (L312-332 y `PurchaseInvoiceOrderLinks.order` L51-63); una orden de un área que no se lee responde 404, para no revelar que existe; una legible de otra área, `PURCHASEINVOICE_AREA_MISMATCH`. Desvincular conserva el área.
+  - **anular (L247-273):** con el área.
+- **Notas** (`CreditNoteCommandServiceImpl`, `CreditedLines`):
+  - el área es la común de las facturas bloqueadas (`lock` L95, `refusal` L143-182); dos áreas distintas responden `CREDITNOTE_AREAS_MIXED`;
+  - el control de marca (L168-169) lleva el área;
+  - la nota nueva lleva el área (L139).
+- **Pagos:**
+  - el área es la común de sus facturas y órdenes (`SupplierPaymentApplications.reach` L324-341, `targets` L198-214); dos áreas responden `SUPPLIERPAYMENT_AREAS_MIXED`;
+  - el saldo exige una asignación con acceso a todas las áreas;
+  - un pedido repetido compara el área (`SupplierPaymentRequests.repeated` L167-180);
+  - el paso de un pago de la orden a su factura (`OrderPaymentTransfers` L81) exige la misma área, que el disparador también impone;
+  - anular (`SupplierPaymentAnnulments` L80-92) y reemplazar el comprobante (`SupplierPaymentVoucherReplacements` L51-66) llevan el área.
+- **Un área inactiva** no bloquea lo que hereda su área de un documento que ya la tiene —la factura de una orden, la nota y el pago de sus facturas—, para que los ciclos abiertos se cierren; sí bloquea lo que nace eligiéndola: una plantilla, una orden y una factura sin orden.
+- **La carga inicial** (`InitialMigrationImportCommandServiceImpl.scope`, L159-192): exige una asignación con acceso a todas las áreas y escribe todo general (`MigratedInvoiceWriter` L131, `MigratedCreditNoteWriter` L135, `MigratedPaymentWriter` L181).
+
+*«Asignar área» (A11, Q23).*
+
+- `POST /api/v1/purchase-area-assignments` `{areaId, purchaseOrderIds, purchaseInvoiceIds}`, con `compras.asignar_area` y una asignación con acceso a todas las áreas de la empresa. Varias órdenes y facturas van juntas, porque una nota o un pago puede abarcar documentos de más de una.
+- Solo pasa documentos **generales** a un área: un documento que ya tiene área responde `PURCHASEAREAASSIGNMENT_ALREADY_SET`; una factura con orden no se nombra sola, porque toma el área de su orden (`PURCHASEAREAASSIGNMENT_INVOICE_HAS_ORDER`).
+- En una transacción, con candados en orden de id —órdenes, después facturas, notas y pagos—, le pone el área a cada orden nombrada, a sus facturas, a las facturas nombradas, a las notas de todas ellas y a los pagos de esas facturas y órdenes, en ese orden, para que los disparadores de coherencia de V164 pasen.
+- Si una nota o un pago abarca un documento que no entra en el conjunto, o uno de otra área, se rechaza todo y nombra cada documento (`PURCHASEAREAASSIGNMENT_DOCUMENTS_MIXED`).
+- Una fila de la bitácora por documento, con el área nueva. Las filas viejas quedan generales: la cuenta de la aplicación solo inserta en `change_logs`, así que la historia anterior de esos documentos la siguen viendo todas las áreas. Es un límite aceptado.
+- Las plantillas no entran: pueden quedar generales, como formatos comunes, o recibir un área que diga quién las usa, cuando se quiera.
+
+*La bitácora (`audit`).*
+
+- `RecordChangeLogCommand` (L25-36) suma `areaId`, conservando el constructor de once argumentos (37 usos en 19 archivos); `ChangeLogEntry` («el área exige una empresa»), su entidad y su ensamblador.
+- Los escritores de compras pasan el área:
+  - `PurchaseOrderTemplateChanges` (L106-107, L195);
+  - `PurchaseInvoiceCommandServiceImpl` (L353) y `PurchaseInvoiceAnnulments` (L57);
+  - `CreditNoteCommandServiceImpl` (L238) y `CreditNoteAnnulments` (L181);
+  - `SupplierPaymentAnnulments` (L148) y `SupplierPaymentVoucherReplacements` (L85);
+  - `OrderPaymentTransfers` (L158, L161);
+  - «Asignar área».
+
+  Los proveedores no llevan área (`SupplierCommandServiceImpl` L197 queda como está).
+- `ChangeLogReach.Some` (L37) pasa a las entradas de `RecordReach`; `ChangeLogAccessPolicy.reach` (L35-48) y `ChangeLogRepositoryImpl.reached` (L150-165) la siguen. La búsqueda suma el filtro `areaId`. `seesValuesOf` (L62-69) sigue solo con la marca, y `ChangeLogHistoryLookup` no cambia: solo lo usan `SupplierPaymentRequests` e `InvoicePaymentPositions`, sobre registros que ya autorizaron.
+
+*El costo y el reporte.*
+
+- **El costo de una unidad** (`UnitPurchaseCostQueryServiceImpl` L39-51): después de `seesCosts` de `fleet` (empresa y marca), exige `anyGrantOf(stock.ver_costos, g -> g.actsOn(empresa) && g.actsOnBrand(marca) && g.readsArea(área de la factura))`; si no, `403 ACCESS_DENIED`, nunca un costo vacío, que se leería como «sin factura». Las notas, pagos y usos anidados de otra área no viajan (`UnitPurchaseCosts.costs` L98-158, L205 en adelante).
+- **El costo de un equipo** (`EquipmentPurchaseCostsController`, fase 2) exige además `readsArea` del área de su factura, con la misma regla.
+- **La fachada de compras:** `ProcurementContextFacade.UnitPurchaseCost` (`interfaces/acl/UnitPurchaseCost.java` L15-18) suma `areaId`, y lo anidado si se filtra. `reporting` lo recibe por `ExternalProcurementService.toPurchase` (L34-43) en `ReportUnitPurchase` (L19).
+- **El reporte de stock** (`StockRows.of` L45-104):
+  - una bandera `seesPurchase`: una asignación de `reportes.ver` que lee la empresa, la marca de la unidad y el área de su factura. Si es falsa, quedan vacías todas las columnas de compras, también el número de la orden (`JdbcReportsReadRepository.findStockUnits` L174-177);
+  - `seesCosts` pide `stock.ver_costos`, la marca y el área en la misma asignación;
+  - el reporte de diferencias por inicial (L149-169) filtra igual;
+  - la versión de los datos no cambia.
+- **El reporte de brecha de días** (`ReportQueryServiceImpl`, `gapOf`) sigue sin filtrar: muestra la fecha base de unidades de otras áreas, sin montos ni números, con el criterio de A-H10.
+- **`fleet` no cambia:** el inventario sigue mostrando si una unidad está pagada y si no tiene factura vigente, sin montos (análisis, A-H10).
+
+**API y errores.**
+
+- Las plantillas reciben `areaId` al crear y modificar; las órdenes y las facturas sin orden, al registrar.
+- Plantillas, órdenes, facturas, notas, pagos, Por pagar y los documentos por pagar de un proveedor responden el área (`area: {id, name}` o nulo) y aceptan los filtros `areaId` y `generalOnly`.
+- El saldo del proveedor y su total adeudado pueden venir nulos, y la OpenAPI lo dice.
+- Las exportaciones de facturas, notas, pagos y Por pagar suman la columna «Área» (Q11) y suben su constante de diseño (`ProcurementDocumentKinds` L39 pagos, L45 facturas, L51 Por pagar). Las notas no tienen constante (L114-127): se crea `CREDIT_NOTES_LAYOUT = "credit-notes-layout=1"`, para que una exportación generada antes del despliegue no se sirva con las columnas viejas.
+- La bitácora acepta `areaId` y responde el área de cada fila.
+
+| Código | Estado | Cuándo |
+|---|---|---|
+| `PURCHASEORDER_AREA_MISMATCH` | 422 | El área pedida no es la de la plantilla, o no es un área donde quien emite escribe |
+| `PURCHASEORDER_AREA_REQUIRED` | 422 | Con una plantilla general, quien tiene varias áreas no eligió una |
+| `PURCHASEINVOICE_AREA_MISMATCH` | 422 | El área pedida no es la de la orden, o se vincula una orden legible de otra área |
+| `CREDITNOTE_AREAS_MIXED` | 422 | Una nota junta facturas de áreas distintas |
+| `SUPPLIERPAYMENT_AREAS_MIXED` | 422 | Un pago junta documentos de áreas distintas |
+| `PURCHASEAREAASSIGNMENT_ALREADY_SET` | 422 | «Asignar área» a un documento que ya tiene área |
+| `PURCHASEAREAASSIGNMENT_INVOICE_HAS_ORDER` | 422 | «Asignar área» a una factura con orden, que toma la de su orden |
+| `PURCHASEAREAASSIGNMENT_DOCUMENTS_MIXED` | 422 | Una nota o un pago abarca documentos fuera del conjunto o de otra área; los nombra |
+
+Se reutilizan `AREA_NOT_FOUND`, `AREA_INACTIVE` y `ACCESS_DENIED`. Ningún código nuevo termina en `_CONFLICT` (regla 3.3).
+
+**Frontend.**
+
+- **`iam`:**
+  - el diálogo de otorgar un rol (`role-assignments-dialog.ts`: formulario L149-155, `brandAllowed` L202, `scopeOf` L302-309, `grant` L435-447, `fitScopeToRole` L489-522, `loadUnits` L525-539; el campo de marca del html L182-193 es el molde) suma «Áreas», una selección **múltiple** con «Todas las áreas» por omisión (A9). Se habilita con una empresa elegida y un rol que admite área, y propone el área del colaborador cuando se abre desde él. Envía `areaIds`;
+  - `access-scope-options.ts` y `organization-access-scope-options.ts` (con su spec) suman las áreas;
+  - los errores nuevos van en `grantRoleErrorKey` (`iam.store.ts` L1555-1605).
+- **Los ayudantes de la sesión** (`iam.store.ts` L378-425), que leen `assignments`, también en `IamFacade` (`iam.facade.ts` L312-334), porque `procurement-writes.ts` solo ve la fachada:
+  - `readsArea(código, empresa, área)` y `writesOnArea(código, empresa, área, marcas)` preguntan, en una misma asignación, la empresa, la marca y el área;
+  - `writableAreas(código, empresa)` da las áreas donde se escribe, para los selectores;
+  - `actsOnEveryBrandAndArea(código, empresa)` sirve para el saldo, lo compartido y «Asignar área»;
+  - `actsOnEveryBrand` y `actsOnWholeCompany` siguen como hoy, para lo que no mira el área.
+- **`procurement-writes.ts`** (L40-80) usa los ayudantes nuevos.
+- **Plantillas:**
+  - el formulario suma «Área» —quién la usa; vacío es «Todas las áreas»—, copiado del selector de la marca (L153, L176, L320-341, L849-910); ofrece las áreas donde se escribe, y «Todas las áreas» solo a quien tiene acceso a todas;
+  - el área se puede cambiar siempre, sin el candado de `brandLocked`;
+  - la lista suma la columna «Área» y su filtro.
+- **Órdenes:** el primer panel (html L77-81) muestra el área de la plantilla si la tiene; con una plantilla general, un selector con las áreas de quien emite (fijo si tiene una sola, con «General» solo para quien tiene acceso a todas). La lista filtra por área.
+- **Facturas:**
+  - con orden, el área se muestra fija; `searched-sent-orders.ts` trae el área de cada orden;
+  - sin orden, un selector «Área», con la regla de la orden;
+  - el diálogo de modificar busca solo órdenes de la misma área;
+  - la ficha muestra el área y la lista filtra.
+- **Notas:** el área se muestra, derivada de las facturas, y la búsqueda de facturas se acota a la misma área.
+- **Pagos:**
+  - el área sale de los documentos, y la búsqueda (`GET /suppliers/{id}/payables`) se acota a una;
+  - la opción del saldo aparece solo con `actsOnEveryBrandAndArea` (`supplier-payment-form-view.ts` L550-553).
+- **Por pagar y la ficha del proveedor:** el filtro de área; el saldo y el total adeudado no se muestran si no viajan. Crear un proveedor y agregar un contacto se ofrece a todo comprador; editar y desactivar, solo con acceso a todas las áreas (Q8).
+- **«Asignar área»:** en las listas de Órdenes y Facturas, para quien tiene `compras.asignar_area` y acceso a todas las áreas: elegir filas generales y un área; el diálogo muestra las notas y los pagos que entran y, si se rechaza, los documentos que lo impiden.
+- **Bitácora** (`change-logs-view.ts`): el filtro de área, habilitado después de elegir la empresa (L229-250); `FIELD_OPTIONS` suma `area` para las plantillas (L74-97); `ChangeLogFilters` suma `areaId` (`change-logs-api-endpoint.ts` L17-24, L44-54).
+- **Los filtros de área** se arman en cada lista con `OrganizationFacade.loadAreaChoices`, sin un componente compartido nuevo: la lista cerrada de piezas prestadas (frontend-rules 1.2) no cambia. En Plantillas, Órdenes, Pagos y Por pagar van en la barra. Facturas y Notas tienen su barra en una sola línea (`E/toolbar-rows.spec.ts` L21-22) y no existe un panel de más filtros: el gestor de datos pliega sus filtros solo en el teléfono (`data-manager.html` L4-26). Una revisión de `DESIGN.md` define ese patrón —«Más filtros»— antes de usarlo.
+
+**Pruebas.**
+
+- Backend, nuevas:
+  - **`ProcurementAreaIsolationIntegrationTests`**, copiada de `ProcurementCompanyIsolationIntegrationTests`. Para cada documento, también los de equipos: quien está limitado a un área lee lo suyo y lo general; escribe solo lo suyo; no escribe lo general; no ve el saldo ni el total adeudado; la exportación respeta el área; los documentos por pagar de un proveedor, la verificación del VIN y los montos de pago de la factura no muestran otra área.
+  - **La regresión de una sola asignación**, en plantillas, órdenes, bitácora y en el registro de una factura: «marca X sin área» y «sin marca, área P» no leen ni escriben «marca Y, área Q».
+  - **El área de la orden (Q27):** plantilla de un área, plantilla general con una, varias y todas las áreas.
+  - **«Asignar área»:** la cascada completa, el rechazo por mezcla con sus documentos, una orden con nota sobre dos órdenes nombradas juntas, el documento que ya tiene área, la factura con orden y la fila de la bitácora.
+  - **Los disparadores:** el área de la orden es la de su plantilla cuando la tiene y no cambia salvo de vacía a un valor; la de la factura es la de su orden; las facturas de una nota tienen su área; los documentos de un pago tienen su área; lo fiscal incluye el área con su única salvedad.
+  - **La migración** (estilo `BalanceUsesMigrationTests`).
+  - **El SQL de Por pagar** con entradas con y sin área, sin enlazar un nulo.
+  - **El costo de una unidad y de un equipo** (`403` por área y lo anidado), **el reporte de stock** (columnas vacías por área) y **Por pagar** por área.
+  - **Lo compartido (Q8):** quien tiene área crea un proveedor y un contacto, y no edita ni desactiva.
+- Backend, que cambian:
+  - los cinco `*AccessPolicyTests`, los cuatro `*AllowedActionsTests`, los cinco `*AuditTests` de compras;
+  - `PurchaseInvoiceFiscalTriggerTests`, `CreditNoteTriggerTests`, `PurchaseInvoiceSchemaTests`, `SupplierPaymentSchemaTests`;
+  - los conteos de sentencias: `PurchaseInvoiceRegistrationStatementsTests` (hoy 64), `SupplierPaymentRegistrationStatementsTests`, `CreditNoteRegistrationStatementsTests`, `PurchaseInvoiceListStatementsTests`, `SupplierPaymentListStatementsTests`, `BalanceTraceStatementsTests`. Cada sentencia nueva se justifica: la lectura compartida del área suma una;
+  - las de integración y exportación de cada lista, `PayablesIntegrationTests`, `SupplierBalancesIntegrationTests`, `VehiclePurchaseCostIntegrationTests`, `UnitPurchaseCostsTests`, `ProcurementContextFacadeTests`, `InitialMigrationIntegrationTests`, `ProcurementOpenApiTests`;
+  - en `audit`: `ChangeLogAccessPolicyTests`, `ChangeLogsSearchFilteringTests`, `ChangeLogsControllerTenantTests`, `ChangeLogEntryTests`, `ChangeLogCommandServiceTests`;
+  - en `reporting`: `ReportsIntegrationTests`, `StockRowsTests`;
+  - `PermissionsMigrationTests`, `PermissionCatalogConsistencyTests` y `HandOverDatabaseScriptTests`.
+- Las pruebas de caracterización de la fase 0 pasan sin cambios.
+- Frontend: las specs de los formularios y las vistas, `procurement-writes.spec.ts`, `iam.store.spec.ts`, `iam.facade.spec.ts`, `role-assignments-dialog.spec.ts` (varias áreas), `organization-access-scope-options.spec.ts`, `change-logs-view.spec.ts` y el diálogo de «Asignar área»; e2e `purchase-order-templates`, `purchase-orders`, `invoice-form`, `purchase-invoices`, `credit-notes`, `supplier-payments`, `suppliers`, `change-log` y `access`, con sus mocks; las imágenes de las pantallas que suman un campo.
+- La suite completa del backend, en local.
+
+**Documentación.**
+
+- Diccionario:
+  - §2.5: las reglas del área en compras;
+  - §9.1 a §9.5: las columnas `area_id` y sus reglas, la plantilla que dice quién la usa y el área de la orden;
+  - §10.1 a §10.4: el área del pago y el saldo;
+  - §13.1: `change_logs.area_id`;
+  - «Asignar área» y su permiso (§5.6);
+  - D-288 pasa a cerradas.
+- `contextos/procurement.md`, `audit.md` y `reporting.md`, con sus reglas nuevas.
+- Las convenciones de la API: los filtros, el área en los recursos y la ruta de «Asignar área».
+- `procesos-y-pantallas`: P2 (una o varias áreas al otorgar un rol), P4, P5, P10, P11, §3.4 y un proceso nuevo, «Darle área a lo que ya existe».
+- `DESIGN.md`: el patrón «Más filtros».
+- Las skills `backend-module` (`RecordReach` en compras, el SQL sin nulos enlazados) y `architecture-review` (la regla de la lista de asignaciones), en sus cuatro copias.
+
+**Antes de otorgar la primera asignación con área:** quien tiene acceso a todas las áreas da su área, con «Asignar área», a las órdenes y facturas sin orden que ya existen y son de un área; lo que es de todas queda general. Las plantillas pueden quedar generales: la orden toma el área de quien la emite.
+
+**Orden de los commits.**
+
+- Backend:
+  1. V164, V165 y V166, con las pruebas de sus disparadores.
+  2. El área en la bitácora.
+  3. Las políticas, `RecordReach` y las lecturas.
+  4. Las vistas y las acciones.
+  5. Plantillas y órdenes, con el área de quien emite.
+  6. Facturas.
+  7. Notas.
+  8. Pagos, saldo, Por pagar y los documentos por pagar del proveedor.
+  9. Lo compartido.
+  10. «Asignar área».
+  11. El costo, la fachada y el reporte.
+  12. Exportaciones, OpenAPI y mensajes.
+- Frontend:
+  1. La sesión, los ayudantes, la fachada y el diálogo de otorgar con varias áreas.
+  2. Plantillas.
+  3. Órdenes.
+  4. Facturas.
+  5. Notas.
+  6. Pagos, Por pagar y proveedor.
+  7. «Asignar área».
+  8. La bitácora.
+  9. El patrón «Más filtros» y su revisión de `DESIGN.md`.
+  10. Los e2e y las imágenes.
+
+**Terminada cuando:** las pruebas de aislamiento y de caracterización están en verde; la suite completa y el CI también; y una prueba de punta a punta en `dev` muestra que una persona limitada a Monitoreo ve solo lo de Monitoreo y lo general, emite con la plantilla común una orden de Monitoreo, y que las órdenes existentes recibieron su área con «Asignar área».
+
+---
+
+## 7. Lista de control de cada fase
+
+**Backend**
+- [ ] `ModularityTests` pasa: ninguna dependencia nueva fuera de `allowedDependencies` (la única nueva del plan es `iam::acl` en `equipment`, fase 3); las fachadas exponen lo que usan sus consumidores; ninguna clase importa el interior de otro contexto (`ForeignAclStaysInTranslationLayerTests`).
+- [ ] Cada `External<Contexto>Service` nuevo lleva nombre de bean explícito, y ninguna ruta queda mapeada dos veces (`ErpMillenniumMobilityBackendApplicationTests` arranca el contexto).
+- [ ] Toda ruta nueva pide su permiso con una constante de `PermissionCodes` (`NoRoleAnnotationTests`, `PermissionCatalogConsistencyTests`).
+- [ ] Los servicios de comandos siguen el patrón `*CommandServiceImpl`; lo que corre dentro de la transacción de otro contexto no se llama así; todo `@Scheduled` empieza con `runAlone` y entra en la lista exacta de `DeadlockRetryTests`.
+- [ ] Ninguna llamada externa ocurre dentro de una transacción (regla 6.4).
+- [ ] Toda tabla nueva con `company_id` tiene sus políticas, su lugar en `RowLevelSecurityMigrationTests` (y en `COLUMN_UPDATE_TABLES` si actualiza por columnas) y su prueba de aislamiento; toda tabla que se exporta, sus casillas en `data_versions` (`JdbcDataVersionsTests`).
+- [ ] Toda migración abre con alcance `SYSTEM` y `lock_timeout` de 5 segundos; ninguna lee ni escribe las tablas de otro contexto (reglas 1.2 y 1.3).
+- [ ] Toda función o tabla de solo inserción nueva tiene su línea en `hand-over-database.sql` (`HandOverDatabaseScriptTests`).
+- [ ] Todo código de error nuevo tiene sus mensajes en los dos bundles (`OwnErrorCodesHaveMessagesTests`) y su lugar en la OpenAPI (`*OpenApiTests`).
+- [ ] Todo agregado nuevo tiene su `<Agregado>AuditTests`; todo servicio de consultas que lee tablas de empresa corre `readOnly`.
+- [ ] Toda sentencia nueva en un conteo de sentencias está justificada en la prueba.
+- [ ] Ningún SQL nativo enlaza un nulo en una comparación opcional.
+- [ ] Toda variable nueva está en el README, `.env.example` y `.do/app.yaml`.
+
+**Frontend**
+- [ ] Las cuatro capas en cada contexto; las fachadas solo con lo que alguien usa, y su spec de miembros al día.
+- [ ] Cada ruta pide lo mismo que su opción del menú; cada ruta nueva de la API está en los dos archivos de `environments`.
+- [ ] Ningún diálogo de formulario se abre sobre otro diálogo (regla 4.9).
+- [ ] Cada cambio visual tiene su revisión de `DESIGN.md`, y solo cambian las imágenes de referencia que la fase nombra.
+- [ ] Las claves nuevas de `es.json` siguen sus convenciones (descripciones de 90 caracteres o menos).
+
+**Documentación**
+- [ ] El diccionario, `contextos/`, las convenciones y `procesos-y-pantallas`, en el mismo cambio; la decisión de la fase, de «Decidido y por construir» a «cerradas».
+- [ ] El README del backend si cambió una variable; las cuatro copias de las skills.
+
+**Integración**
+- [ ] El CI de la rama, en verde —unitarias **y** e2e—, mirado por el responsable.
+- [ ] Primero el backend, después el frontend; la documentación a `master` el mismo día.
+- [ ] Al cerrar: el despliegue en `dev` activo, y el worktree, la rama y la base de verificación borrados.
+
+---
+
+## 8. Vuelta atrás
+
+| Fase | Cómo se deshace |
+|---|---|
+| 0 | Se revierte su commit en el frontend. No toca datos |
+| 1 | Se revierte su commit de integración en el frontend, y la enmienda de D-141. No toca datos |
+| 2 | Gracias al disparador de compatibilidad, el código anterior sigue insertando líneas. Pero en cuanto exista un equipo en un estado nuevo o una orden de equipos, el código anterior no los lee: después de la primera factura de equipos, la fase se corrige hacia adelante. Durante el despliegue no se registra una factura de equipos |
+| 3 | Una vez corrida V154, la SIM manda; revertir el código volvería a escribir el ICCID en el equipo y separaría las dos. Se corrige hacia adelante |
+| 4 | El cambio de la instalación va en tres pasos: el segundo (el frontend) se revierte solo. Los enlaces escritos por la vinculación no se deshacen |
+| 5 | No se revierte: borra columnas y un disparador |
+| 6 | Revertir el código deja la tabla de áreas y las columnas nuevas sin usar, que no molestan; lo demás se corrige hacia adelante. Una asignación con área creada por la API quedaría sin efecto en compras: por eso la pantalla no la ofrece hasta la fase 7 |
+| 7 | Revertir el código deja las columnas de área en lo nuevo y los disparadores activos, que con el área vacía dejan pasar todo. Se corrige hacia adelante si ya hay documentos con área o se usó «Asignar área» |
+
+---
+
+## 9. Calendario orientativo
+
+| Fase | Días de trabajo | Acumulado |
+|---|---|---|
+| 0 | 1 a 2 | 1 a 2 |
+| 1 | 2 a 4 | 3 a 6 |
+| 2 | 14 a 18 | 17 a 24 |
+| 3 | 9 a 13, y 2 a 4 para el adaptador | 26 a 37, y el adaptador |
+| 4 | 8 a 11 | 34 a 48 |
+| 5 | Menos de 1 | 35 a 49 |
+| 6 | 5 a 7 | 40 a 56 |
+| 7 | 12 a 16 | 52 a 72 |
+
+El ciclo del GPS —lo anunciado al cliente— queda listo en `dev` entre los días 35 y 49. La fase 6 toca archivos distintos de las fases 2 a 5 y podría ir en paralelo con dos personas; con una, va en orden. El adaptador del fabricante se agrega cuando llegue Q21, sin detener las fases 4 a 7.
+
+---
+
+## 10. Riesgos
+
+| Riesgo | Probabilidad | Impacto | Cómo se cubre |
+|---|---|---|---|
+| El e2e del frontend no corre desde el 20/11 y esconde regresiones | Alta | Medio | La fase 0 lo corre entero y lo arregla antes de la regeneración de imágenes de la fase 1 |
+| Una consulta de compras olvida el área y muestra datos de otra (la defensa es solo del código) | Media | Alto | La prueba de aislamiento por documento, la regresión de una sola asignación, la caracterización, la lista de lecturas de la fase 7 y la revisión de arquitectura de cada lectura |
+| El motor de pagos cambia de comportamiento para los vehículos | Baja | Alto | Las facturas de equipos no tocan las imputaciones; las pruebas de pagos de vehículos no cambian |
+| `isConcept()` cambia de sentido en un uso que nadie miró | Media | Alto | Los 13 usos decididos uno por uno, con una factura de varias líneas de equipo en las pruebas |
+| Una factura de 500 equipos es lenta o choca con el corte de Cloudflare | Media | Medio | La inserción de varias filas, el conteo de sentencias y la meta medida contra `dev` |
+| Un equipo hereda el precio o el modelo de otro al escanear | Baja | Medio | El escaneo por modelo |
+| La API del fabricante no llega o es inestable | Media | Medio | El proveedor `manual`, que ingresa con el serial en el escaneo; los reintentos, el vigilante y el completado a mano |
+| Un GPS instalado queda sin equipo y escapa de D-264 | Media | Medio | La vinculación al arrancar, la del serial completado y la de las instalaciones de la carga inicial |
+| Los ICCID repetidos o los IMSI inválidos al trasladar a la SIM | Baja | Bajo | La migración los nombra y no se rompe; las columnas viejas viven hasta la fase 5 |
+| Regenerar 120 imágenes esconde una regresión real | Media | Medio | El e2e en verde de la fase 0; se revisa una por grupo y se mira la diferencia antes de aceptar |
+| Las personas limitadas a un área no pueden emitir órdenes | Baja | Medio | Una plantilla general la usan todas las áreas, y la orden toma el área de quien emite |
+| «Asignar área» no puede separar documentos que una nota o un pago mezcla | Media | Bajo | Se asignan juntos en un solo pedido; si son de áreas distintas, quedan generales y el rechazo lo dice |
+| Conviven dos instancias durante el despliegue de la fase 2 | Baja | Bajo | No se registra una factura de equipos mientras se despliega |
+| Los constructores con muchos usos rompen las pruebas | Alta | Bajo | Constructores secundarios y el `default` de `resolveScope`; el de tres argumentos de `RoleScope`, solo para pruebas |
+| El alcance crece (D-266 completo, ingreso por Excel, mapa) | Media | Medio | El §11 los deja fuera; cada uno es su propio cambio |
+
+---
+
+## 11. Fuera del alcance
+
+- El monitoreo en vivo: el mapa y las alertas de Monitoreo.
+- El costo mensual de la línea de cada SIM, que es una factura de servicio del operador.
+- El ingreso de equipos por Excel, con la plataforma de cargas: posible después, sobre el mismo ingreso.
+- Las áreas fuera de compras (Q10).
+- D-266 completo, salvo la retención por equipos instalados de la fase 4.
+- Las notas de débito (D-23).
+- El bloque 12: clientes, contratos, cobranza y traspasos.
+
+---
+
+## 12. Registro del plan
+
+| Versión | Fecha | Qué |
+|---|---|---|
+| 1 | 22/11/2026 | Primera versión, desde el análisis situacional del mismo día y las decisiones del responsable |
+| 2 | 22/11/2026 | Recoge la auditoría del mismo día (6 bloqueantes, 22 importantes) y las decisiones Q1 a Q27. Cambia el orden a menú → GPS → áreas; suma la historia y el historial del equipo, la vinculación de la carga inicial, el escaneo por modelo, «Anular y copiar» sin duplicados, la orden de un solo tipo, la plantilla común con la orden del área de quien emite, varias áreas por persona y «Asignar área»; corrige la sesión de las áreas, `isConcept()`, la inserción de 500 líneas, los pagos sin migración y las afirmaciones sin respaldo |
+
+**Equivalencias con la versión 1.** La auditoría cita las fases, las migraciones y las decisiones de la versión 1.
+
+| Versión 1 | Versión 2 |
+|---|---|
+| Fase 0, 1 | Fase 0, 1 |
+| Fase 2 (áreas: catálogo, asignación y sesión) | Fase 6 |
+| Fase 3 (compras por área) | Fase 7 |
+| Fase 4 (compra de equipos) | Fase 2 |
+| Fase 5 (ingreso, fabricante y SIM) | Fase 3 |
+| Fase 6 (instalación) | Fase 4 |
+| Fase 7 (limpieza) | Fase 5 |
+| V148, V149, V150, V151 | V160, V161, V162, V163 |
+| V152, V153 | V164, V165 |
+| V154, V155 | V148, V149 |
+| — | V150 (la historia de estados del equipo) |
+| V156, V157, V158 | V151, V152, V153 |
+| V159, V160, V161 | V154, V155, V156 |
+| V162, V163 | V157, V158 |
+| V164 | V159 |
+| — | V166 (`compras.asignar_area`) |
+| D-283 (áreas), D-284 (compras por área) | D-287, D-288 |
+| D-285 (compra de equipos), D-287 (cumplir con faltante) | D-283, D-284 |
+| D-286 (ingreso, fabricante y SIM) | D-285 |
+| — | D-286 (historial del equipo y vinculación) |
+
+Si el orden de integración cambia otra vez, las migraciones se renumeran al abrir la rama: Flyway exige que la versión siga a la última aplicada.
+
