@@ -1,6 +1,6 @@
 # Plan de implementación — áreas, menú y ciclo de compra del GPS — ERP Millennium Mobility
 
-**Estado:** versión 2, 22/11/2026. Recoge la [auditoría del mismo día](auditoria-del-plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md) y las decisiones que el responsable aprobó ese día (§1 y §2). Cambia el orden de la versión 1: primero el menú, después el ciclo del GPS y al final las áreas. Cada fase se abre comprobando otra vez las rutas y las líneas que cita.
+**Estado:** versión 3, 22/11/2026. Recoge la [auditoría del mismo día](auditoria-del-plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md) y las decisiones que el responsable aprobó ese día (§1 y §2). La versión 2 cambió el orden de la versión 1 (el menú, el ciclo del GPS y al final las áreas); la versión 3 adelanta un **primer tramo** —la fase 0 reducida, la compra de equipos y su ingreso con el IMEI, con el reemplazo de un fallado— y deja para después la SIM, la API del fabricante y lo demás (Q28, Q29; §5). Cada fase se abre comprobando otra vez las rutas y las líneas que cita.
 
 **Fuente:** el [análisis situacional del 22/11/2026](analisis-situacional-areas-menu-y-ciclo-del-gps-2026-11-22.md), con el inventario de `develop` (backend `ed7ccda7`, frontend `ee7736af`) y de la documentación (`e71fdb4`); la auditoría del plan, del mismo día; las decisiones del responsable del 22/11/2026; el [diccionario de datos](diccionario-de-dtos-millennium-mobility.md) 1.79; las reglas de arquitectura de las skills `backend-module`, `frontend-feature` y `architecture-review`; y la forma de trabajo del [plan de migración a los contextos objetivo](plan-de-migracion-a-los-contextos-objetivo-2026-11-18.md), que este plan sigue.
 
@@ -89,8 +89,10 @@ El responsable aprobó las recomendaciones de la auditoría. El plan está escri
 | Q25 | Sin la API del fabricante, ¿cómo se completan cientos de equipos? | Con el proveedor `manual`, la pantalla de ingreso toma el IMEI, el serial y el ICCID de cada equipo y lo deja Disponible; con un fabricante, solo el IMEI, y el resto lo completa la API | Fase 3 |
 | Q26 | ¿En qué orden van los frentes? | Menú → GPS → áreas. El monitoreo es la próxima etapa anunciada al cliente; no hay producción, así que el aislamiento no protege todavía datos reales; y «Asignar área» le da su área después a lo que se registre antes | Todas |
 | Q27 | Con una plantilla general, ¿de qué área es la orden? | De quien la emite: su área si está limitado a una; a elegir entre las suyas si tiene varias; un área o «General» si tiene acceso a todas las áreas | Fase 7 |
+| Q28 | ¿Qué va primero? (precisa Q26) | El flujo operativo hasta el ingreso de los IMEIs: la fase 0 reducida, la fase 2 y la fase 3a. La SIM como registro propio, la API del fabricante, la instalación, el menú y las áreas van después, en el orden que diga el responsable | Todas |
+| Q29 | ¿El reemplazo de un fallado entra en el primer tramo? | Sí, en la fase 3a; su columna va en V149 para no renumerar las migraciones | Fases 2 y 3a |
 
-**Pendiente del responsable, antes de la fase 0:** mirar en GitHub, pestaña Actions del frontend, el estado de `develop` (la fase 0, paso 1, explica por qué el análisis lo da en rojo) y conseguir lo de Q21.
+**Pendiente del responsable:** la información del fabricante (Q21), para la fase 3b.
 
 ---
 
@@ -116,7 +118,7 @@ El responsable aprobó las recomendaciones de la auditoría. El plan está escri
 - **El CI corre en la rama antes de integrar** (*Run workflow*). `gh` no está autenticado en la máquina de trabajo: el resultado lo mira el responsable en GitHub. El e2e del frontend solo corre si pasan el build y las unitarias (`needs: build`): una unitaria en rojo esconde el e2e entero.
 - **Las pruebas, a la medida del cambio.** En local, en una base nueva de `erp_mm_owner`, con las dos cuentas y nunca con el `.env` remoto: las pruebas del contexto que cambia, las de sus consumidores, las de arquitectura y `ErpMillenniumMobilityBackendApplicationTests`. Las fases 2 a 7 cambian el esquema o la seguridad, así que corren además la suite completa del backend. En el frontend: el build, las specs de lo que cambia y `lint:styles`. El e2e lo corre el CI.
 - **La excepción de las imágenes de referencia.** El CI del e2e corre en `windows-latest` y compara imágenes `*-win32.png`. Una fase que cambia una pantalla a propósito regenera sus imágenes en la máquina de trabajo (Windows) con `npm run e2e:update -- e2e/visual.spec.ts e2e/permission-matrix.spec.ts`, en un commit propio y después de revisar una muestra. La fase 1 lo hace con todas las pantallas del menú; las demás, solo con las pantallas que cambian. Una imagen que cambia sin que la fase lo diga es una regresión.
-- **Primero se caracteriza.** Las pruebas de caracterización de compras de la fase 0 pasan sin cambios al terminar las fases 2 a 4 y la 7; la fase 4 escribe las suyas de la instalación antes de tocarla.
+- **Primero se caracteriza.** Las pruebas de caracterización de compras se escriben antes de la fase 7, en `develop`, y la fase 7 termina con ellas sin cambios; la fase 4 escribe las suyas de la instalación antes de tocarla. Las fases 2 y 3a se apoyan en las pruebas de compras que ya existen y en la suite completa.
 - **Cada fachada nueva trae su prueba de contrato**, en el módulo que la ofrece.
 - **Toda tarea programada nueva** empieza con `SingleInstanceRun.runAlone` y entra en la lista exacta de `DeadlockRetryTests` (L123-126). **Toda variable nueva** va en `.env.example`, en `.do/app.yaml` y en el README.
 - **El diccionario manda.** Cada fase actualiza en el mismo cambio el diccionario, `contextos/`, las convenciones y `procesos-y-pantallas`, y pasa su decisión de «Decidido y por construir» a «cerradas».
@@ -131,11 +133,14 @@ El responsable aprobó las recomendaciones de la auditoría. El plan está escri
 | 0 | Preparación | Frontend (catálogo simulado, e2e), documentación | — | 1 a 2 días | Bajo | — |
 | 1 | Menú por procesos | Frontend: `app-shell`, `shared`, `iam` (matriz) y las rutas de los catálogos; diccionario (D-141) | — | 2 a 4 días | Bajo | 0 |
 | 2 | Compra de equipos e historia del equipo | `procurement`, `equipment`, `iam`; frontend `procurement`, `equipment` | V148 a V153 | 14 a 18 días | **Alto** | 0 |
-| 3 | Ingreso por escaneo, API del fabricante y SIM | `equipment`, `procurement`, `iam`; frontend `equipment`, `app-shell` | V154 a V156 | 9 a 13 días, y 2 a 4 más para el adaptador | Medio | 2; Q21 para el adaptador |
-| 4 | Instalación unida al inventario e historial del equipo (D-263, D-264) | `fleet`, `equipment`; frontend `fleet`, `equipment` | V157, V158 | 8 a 11 días | Medio | 3 |
-| 5 | Limpieza | `equipment`, `procurement`, `fleet` | V159 | Menos de 1 día | Bajo | 3 en `dev` con su CI en verde; 4 integrada |
+| 3a | Ingreso de equipos por escaneo, sin fabricante, y reemplazo de un fallado | `equipment`, `procurement`; frontend `equipment`, `app-shell` | — (la columna del reemplazo va en V149) | 5 a 7 días | Medio | 2 |
+| 3b | SIM y API del fabricante | `equipment`, `procurement`, `iam`; frontend `equipment`, `app-shell` | V154 a V156 | 5 a 7 días, y 2 a 4 más para el adaptador | Medio | 3a; Q21 para el adaptador |
+| 4 | Instalación unida al inventario e historial del equipo (D-263, D-264) | `fleet`, `equipment`; frontend `fleet`, `equipment` | V157, V158 | 8 a 11 días | Medio | 3b (la SIM se exige para instalar) |
+| 5 | Limpieza | `equipment`, `procurement`, `fleet` | V159 | Menos de 1 día | Bajo | 3b en `dev` con su CI en verde; 4 integrada |
 | 6 | Áreas: catálogo, asignación y sesión | `shared`, `iam`, `organization`, `documents`; frontend `organization`, `iam` | V160 a V163 | 5 a 7 días | Medio | 0 |
 | 7 | Compras por área y «Asignar área» | `procurement`, `audit`, `reporting`, `iam`; frontend `procurement`, `iam`, `change-log` | V164 a V166 | 12 a 16 días | **Alto** | 6 |
+
+**El primer tramo (Q28)** es la fase 0 reducida, la 2 y la 3a: el flujo operativo hasta el ingreso de los IMEIs, con el reemplazo de un fallado. Lo demás —3b, 4, 5, 1, 6 y 7— va después, en el orden que diga el responsable y con las dependencias de la tabla. Las migraciones conservan su número: si el orden de integración cambia, se renumeran al abrir la rama.
 
 ---
 
@@ -165,16 +170,16 @@ El responsable aprobó las recomendaciones de la auditoría. El plan está escri
    | D-288 | Compras por área: la plantilla dice quién la usa y la orden es del área de quien la emite, facturas, notas, pagos, Por pagar, bitácora, costo, reporte y «Asignar área» | Fase 7 |
 
    El menú no es una decisión nueva: va en `DESIGN.md` y en `procesos-y-pantallas`, y la fase 1 enmienda D-141.
-4. **Pruebas de caracterización de compras**, en `develop`, contra el código de hoy, con asignaciones limitadas a una marca:
+4. **Pruebas de caracterización de compras** —desde la versión 3, se escriben antes de la fase 7, no en la fase 0 reducida—, en `develop`, contra el código de ese momento, con asignaciones limitadas a una marca:
    - las listas, la lectura por identificador y la exportación de plantillas, órdenes, facturas, notas, pagos y Por pagar, y `GET /suppliers/{id}/payables`;
    - el costo de una unidad y el reporte de stock;
    - la bitácora de un registro con marca;
    - dos asignaciones de marcas distintas en la misma empresa (la unión de hoy);
    - la forma de la llave de `DocumentScopes` (`DocumentScopesTests`).
 
-   Casi todas existen como `*AccessPolicyTests` y pruebas de integración de cada lista; se agregan las que falten. Pasan sin cambios al terminar las fases 2, 3, 4 y 7.
+   Casi todas existen como `*AccessPolicyTests` y pruebas de integración de cada lista; se agregan las que falten. Pasan sin cambios al terminar la fase 7.
 
-**Terminada cuando:** el CI del frontend está en verde en `develop`, con el e2e corrido entero; las decisiones están escritas en el diccionario; y las pruebas de caracterización están en verde en `develop`.
+**Terminada cuando:** el CI del frontend está en verde en `develop`, con el e2e corrido entero, y las decisiones están escritas en el diccionario. Las pruebas de caracterización quedan para antes de la fase 7.
 
 ---
 
@@ -295,7 +300,8 @@ El responsable aprobó las recomendaciones de la auditoría. El plan está escri
 
 - El `CHECK` de `status` suma `PENDING_ARRIVAL`, `RETURNED_TO_SUPPLIER` y `ANNULLED`.
 - `location_id` deja de ser `NOT NULL`, con `fleet_equipments_location_ck CHECK (location_id IS NOT NULL OR status IN ('PENDING_ARRIVAL', 'ANNULLED', 'INSTALLED'))`. Un equipo instalado está en su unidad: la vinculación de lo ya instalado (fase 4) registra equipos que nunca tuvieron una ubicación, y el retiro le da una (fase 4).
-- `fleet_equipments_id_company_uq UNIQUE (id, company_id)`, destino de las llaves de las líneas de factura y de la historia.
+- `fleet_equipments_id_company_uq UNIQUE (id, company_id)`, destino de las llaves de las líneas de factura, de la historia y del reemplazo.
+- `fleet_equipments.replaced_equipment_id BIGINT`, con la llave compuesta `(replaced_equipment_id, company_id) → fleet_equipments (id, company_id)`, único (un equipo se reemplaza una sola vez) y distinto de sí mismo (Q13). Lo usa la fase 3a; va aquí para que el primer tramo no renumere las migraciones (Q29).
 - Los índices únicos del serial y del IMEI se vuelven a crear excluyendo `DISCARDED` y `ANNULLED`, **con los mismos nombres** (`idx_fleet_equipments_serial_unique`, `idx_fleet_equipments_imei_unique`), porque `EquipmentRepositoryImpl` L35-37 los traduce a errores. El del ICCID no cambia hasta la fase 5. `RETURNED_TO_SUPPLIER` conserva sus identificadores, porque el equipo puede volver (Q16).
 
 **V150__create_the_equipment_status_history.sql** (`Context: equipment`).
@@ -555,11 +561,25 @@ La suite completa y el CI están en verde.
 
 ---
 
-### Fase 3 — Ingreso por escaneo, API del fabricante y SIM
+### Fase 3 — Ingreso por escaneo, reemplazo, SIM y API del fabricante (3a y 3b)
 
 **Objetivo.** Ingresar los equipos escaneando su QR, modelo por modelo; completar sus datos con la API del fabricante en segundo plano o, sin fabricante, en el mismo escaneo; resolver lo que no cuadra; registrar el reemplazo de un fallado; y llevar la SIM como un registro propio, con su historia junto a cada GPS.
 
-**Lo que la rige.** C5, C10, C11, C12; Q13, Q16, Q17, Q19 a Q22 y Q25; D-42 (lo automático firma como `SYSTEM`); reglas 4.3, 6.3 y 6.4.
+**Lo que la rige.** C5, C10, C11, C12; Q13, Q16, Q17, Q19 a Q22, Q25, Q28 y Q29; D-42 (lo automático firma como `SYSTEM`); reglas 4.3, 6.3 y 6.4.
+
+**Se parte en dos (Q28).** La fase 3a cierra el primer tramo del responsable —el flujo operativo hasta el ingreso de los IMEIs— y la 3b llega después, cuando él lo diga:
+
+| Pieza (de esta sección) | 3a, en el primer tramo | 3b, después |
+|---|---|---|
+| Migraciones | Ninguna: los estados de compra, `replaced_equipment_id` (V149) y `stock.ingresar_equipamiento` (V153) llegan con la fase 2 | V154, V155 y V156 |
+| El escaneo | Solo sin fabricante: IMEI, serial y, si la SIM viene, su ICCID, que en 3a se guarda en `fleet_equipments.iccid`, como hoy; el equipo queda Disponible. No hay `arrival-settings`: en 3a siempre se ingresa así | El escaneo con fabricante («Por completar»), `arrival-settings` y el ICCID en la SIM |
+| El escaneo por modelo, la pantalla «Ingreso de equipos», su contador, la cámara (`_headers` y la librería perezosa) y las facturas con equipos por ingresar (`pendingArrival`) | Sí | — |
+| El reemplazo de un fallado (`POST /equipments/{id}/replacement`), el rechazo de «volvió reparado» de un reemplazado (`EQUIPMENT_REPLACED`), la nota sobre la cadena y el costo que sigue la cadena (`fetchPurchaseRoots`) | Sí: el equipo nuevo queda Disponible, con su IMEI, serial e ICCID escaneados | — |
+| La SIM, sus rutas, su pantalla y sus permisos | — | Sí |
+| El pedido al fabricante, la tarea, el vigilante, la métrica, el planificador, los estados «Por completar» y «Revisar», el código del fabricante y la firma `SYSTEM` (`iam::acl`) | — | Sí |
+| El menú | «Ingreso de equipos» va en el grupo de hoy, junto a Inventario de equipamiento, hasta que la fase 1 lo lleve a Monitoreo | «SIM» |
+
+La fase 4 necesita la 3b, porque la SIM se exige para instalar (C11).
 
 **Migraciones.**
 
@@ -603,7 +623,6 @@ sim_card_assignments
 
 - El `CHECK` de `status` suma `PENDING_COMPLETION` y `UNDER_REVIEW`.
 - `fleet_equipments.review_reason VARCHAR(20)`, con `CHECK (review_reason IN ('MODEL_MISMATCH', 'UNKNOWN_IMEI', 'SIM_MISMATCH'))`, y presente solo en `UNDER_REVIEW`.
-- `fleet_equipments.replaced_equipment_id BIGINT`, con la llave compuesta `(replaced_equipment_id, company_id) → fleet_equipments (id, company_id)`, único (un equipo se reemplaza una sola vez) y distinto de sí mismo (Q13).
 - `equipment_models.manufacturer_model_code VARCHAR(60)`, opcional: cómo nombra el fabricante el modelo (análisis, C-H15).
 - `equipment_completion_requests`:
   - columnas: `id`, `public_id`, `company_id`, `equipment_id` (llave compuesta), `imei`, `status` (`PENDING`, `IN_PROGRESS`, `COMPLETED`, `FAILED`, `CANCELLED`), `attempts`, `next_attempt_at`, `last_error_code`, `created_at`, `updated_at`. Como en los correos, `next_attempt_at` hace de reserva: reclamar un pedido lo corre hacia adelante (`Notification.claim` L182-187), sin otra columna;
@@ -767,7 +786,9 @@ Se reutilizan `EQUIPMENT_IMEI_INVALID` y `EQUIPMENT_STATUS_TRANSITION_INVALID`. 
   4. El menú y la matriz.
   5. Los e2e y las imágenes.
 
-**Terminada cuando:** en `dev`, con el proveedor `manual`, se escanea una factura de dos modelos, modelo por modelo, y sus equipos quedan Disponibles con su serial; la cámara abre en un teléfono; con un `DeviceRegistry` de prueba, la suite recorre todos los resultados; la SIM tiene su historia; la suite completa y el CI están en verde.
+**Terminada cuando:**
+- **3a:** en `dev`, se escanea una factura de dos modelos, modelo por modelo, y sus equipos quedan Disponibles con su IMEI y su serial; la cámara abre en un teléfono; un fallado devuelto al proveedor se reemplaza por otro equipo, que toma su costo, y el devuelto ya no puede «volver reparado»; la suite completa y el CI están en verde.
+- **3b:** con un `DeviceRegistry` de prueba, la suite recorre todos los resultados; la SIM tiene su historia; la suite completa y el CI están en verde.
 
 ---
 
@@ -1431,18 +1452,29 @@ Se reutilizan `AREA_NOT_FOUND`, `AREA_INACTIVE` y `ACCESS_DENIED`. Ningún códi
 
 ## 9. Calendario orientativo
 
+**El primer tramo (Q28):**
+
 | Fase | Días de trabajo | Acumulado |
 |---|---|---|
-| 0 | 1 a 2 | 1 a 2 |
-| 1 | 2 a 4 | 3 a 6 |
-| 2 | 14 a 18 | 17 a 24 |
-| 3 | 9 a 13, y 2 a 4 para el adaptador | 26 a 37, y el adaptador |
-| 4 | 8 a 11 | 34 a 48 |
-| 5 | Menos de 1 | 35 a 49 |
-| 6 | 5 a 7 | 40 a 56 |
-| 7 | 12 a 16 | 52 a 72 |
+| 0, reducida | 1 | 1 |
+| 2 | 14 a 18 | 15 a 19 |
+| 3a | 5 a 7 | 20 a 26 |
 
-El ciclo del GPS —lo anunciado al cliente— queda listo en `dev` entre los días 35 y 49. La fase 6 toca archivos distintos de las fases 2 a 5 y podría ir en paralelo con dos personas; con una, va en orden. El adaptador del fabricante se agrega cuando llegue Q21, sin detener las fases 4 a 7.
+El flujo operativo hasta el ingreso de los IMEIs, con el reemplazo de un fallado, queda listo en `dev` entre los días 20 y 26.
+
+**Lo demás, en el orden que diga el responsable:**
+
+| Fase | Días de trabajo |
+|---|---|
+| 3b | 5 a 7, y 2 a 4 para el adaptador |
+| 4 | 8 a 11 (después de la 3b) |
+| 5 | Menos de 1 (después de la 3b en `dev` y de la 4) |
+| 1 | 2 a 4 |
+| 6 | 5 a 7 |
+| Las pruebas de caracterización de compras | 1 (antes de la 7) |
+| 7 | 12 a 16 (después de la 6) |
+
+En total, de 53 a 73 días. La fase 6 toca archivos distintos de las del GPS y podría ir en paralelo con dos personas; con una, va en orden. El adaptador del fabricante se agrega cuando llegue Q21.
 
 ---
 
@@ -1486,8 +1518,9 @@ El ciclo del GPS —lo anunciado al cliente— queda listo en `dev` entre los d�
 |---|---|---|
 | 1 | 22/11/2026 | Primera versión, desde el análisis situacional del mismo día y las decisiones del responsable |
 | 2 | 22/11/2026 | Recoge la auditoría del mismo día (6 bloqueantes, 22 importantes) y las decisiones Q1 a Q27. Cambia el orden a menú → GPS → áreas; suma la historia y el historial del equipo, la vinculación de la carga inicial, el escaneo por modelo, «Anular y copiar» sin duplicados, la orden de un solo tipo, la plantilla común con la orden del área de quien emite, varias áreas por persona y «Asignar área»; corrige la sesión de las áreas, `isConcept()`, la inserción de 500 líneas, los pagos sin migración y las afirmaciones sin respaldo |
+| 3 | 22/11/2026 | El primer tramo del responsable (Q28, Q29): la fase 0 reducida —las pruebas de caracterización de compras pasan a antes de la fase 7—, la fase 2 y la fase 3a, el ingreso sin fabricante con el reemplazo de un fallado, cuya columna pasa de V155 a V149. La fase 3 se parte en 3a y 3b; ninguna migración cambia de número |
 
-**Equivalencias con la versión 1.** La auditoría cita las fases, las migraciones y las decisiones de la versión 1.
+**Equivalencias con la versión 1.** La auditoría cita las fases, las migraciones y las decisiones de la versión 1. La versión 3 conserva la numeración de la 2, salvo que la fase 3 se parte en 3a y 3b.
 
 | Versión 1 | Versión 2 |
 |---|---|
