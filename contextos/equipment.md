@@ -276,7 +276,7 @@ Las operaciones que escriben o bloquean exigen la transacción de quien llama (`
 
 | Qué | Quién y cuándo |
 |---|---|
-| La SIM como registro propio, la API del fabricante, «Por completar» y «Revisar», y la firma `SYSTEM` de lo automático (D-285) | El equipo, con la fase 3b, cuando llegue la información del fabricante y se respondan las preguntas de la sección 7 |
+| La API del fabricante, «Por completar» y «Revisar», y la firma `SYSTEM` de lo automático (D-285). La SIM no es un registro propio: es un dato de su GPS, su ICCID y su IMSI en el equipo (Q30, Q31). Si el número de la línea y el operador se guardan en el equipo se define en la fase 3b | El equipo, con la fase 3b, cuando llegue la información del fabricante |
 | El inventario unido a la instalación: instalar elige un equipo Disponible de la empresa y lo pasa a Instalado, el motivo del retiro decide adónde vuelve, y una unidad con equipos instalados no se anula ni pasa a Inactivo. Solo `fleet` instala y retira, y `equipment` escribe sus filas por su fachada (FLT-R152 a FLT-R154; plan §2.6; D-263, D-264) | El equipo, con el módulo de monitoreo |
 | Las pruebas que faltan: la carrera del nombre de una marca y de un modelo (EQP-R05) y una prueba del backend que nombre `requires_telematics` (VCT-R35) | Sin fecha |
 | Validar este documento | El responsable |
@@ -285,12 +285,17 @@ Las operaciones que escriben o bloquean exigen la transacción de quien llama (`
 
 ## 7. Preguntas abiertas
 
-Tres preguntas al responsable, del 22/11/2026, que deciden el alcance de la fase 3b ([plan del ciclo del GPS](../plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md), §2, Q30 a Q32; diccionario §14, «Decisiones abiertas»):
+Una pregunta al responsable, del 22/11/2026 ([plan del ciclo del GPS](../plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md), §2, Q32; diccionario §14, «Decisiones abiertas»):
 
 | Pregunta | Qué cambia según la respuesta |
 |---|---|
-| ¿Una SIM se cambia alguna vez sola, en el mismo GPS? El responsable dijo: «La SIM existe para con el GPS; si el GPS se cambia, se cambia con todo y SIM», que el reemplazo de un fallado ya respeta (EQP-R23) | Si nunca se cambia sola, sobran la historia de las asignaciones de la SIM (`sim_card_assignments`) y sus rutas de asignar y retirar: la SIM sería un dato del GPS |
-| ¿Un GPS que vuelve al proveedor pide dar de baja su línea con el operador? | Si la pide, la devolución al proveedor (F4) tendría que avisarlo o registrar la baja de la línea |
 | ¿Los equipos que no llegan se pueden dar de baja sin la nota de crédito del proveedor? | Hoy solo la nota «anulación de equipo» o la anulación de su factura anulan uno por ingresar (EQP-R15); si se pueden, haría falta un camino propio, con su permiso y su motivo |
+
+Las otras dos del mismo día las respondió el responsable ese día, y enmiendan D-285:
+
+| Pregunta | Respuesta | Qué cambia |
+|---|---|---|
+| Q30 · ¿Una SIM se cambia alguna vez sola, en el mismo GPS? | «La 1 no pasa»: una SIM nunca se cambia sin cambiar su GPS. Ya había dicho: «La SIM existe para con el GPS; si el GPS se cambia, se cambia con todo y SIM», que el reemplazo de un fallado respeta (EQP-R23) | La SIM es un dato de su GPS toda su vida: no hay historia de sus asignaciones, ni rutas para asignarla o retirarla, ni registro propio. Su ICCID y su IMSI siguen en `fleet_equipments` |
+| Q31 · ¿Un GPS que vuelve al proveedor pide dar de baja su línea con el operador? | «En la 2 también se encarga el proveedor, el proveedor me da los GPS + los SIM» | El proveedor entrega cada GPS con su SIM y se encarga de su línea: la devolución al proveedor (F4) no da de baja nada con un operador, y el ERP no lleva el ciclo de vida de la SIM (activa, suspendida, cancelada) |
 
 Las del inventario las respondió el responsable el 19/11/2026: cómo se enlaza con la instalación (D-263, D-264, sección 6) y que los identificadores sean únicos en todo el sistema (D-263).
