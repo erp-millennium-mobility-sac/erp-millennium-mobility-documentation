@@ -263,6 +263,12 @@ El orquestador no es transaccional: cada factura, cada nota, cada pago y el lote
 | Cada pago | El `requestId`; la empresa; las facturas del bloque, por `id`; el proveedor y la moneda en modo compartido |
 | El lote | — |
 
+#### Las áreas (D-288)
+
+El área es de `organization`, y compras la bloquea en modo compartido (`FOR SHARE`, por la fachada) solo donde un documento nuevo la elige, siempre al final de la cadena de lo que cuelga: emitir una orden toma la empresa, la marca y el área, en ese orden (`checkIssuingScope`); una plantilla, el área después de la marca; una factura sin orden, después de la empresa. La desactivación del área, que la bloquea en exclusiva, espera o se confirma antes, y lo que la elige la ve inactiva (D-84). Lo que hereda el área —la factura de una orden, la nota y el pago— no la bloquea: la factura lee el área de su orden sin candado antes de sus líneas, porque ya no cambia, y bloquea la orden donde siempre.
+
+«Asignar área» bloquea las órdenes nombradas por `id` ascendente (`FOR NO KEY UPDATE`), después las facturas —las nombradas y las de esas órdenes— por `id` (`FOR UPDATE`), el área en modo compartido, y por último las notas y los pagos que cuelgan de ellas, cada tabla por `id` y `FOR UPDATE`. Escribe el área en el mismo orden —órdenes, facturas, notas, pagos—, solo donde sigue vacía, para que cada disparador de V161 encuentre a su padre ya en el área. **Va de arriba abajo, al revés que las escrituras de los documentos:** el `PUT` y la anulación de una factura bloquean la factura y después su orden, y la anulación de una nota o de un pago, la nota o el pago y después sus facturas. Si una de ellas se cruza con «Asignar área» sobre los mismos documentos, PostgreSQL corta una de las dos por interbloqueo, que no escribe nada; «Asignar área» no la repite sola (no usa `DeadlockRetry`). Es una operación de puesta en marcha, rara y de una sola persona; si llega a cruzarse a menudo con el trabajo diario, conviene repetirla una vez con `DeadlockRetry`, como el registro de un pago.
+
 ## Una operación que pierde un interbloqueo se repite una vez
 
 Aun con el orden fijo, dos transacciones pueden bloquearse en órdenes opuestos —por ejemplo, sobre los contadores de `data_versions` que comparten dos escritores de tablas distintas—, y PostgreSQL aborta una (`40P01`). `DeadlockRetry` (`shared/infrastructure/persistence/transactions`) la repite entera una sola vez, para que no responda un `500` que un segundo intento no habría dado:
