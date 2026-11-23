@@ -241,7 +241,7 @@ Quien lee proveedores, tipos, plantillas, órdenes, facturas y notas entra con `
 **Quién:** quien registra el ingreso de los equipos, con `stock.ingresar_equipamiento`, aunque no tenga `compras.ver` (en la semilla, superadministrador, administrador de empresa y Operaciones). **Pantalla:** «Ingreso de equipos», de `equipment`, en construcción ([equipment.md](equipment.md), F4).
 
 1. `GET /purchase-invoices/pending-arrivals`, con `companyId` opcional, lista las facturas vigentes de equipos de las empresas donde actúa ese permiso que todavía tienen equipos por ingresar, de la más antigua a la más nueva: cada una con su comprobante, su proveedor, cuántos le faltan y, por modelo en el orden de sus líneas, los identificadores de sus equipos por ingresar (PRC-R196).
-2. La pantalla toma el siguiente del modelo que se escanea y registra su ingreso en `equipment` (`POST /equipments/{id}/arrival`).
+2. La pantalla toma el siguiente del modelo que se escanea y registra su ingreso en `equipment` (`POST /equipments/{id}/arrival-scan`, desde la fase 3b; `/arrival` sigue para quien la llame directo).
 
 ### F11 · Darle área a lo que ya existe («Asignar área»)
 
