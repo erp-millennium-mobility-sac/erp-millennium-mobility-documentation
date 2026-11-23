@@ -63,7 +63,7 @@ Cada intento queda en `notification_attempts` (NTF-R05).
 
 **F2. Despachar la bandeja de salida.** Un proceso programado, en una sola instancia y con el alcance `SYSTEM`: vence las pendientes cuyo momento pasó (NTF-R12); reclama hasta 20 por vez (NTF-R04); envía cada una fuera de toda transacción, así un proveedor lento no retiene candados ni conexiones; y anota cada respuesta (NTF-R05). El registro del servidor nombra una notificación por su identificador público y su tipo, nunca por su dirección ni sus parámetros. Un vigilante avisa cuando los fallos de la última hora pasan su umbral (NTF-R20).
 
-**F3. El aviso de renovación** (paso 9, decidido y por construir; D-167, D-272). Es un correo a quien gestiona los documentos de la empresa de la unidad (`habilitacion.gestionar_documentos`), 30 y 7 días antes de que un documento venza. `fleet` decide a quién y cuándo y lo pide por el contrato del módulo; se construye cuando haya un proveedor de correo. Mientras tanto, y también después, Logística › Habilitación muestra los documentos por vencer, sin este módulo.
+**F3. El aviso de renovación** (paso 9, decidido y por construir; D-167, D-272). Es un correo a quien gestiona los documentos de la empresa de la unidad (`habilitacion.gestionar_documentos`), 30 y 7 días antes de que un documento venza. `fleet` decide a quién y cuándo y lo pide por el contrato del módulo; se construye cuando haya un proveedor de correo. Mientras tanto, y también después, Flota › Habilitación muestra los documentos por vencer, sin este módulo.
 
 **F4. Un aviso a la aplicación del cliente** (previsto). Cuando exista esa aplicación, hoy fuera del alcance: push por Firebase Cloud Messaging a los dispositivos registrados de la cuenta del cliente.
 

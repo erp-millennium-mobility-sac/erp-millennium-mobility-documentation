@@ -2,7 +2,7 @@
 
 **Fuente:** diccionario de datos (versión vigente; §11.8, D-125, D-189, D-200, D-201 y D-262), el [mapa de contextos](../mapa-de-contextos-millennium-mobility.md) (§5.1, §5.3 y §6.5) y el código de `develop`. Si este documento y el diccionario no coinciden, manda el diccionario.
 
-**Cómo leerlo.** `imports` es el registro de las cargas de archivos, un módulo de la plataforma desde la fase 1 del plan de migración (D-262); antes vivía en `shared`. Sus reglas son las **SHR-R01 a SHR-R13 del diccionario, §11.8**, que conservan su número: este documento las cita y no las copia. Las columnas de `import_batches` están en el diccionario (§11.8), la ruta y sus errores en las convenciones (§2.2 y §7.2), y la pantalla Logística › Cargas de archivos en procesos y pantallas.
+**Cómo leerlo.** `imports` es el registro de las cargas de archivos, un módulo de la plataforma desde la fase 1 del plan de migración (D-262); antes vivía en `shared`. Sus reglas son las **SHR-R01 a SHR-R13 del diccionario, §11.8**, que conservan su número: este documento las cita y no las copia. Las columnas de `import_batches` están en el diccionario (§11.8), la ruta y sus errores en las convenciones (§2.2 y §7.2), y la pantalla Herramientas › Cargas de archivos en procesos y pantallas.
 
 **Las cargas están construidas y no se usan todavía** (§11.8): antes de usarlas se ensayan con los archivos reales.
 
@@ -34,7 +34,7 @@
 
 ### F2 · Leer las cargas
 
-- **Quién:** quien tiene `habilitacion.ver_cargas` donde actúa (SHR-R04), en Logística › Cargas de archivos (`GET /api/v1/imports`, `/{id}`, `/{id}/error-report` y `/{id}/file`).
+- **Quién:** quien tiene `habilitacion.ver_cargas` donde actúa (SHR-R04), en Herramientas › Cargas de archivos (`GET /api/v1/imports`, `/{id}`, `/{id}/error-report` y `/{id}/file`).
 - **Resultado:** la lista acotada a las empresas que alcanza, con quién cargó por el nombre de su colaborador (SHR-R11), el informe de fallos y el archivo cargado.
 
 ## 4. Reglas de negocio

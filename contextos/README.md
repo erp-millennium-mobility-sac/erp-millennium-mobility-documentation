@@ -22,7 +22,7 @@ Los demás documentos están ordenados por tema: los datos (diccionario), la API
 | [fleet.md](fleet.md) | `fleet`: el vehículo, sus estados, sus caminos y su kilometraje, la habilitación —con la instalación de los equipos y lo que exige de ellos— y la carga del impuesto vehicular |
 | [financing.md](financing.md) | `financing`: los fondos de cada empresa, las cesiones de sus unidades a ellos y la carga de la lista de garantía mobiliaria. Desde la fase 4 del plan de migración (D-279) |
 | [procurement.md](procurement.md) | `procurement`: proveedores, plantillas y órdenes de compra, facturas de compra, notas de crédito, pagos a proveedores y Por pagar |
-| [reporting.md](reporting.md) | `reporting`: la capa de lectura, los reportes de Logística y el exportable de stock (D-232) |
+| [reporting.md](reporting.md) | `reporting`: la capa de lectura, los reportes de Herramientas y el exportable de stock (D-232) |
 | [notifications.md](notifications.md) | `notifications`: avisos por correo, SMS y push. Módulo de la plataforma; hoy, el correo del enlace para restablecer la contraseña y el del código para activar una cuenta (D-242, D-243, D-255) |
 | [audit.md](audit.md) | `audit`: la bitácora de cambios, quién cambió qué y cuándo. Módulo de la plataforma, fuera de `shared` desde la fase 1 del plan de migración (D-129, D-262) |
 | [imports.md](imports.md) | `imports`: el registro de las cargas de archivos, con el lector y el escritor de libros. Módulo de la plataforma, fuera de `shared` desde la fase 1 del plan de migración (D-200, D-262) |
@@ -33,7 +33,7 @@ Las tolerancias de los caminos entre estados de una unidad están en la [especif
 
 1. **Qué es y qué no es.** Breve: el propósito, las tablas que posee y lo que parece suyo y no lo es.
 2. **Ciclo de vida de cada agregado.** Sus estados y transiciones, qué queda fijo y desde cuándo, y cómo se retira. Cita las reglas por su identificador, sin volver a enunciarlas.
-3. **Flujos funcionales**, a nivel de negocio. Quién lo hace (el rol o el permiso), qué pasos da y qué revisa el sistema en cada uno, citando el identificador de la regla. Si algo falla, una línea que lo diga, citando como mucho el código de error. Un flujo puede nombrar la pantalla («Logística › Facturas») y, para ubicar cada paso, el endpoint (método y ruta).
+3. **Flujos funcionales**, a nivel de negocio. Quién lo hace (el rol o el permiso), qué pasos da y qué revisa el sistema en cada uno, citando el identificador de la regla. Si algo falla, una línea que lo diga, citando como mucho el código de error. Un flujo puede nombrar la pantalla («Compras › Facturas») y, para ubicar cada paso, el endpoint (método y ruta).
 4. **Reglas de negocio.** Una tabla con cada regla, su identificador, su fuente, la capa que la impone, la prueba que la cubre y su estado (abajo).
 5. **Relación con otros contextos.** Los miembros de la fachada y los puertos, quién los usa y para qué, en forma breve; y lo que el contexto necesita de otros.
 6. **Estado y pendientes.** Solo lo que falta de verdad, y quién lo resuelve o cuándo.

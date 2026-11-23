@@ -8,7 +8,7 @@ La capa de lectura: los reportes que cruzan contextos. Lee por SQL y nunca escri
 
 | Qué | Dónde | Permiso |
 |---|---|---|
-| Indicadores de la flota | Logística › Reportes, pestaña Indicadores | `reportes.ver` |
+| Indicadores de la flota | Herramientas › Reportes, pestaña Indicadores | `reportes.ver` |
 | Brecha de días por unidad | Pestaña Brecha de días | `reportes.ver` |
 | Diferencia por inicial por unidad | Pestaña Diferencia por inicial | `reportes.ver` y `stock.ver_costos` |
 | Exportable de stock, 52 columnas | Botón «Exportar stock» | `reportes.ver`; los montos, con `stock.ver_costos` |
@@ -117,7 +117,7 @@ Exige `stock.ver_costos` en la empresa: si no, `403 ACCESS_DENIED`. Las unidades
 
 ### Pantalla
 
-Ruta `/reports`, carpeta `reporting`, opción Logística › Reportes. Permiso `reportes.ver` en la ruta y en el menú. Arriba, el filtro de empresa (`mm-company-filter`, que ofrece solo las empresas donde la sesión tiene `reportes.ver`), el de marca comercial y «Exportar stock» a la derecha. Tres pestañas: Indicadores, Brecha de días y Diferencia por inicial, que se ofrece solo a quien tiene `stock.ver_costos` en la empresa elegida.
+Ruta `/reports`, carpeta `reporting`, opción Herramientas › Reportes. Permiso `reportes.ver` en la ruta y en el menú. Arriba, el filtro de empresa (`mm-company-filter`, que ofrece solo las empresas donde la sesión tiene `reportes.ver`), el de marca comercial y «Exportar stock» a la derecha. Tres pestañas: Indicadores, Brecha de días y Diferencia por inicial, que se ofrece solo a quien tiene `stock.ver_costos` en la empresa elegida.
 
 **La unidad desde su VIN.** En las listas de la brecha de días y de la diferencia por inicial, el VIN de cada fila abre la ficha de la unidad, que una unidad sin placa también tiene. El enlace aparece solo a quien tiene `stock.ver` en la empresa del reporte; a quien lee los reportes sin leer las unidades, el VIN es texto, porque un enlace que no podría abrir sería un callejón (`DESIGN.md`, revisión 87). Los cuatro roles del sistema con `reportes.ver` tienen `stock.ver`, así que la condición cuenta solo para un rol propio.
 

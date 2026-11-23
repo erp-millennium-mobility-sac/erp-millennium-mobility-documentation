@@ -124,7 +124,7 @@ Una tasa es de un país, el de la autoridad que la publica, y la usan todas sus 
 
 ## 3. Flujos funcionales
 
-Las lecturas piden `catalogos.ver`, que tienen los siete roles, porque toda pantalla con un selector los necesita; cada escritura, el permiso de su operación, que la semilla da solo al superadministrador (LOC-R38; cuál cubre cada operación, diccionario §5.6). La dirección (F5) sigue el permiso de su dueño. Un permiso de escritura no abre ninguna pantalla (D-141), y uno retirado, como `catalogos.gestionar_generales`, no abre ni escribe nada.
+Las lecturas piden `catalogos.ver`, que tienen los siete roles, porque toda pantalla con un selector los necesita; cada escritura, el permiso de su operación, que la semilla da solo al superadministrador (LOC-R38; cuál cubre cada operación, diccionario §5.6). La dirección (F5) sigue el permiso de su dueño. Las pantallas de Catálogos se muestran a quien los escribe: cada una se abre con `catalogos.ver` y alguna escritura de esa pantalla, y un permiso de escritura solo no la abre (D-141); uno retirado, como `catalogos.gestionar_generales`, no abre ni escribe nada.
 
 ### F1 · Mantener las monedas
 
@@ -196,7 +196,7 @@ Una edición nueva no reemplaza esa carga. Cada distrito que una ley crea despu�
 2. **Registrar** (`POST /exchange-rates`) el país, las dos monedas, la fecha, el tipo, la tasa y la fuente. El sistema revisa, en este orden, la forma de cada campo (LOC-R43, LOC-R44), que el país y las monedas existan, que las monedas sean distintas y estén activas (LOC-R43, LOC-R06), la fecha (LOC-R48) y, con la serie de la tasa bloqueada (LOC-R51), que esa tasa no exista ya (LOC-R42) y cuánto se aparta de la anterior (LOC-R46).
 3. **Un salto grande.** Si la tasa se aparta de la anterior de su serie más que el umbral, el backend responde `EXCHANGERATE_LARGE_CHANGE_UNCONFIRMED` con la anterior y la pantalla pregunta si es correcta: revisarla vuelve al diálogo con lo escrito, sin guardar nada; confirmarla manda el mismo pedido otra vez, confirmado (LOC-R46).
 4. **Corregir** (`PUT /exchange-rates/{id}`) la tasa, la fuente o las dos, con un motivo; una tasa del día equivocado es otra tasa, que se registra aparte (LOC-R47). Si otra corrección guardó la tasa después de abrirla, nada se guarda y la lista se vuelve a leer. Un salto grande pregunta igual que en el alta.
-5. **La bitácora.** Cada campo corregido queda en Seguridad › Bitácora de cambios como un cambio delicado y sin empresa (§13.1, LOC-R47, LOC-R50).
+5. **La bitácora.** Cada campo corregido queda en Herramientas › Bitácora de cambios como un cambio delicado y sin empresa (§13.1, LOC-R47, LOC-R50).
 
 **Si algo falla:** el diálogo lo dice y queda abierto con lo escrito (`EXCHANGERATE_CONFLICT`, `EXCHANGERATE_SAME_CURRENCIES`, `CURRENCY_INACTIVE`, `EXCHANGERATE_DATE_TOO_LATE`, `EXCHANGERATE_OUTDATED`, o `403` sin el permiso).
 **Resultado:** la tasa queda en la lista de su país, para los documentos de su día (sección 5).

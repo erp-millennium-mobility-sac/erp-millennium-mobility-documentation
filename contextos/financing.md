@@ -23,7 +23,7 @@
 | Que una unidad con una cesión abierta no se anule | `fleet` (D-182; FLT-R54, en [fleet.md](fleet.md)) | La anulación es de la unidad, y pregunta por el puerto `UnitFundAssignments`, que `financing` responde (FIN-R21) |
 | Si la ficha de la unidad ofrece cederla | `fleet`, que decide qué ofrece su ficha (`allowedActions.registerFundAssignment`) | `financing` responde por el mismo puerto si la sesión puede cederla ahora (FIN-R21); el recurso de la unidad no cambió (opción A de la decisión 5 de la fase 0 del plan) |
 | La pestaña de cesiones de la ficha de la unidad | `fleet`, que la dibuja con lo que le da `FinancingFacade` | Opción A1 de la decisión 6 de la fase 0 del plan (sección 5) |
-| El registro de la carga de la garantía, su archivo, su informe y la pantalla Logística › Cargas de archivos | `imports` (D-200, D-262) | La carga registra su lote por `imports::acl` (F3) |
+| El registro de la carga de la garantía, su archivo, su informe y la pantalla Herramientas › Cargas de archivos | `imports` (D-200, D-262) | La carga registra su lote por `imports::acl` (F3) |
 | La empresa de un fondo, su zona y si opera | `organization` (§6) | La lee por su fachada |
 | El nombre de quien registró una cesión | `iam` y `organization` | `iam` entrega el identificador público de la cuenta y el nombre de su colaborador (mapa, decisión 6) |
 | La columna «GARANTÍA MOBILIARIA» del exportable de stock | `reporting` (D-232, D-234) | La lee de `vehicle_fund_assignments` por SQL, como modelo de lectura: `financing` no tiene fachada |
@@ -68,13 +68,13 @@ Nada de `financing` se borra: ni los fondos ni las cesiones (FIN-R06).
 
 En cada flujo, «el sistema revisa» es lo que el backend comprueba. Toda ruta exige un permiso del catálogo (§5.6, D-95), y el servicio decide dónde actúa con la asignación que lo trae (D-99). Escribir exige leer. El orden de las revisiones y sus códigos están en las convenciones (§7.2).
 
-**Las pantallas** están en procesos y pantallas: Configuración › Fondos (`/financing/funds`, con `fondos.ver`), la pestaña de cesiones de la ficha de la unidad, de `fleet` (con `stock.ver`), y el diálogo de la garantía en Logística › Cargas de archivos, de `imports` (con `habilitacion.ver_cargas`).
+**Las pantallas** están en procesos y pantallas: Finanzas › Fondos (`/financing/funds`, con `fondos.ver`), la pestaña de cesiones de la ficha de la unidad, de `fleet` (con `stock.ver`), y el diálogo de la garantía en Herramientas › Cargas de archivos, de `imports` (con `habilitacion.ver_cargas`).
 
 **Los candados.** El orden de los candados de los fondos, de las cesiones y de la carga está en los [patrones de persistencia](../patrones-de-persistencia-millennium-mobility.md), sección `financing`.
 
 ### F1 · Mantener los fondos
 
-**Quién:** quien tiene `fondos.ver` los lee; `fondos.crear_fondos`, `fondos.editar_fondos` y `fondos.desactivar_fondos` los escriben (FIN-R01). En la semilla, el superadministrador y el administrador de empresa los escriben, y Contabilidad los lee. **Pantalla:** Configuración › Fondos (`/financing/funds`).
+**Quién:** quien tiene `fondos.ver` los lee; `fondos.crear_fondos`, `fondos.editar_fondos` y `fondos.desactivar_fondos` los escriben (FIN-R01). En la semilla, el superadministrador y el administrador de empresa los escriben, y Contabilidad los lee. **Pantalla:** Finanzas › Fondos (`/financing/funds`).
 
 1. **Buscar y filtrar** (`GET /funds`): la empresa se elige en la lista, que trae los fondos de las empresas donde `fondos.ver` actúa; busca por código y nombre, filtra por estado, ordena y pagina en el servidor (FIN-R07), y exporta a Excel (FIN-R09).
 2. **Registrar** (`POST /funds`): el código, el nombre y el tipo (FIN-R02); el código no se repite en la empresa (FIN-R03).
@@ -98,7 +98,7 @@ Cada fila ofrece solo lo que el fondo dice que la sesión puede hacer (FIN-R08).
 
 ### F3 · Cargar la lista de garantía mobiliaria
 
-**Quién:** `fondos.cargar_archivo_garantia` y `habilitacion.ver_cargas` en toda la empresa y en todas sus marcas, y `fondos.ver` en la empresa (FLT-R116): en la semilla, superadministrador, administrador de empresa y Contabilidad. Desde Logística › Cargas de archivos (`POST /fund-assignment-imports`), que abre el diálogo de `financing` por `FinancingFacade`.
+**Quién:** `fondos.cargar_archivo_garantia` y `habilitacion.ver_cargas` en toda la empresa y en todas sus marcas, y `fondos.ver` en la empresa (FLT-R116): en la semilla, superadministrador, administrador de empresa y Contabilidad. Desde Herramientas › Cargas de archivos (`POST /fund-assignment-imports`), que abre el diálogo de `financing` por `FinancingFacade`.
 
 **Qué es el archivo.** La lista de las placas que un fondo tiene en garantía a una fecha: una fotografía (guía, §8.2). La fotografía no reemplaza la historia (D-30, §12.2): la carga la traduce en cesiones que se abren y se cierran, y solo actualiza unidades que existen (FLT-R110). Lo que comparte con las demás cargas —una a la vez de cada tipo por empresa, el tope de 5 000 filas, los conteos y el informe— está en el diccionario, §11.8, y en [fleet.md](fleet.md), F13 a F15.
 
@@ -185,7 +185,7 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | `documents` | La exportación de los fondos (FIN-R09) |
 | `shared` | El alcance de quien llama (D-99, D-102), las clases base de la persistencia y el reintento de un interbloqueo (D-128) |
 
-**Frontend.** `FinancingFacade` ofrece a `fleet` la pestaña de cesiones de la ficha de la unidad —la página, su aviso, su error y las negativas porque la unidad o sus cesiones cambiaron mientras tanto—, con vistas propias y su propia carga, apartadas de la pantalla de Fondos (opción A1); y los diálogos de ceder y de cerrar, que responden si se guardó para que la ficha vuelva a leer la unidad. A Logística › Cargas de archivos le ofrece el diálogo de la garantía. `financing` lee las empresas de `OrganizationFacade` y los permisos de la sesión de `IamFacade`.
+**Frontend.** `FinancingFacade` ofrece a `fleet` la pestaña de cesiones de la ficha de la unidad —la página, su aviso, su error y las negativas porque la unidad o sus cesiones cambiaron mientras tanto—, con vistas propias y su propia carga, apartadas de la pantalla de Fondos (opción A1); y los diálogos de ceder y de cerrar, que responden si se guardó para que la ficha vuelva a leer la unidad. A Herramientas › Cargas de archivos le ofrece el diálogo de la garantía. `financing` lee las empresas de `OrganizationFacade` y los permisos de la sesión de `IamFacade`.
 
 ---
 

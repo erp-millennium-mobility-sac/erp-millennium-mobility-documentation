@@ -95,7 +95,7 @@ El tipo, la marca y el modelo de equipamiento, con sus ciclos de vida, están en
 
 ## 3. Flujos funcionales
 
-Las lecturas piden `catalogos.ver` y las escrituras, crear, editar o desactivar de su familia; con la semilla escribe solo el superadministrador y los demás roles leen, aquí y en los selectores de las pantallas que usan los catálogos, como el alta de una unidad (VCT-R02). Las pantallas son tres, en el grupo Catálogos: Tipos de vehículo, Marcas y modelos y Colores; Equipamiento es de `equipment` ([equipment.md](equipment.md), F1). Cada una se abre solo con `catalogos.ver` (D-141), y cada acción se ofrece solo con su permiso. Las listas se buscan sin distinguir mayúsculas ni tildes, se filtran por estado, se ordenan y se paginan en el servidor (VCT-R24). Desactivar un registro pregunta antes (VCT-R23).
+Las lecturas piden `catalogos.ver` y las escrituras, crear, editar o desactivar de su familia; con la semilla escribe solo el superadministrador y los demás roles leen en los selectores de las pantallas que usan los catálogos, como el alta de una unidad (VCT-R02). Las pantallas son tres, en el grupo Catálogos: Tipos de vehículo, Marcas y modelos y Colores; Tipos de equipamiento es de `equipment` ([equipment.md](equipment.md), F1). Cada una se abre con `catalogos.ver` y alguna escritura de su familia, porque Catálogos se muestra a quien lo escribe (D-141), y cada acción se ofrece solo con su permiso. Las listas se buscan sin distinguir mayúsculas ni tildes, se filtran por estado, se ordenan y se paginan en el servidor (VCT-R24). Desactivar un registro pregunta antes (VCT-R23).
 
 ### F1 · Mantener los tipos de vehículo
 
@@ -121,7 +121,7 @@ Las lecturas piden `catalogos.ver` y las escrituras, crear, editar o desactivar 
 
 ### F3 · La lista de todos los modelos
 
-**Rol:** quien lee los catálogos, con `catalogos.ver`. **Pantalla:** Catálogos › Marcas y modelos (`GET /vehicle-models`), la lista de todos los modelos del catálogo (D-136).
+**Rol:** quien abre Catálogos › Marcas y modelos, con `catalogos.ver` y alguna escritura de marcas y modelos (D-141); con la semilla, el superadministrador. La API la lee a quien tiene `catalogos.ver`. **Pantalla:** Catálogos › Marcas y modelos (`GET /vehicle-models`), la lista de todos los modelos del catálogo (D-136).
 
 1. La lista muestra cada modelo con su marca, porque dos marcas pueden tener modelos con el mismo nombre (VCT-R26).
 2. Busca por el nombre del modelo y ordena; por omisión, por la marca y después por el modelo.
@@ -230,7 +230,7 @@ La fachada ya no recibe que un modelo tiene unidades, y tampoco lo pregunta: lee
 
 **El puerto que declara: `VehicleModelUsage`**, en `vehiclecatalog::acl`, que implementa `fleet` (`VehicleModelUsageAdapter`): cuáles de un lote de modelos tienen al menos una unidad, de cualquier empresa y también anulada (`modelIdsWithUnits`). `vehiclecatalog` inyecta un solo bean, nunca una lista: sin él la aplicación no arranca, y `VehicleModelUsageWiringTests` lo vigila. Pregunta con alcance `SYSTEM`, porque las unidades tienen Row Level Security, y solo desde sus pantallas: una vez por página para `vehicleTypeLocked` —en la lista, en la exportación, en la lectura de un modelo y en la respuesta de sus comandos—, y al corregir un modelo solo si su tipo cambia, con el modelo ya bloqueado `FOR UPDATE` (VCT-R14, VCT-R38).
 
-**Frontend.** `VehicleCatalogFacade` ofrece vistas mínimas de los catálogos: a `fleet`, los tipos de vehículo activos, las marcas, los colores y los modelos —los activos de una marca y todos, para el filtro de Logística › Habilitación—; y a `equipment`, todos los tipos de vehículo, activos o no, con su propia carga, porque el diálogo de un tipo de equipamiento ofrece también los inactivos que ya tiene. Cada catálogo que ofrece tiene su propia carga y su propio error, apartados de los de las pantallas de catálogos: una lectura de otro contexto nunca deja su error ni sus filas en ellas.
+**Frontend.** `VehicleCatalogFacade` ofrece vistas mínimas de los catálogos: a `fleet`, los tipos de vehículo activos, las marcas, los colores y los modelos —los activos de una marca y todos, para el filtro de Flota › Habilitación—; y a `equipment`, todos los tipos de vehículo, activos o no, con su propia carga, porque el diálogo de un tipo de equipamiento ofrece también los inactivos que ya tiene. Cada catálogo que ofrece tiene su propia carga y su propio error, apartados de los de las pantallas de catálogos: una lectura de otro contexto nunca deja su error ni sus filas en ellas.
 
 ---
 
