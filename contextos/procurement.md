@@ -736,7 +736,7 @@ Dentro del contexto, la anulación de una factura cuenta sus dependientes —las
 
 ## 6. Estado y pendientes
 
-Todo lo que este documento describe está construido, salvo PRC-R183 y PRC-R184, que decidió el responsable el 19/11/2026 y su fila marca ❌ por construir. Las compras de equipos (PRC-R187 a PRC-R197, D-283, D-284) están construidas, backend y pantallas, desde el 22/11/2026. Compras por área (PRC-R198 a PRC-R211, D-288) está construida en el backend desde el 23/11/2026, con V161 a V163; sus pantallas llegan con el frontend de esa fase, cuyo estado dice el plan (fase 7, «Hecha»). Lo que queda:
+Todo lo que este documento describe está construido, salvo PRC-R183 y PRC-R184, que decidió el responsable el 19/11/2026 y su fila marca ❌ por construir. Las compras de equipos (PRC-R187 a PRC-R197, D-283, D-284) están construidas, backend y pantallas, desde el 22/11/2026. Compras por área (PRC-R198 a PRC-R211, D-288) está construida, backend y pantallas, desde el 23/11/2026, con V161 a V163 (fase 7 del plan). Sus e2e y sus imágenes de referencia quedan pendientes, con los simulacros de las áreas y de las asignaciones con área. Lo que queda:
 
 - **Antes de otorgar la primera asignación con área en un entorno con datos:** quien tiene acceso a todas las áreas le da su área, con «Asignar área», a las órdenes y a las facturas sin orden que ya existen y son de un área; lo que es de todas queda general, y las plantillas pueden quedar generales (fase 7 del plan).
 - **Un área mal asignada no se corrige:** el área de una orden, una factura, una nota o un pago pasa una sola vez de vacía a un valor, también en la base (sección 7).

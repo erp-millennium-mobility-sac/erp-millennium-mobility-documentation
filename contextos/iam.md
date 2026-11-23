@@ -507,7 +507,6 @@ No queda ninguna abierta en `iam`. La última, si un restablecimiento con el enl
 | 16 | Alta | Un proveedor real de correo en el entorno desplegado, con el subdominio del remitente autenticado para él ([notifications.md](notifications.md), sección 6). Mientras el entorno no tenga uno, dar acceso con un correo nuevo, el envío del enlace por un administrador, la corrección del correo y el reenvío del código responden `503 EMAIL_DELIVERY_UNAVAILABLE` (IAM-R103), y nadie recibe el enlace ni el código que pide | El responsable, en el proveedor elegido, en Cloudflare y en App Platform |
 | 22 | Media | Que la línea `ERROR` del vigilante de los correos llegue como alerta a alguien ([notifications.md](notifications.md), NTF-R20) | El responsable, en App Platform |
 | 23 | Media | Que restablecer la contraseña con el enlace vuelva a cero el contador de la cuenta en el freno del inicio de sesión (IAM-R73, D-269). Hoy quien falló cinco veces, pidió el enlace y eligió su contraseña puede encontrar el inicio de sesión en espera hasta que pase el minuto | Decidido el 19/11/2026; un cambio de `iam`, sin orden fijo |
-| 24 | Media | El diálogo de otorgar un rol ofrece una o varias áreas (`areaIds`), propone la del colaborador y nombra los rechazos del área (IAM-R104, IAM-R105). Construido en el frontend de la fase 7 del plan de áreas, que todavía no está integrado: la fila sale cuando se integre | Fase 7 del plan de áreas, con compras por área (D-288) |
 
 ### c) Datos
 
