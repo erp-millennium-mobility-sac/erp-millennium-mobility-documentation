@@ -690,7 +690,7 @@ En el frontend, `FleetFacade` ofrece a `change-log` el resumen de una unidad, a 
 
 ## 6. Estado y pendientes para cerrar
 
-**Estado.** Todo lo que describe este documento está construido, salvo la regla que su fila marca ❌ por construir: FLT-R157, que decidió el responsable el 19/11/2026 (D-272). FLT-R152 a FLT-R154 y FLT-R159 se construyeron el 23/11/2026, con la fase 4 del [plan del ciclo del GPS](../plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md) (D-263, D-264, D-286), y FLT-R160, el tercer paso del cuerpo de la instalación, con su fase 5, backend y pantallas en sus ramas, sin integrar todavía. Siguen abiertos las propuestas para el diccionario (b), los pendientes de c —entre ellos el ensayo de las cargas con los archivos reales— y las diferencias con las convenciones (d). Quedan dos preguntas abiertas de la fase 4 (sección 7).
+**Estado.** Todo lo que describe este documento está construido, salvo la regla que su fila marca ❌ por construir: FLT-R157, que decidió el responsable el 19/11/2026 (D-272). FLT-R152 a FLT-R154 y FLT-R159 se construyeron el 23/11/2026, con la fase 4 del [plan del ciclo del GPS](../plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md) (D-263, D-264, D-286), y FLT-R160, el tercer paso del cuerpo de la instalación, con su fase 5, backend y pantallas, integrada el mismo día. Siguen abiertos las propuestas para el diccionario (b), los pendientes de c —entre ellos el ensayo de las cargas con los archivos reales— y las diferencias con las convenciones (d). Quedan dos preguntas abiertas de la fase 4 (sección 7).
 
 ### a) Decisiones
 
@@ -720,7 +720,7 @@ Lo que el código hace y el diccionario no dice, o dice de otra manera. Si el re
 | Qué | Quién y cuándo |
 |---|---|
 | Las propuestas de la sección b | El responsable del diccionario |
-| El tercer paso del cuerpo de la instalación en las pantallas: con `requiresDevice`, el diálogo quita el serial, exige el equipo y dice `VEHICLEEQUIPMENT_DEVICE_REQUIRED`; los e2e de la habilitación eligen un equipo, y `e2e-live` necesita en `dev` un GPS Disponible con su ICCID (FLT-R160, D-263) | El equipo, al integrar el frontend de la fase 5 del plan del ciclo del GPS, hecho en su rama |
+| El tercer paso del cuerpo de la instalación en las pantallas: con `requiresDevice`, el diálogo quita el serial, exige el equipo y dice `VEHICLEEQUIPMENT_DEVICE_REQUIRED`; los e2e de la habilitación eligen un equipo, y `e2e-live` necesita en `dev` un GPS Disponible con su ICCID (FLT-R160, D-263) | El equipo, integrado el 23/11/2026 con el frontend de la fase 5 del plan del ciclo del GPS; queda en `dev` el GPS Disponible con su ICCID que `e2e-live` necesita |
 | `FLEET_INSTALLED_GPS_LINKING_INITIAL_DELAY` está solo en `application.yaml`: falta en `.env.example`, en `.do/app.yaml` y en la tabla de variables del README, como pide el plan del ciclo del GPS (§4) para toda variable nueva | El equipo, con el próximo cambio del backend |
 | El aviso de renovación de los documentos por correo (FLT-R157) | El equipo, cuando haya un proveedor de correo ([notifications.md](notifications.md), F3) |
 | El catálogo maestro de modelos de `vehiclecatalog` (§7.3, D-273), que necesitan la carga inicial y las facturas reales | El equipo prepara la lista de diferencias de los dos catálogos entregados; el negocio elige el nombre de cada modelo y lo valida |
