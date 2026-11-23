@@ -34,7 +34,7 @@
 | La unidad en que está un equipo y su placa | `fleet` (§8.1) | La responde por el puerto `EquipmentUnits` (EQP-R18) |
 | Si un tipo de equipamiento ya se instaló | `fleet` (§11.4) | Lo responde por el puerto `EquipmentTypeUsage`, contando las instalaciones de todas las empresas (EQP-R19) |
 | La empresa y la ubicación de un equipo | `organization` (§6) | Las lee por su fachada |
-| Los datos que tiene el fabricante de un GPS: su serial, su modelo, su firmware y su SIM | El fabricante, Teltonika FOTA WEB | `equipment` se los pregunta por su IMEI por el puerto `DeviceRegistry`, fuera de toda transacción, y los compara con lo suyo (EQP-R37). El adaptador espera Q21: mientras tanto el proveedor es `manual` |
+| Los datos que tiene el fabricante de un GPS: su serial, su modelo, su firmware y su SIM | El fabricante, Teltonika FOTA WEB | `equipment` se los pregunta por su IMEI por el puerto `DeviceRegistry`, fuera de toda transacción, y los compara con lo suyo (EQP-R37). El adaptador `teltonika` está construido sobre la referencia OpenAPI de FOTA WEB ([análisis situacional del 23/11/2026](../analisis-situacional-integracion-del-fabricante-del-gps-2026-11-23.md)); se enciende con la cuenta y el token de la empresa, y mientras tanto el proveedor es `manual` |
 
 **Palabras con un significado preciso aquí**
 
