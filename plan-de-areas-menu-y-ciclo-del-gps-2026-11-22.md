@@ -1,6 +1,6 @@
 # Plan de implementación — áreas, menú y ciclo de compra del GPS — ERP Millennium Mobility
 
-**Estado:** versión 3, 22/11/2026. Recoge la [auditoría del mismo día](auditoria-del-plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md) y las decisiones que el responsable aprobó ese día (§1 y §2). La versión 2 cambió el orden de la versión 1 (el menú, el ciclo del GPS y al final las áreas); la versión 3 adelanta un **primer tramo** —la fase 0 reducida, la compra de equipos y su ingreso con el IMEI, con el reemplazo de un fallado— y deja para después la SIM, la API del fabricante y lo demás (Q28, Q29; §5). Cada fase se abre comprobando otra vez las rutas y las líneas que cita.
+**Estado:** versión 3.1, 22/11/2026. Recoge la [auditoría del mismo día](auditoria-del-plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md) y las decisiones que el responsable aprobó ese día (§1 y §2). La versión 2 cambió el orden de la versión 1 (el menú, el ciclo del GPS y al final las áreas); la versión 3 adelanta un **primer tramo** —la fase 0 reducida, la compra de equipos y su ingreso con el IMEI, con el reemplazo de un fallado— y deja para después la SIM, la API del fabricante y lo demás (Q28, Q29; §5). La 3.1 recoge Q30 y Q31: la SIM es un dato de su GPS, y la fase 3b queda solo con la API del fabricante (§12). Cada fase se abre comprobando otra vez las rutas y las líneas que cita.
 
 **Fuente:** el [análisis situacional del 22/11/2026](analisis-situacional-areas-menu-y-ciclo-del-gps-2026-11-22.md), con el inventario de `develop` (backend `ed7ccda7`, frontend `ee7736af`) y de la documentación (`e71fdb4`); la auditoría del plan, del mismo día; las decisiones del responsable del 22/11/2026; el [diccionario de datos](diccionario-de-dtos-millennium-mobility.md) 1.79; las reglas de arquitectura de las skills `backend-module`, `frontend-feature` y `architecture-review`; y la forma de trabajo del [plan de migración a los contextos objetivo](plan-de-migracion-a-los-contextos-objetivo-2026-11-18.md), que este plan sigue.
 
@@ -50,7 +50,7 @@
 | C8 | Cumplir una orden con faltante pide un motivo, y la orden muestra «Cumplida con faltante: N». Vale para toda orden |
 | C9 | Solo hay notas de crédito: D-23 no cambia |
 | C10 | Fallados: el proveedor a veces los reemplaza (otro IMEI, sin factura nueva) y a veces emite una nota de crédito; el sistema tiene los dos caminos |
-| C11 | La SIM es un registro propio con la historia de su asignación al GPS; viene con el GPS; se exige para instalarlo, no para que esté Disponible |
+| C11 | La SIM es un dato de su GPS: viene con él, se reemplaza con él y su línea la maneja el proveedor; se exige para instalarlo —el GPS tiene su ICCID—, no para que esté Disponible. Enmendada por Q30 y Q31: decía que la SIM era un registro propio con la historia de su asignación al GPS |
 | C12 | La API para completar los datos la expone el fabricante del GPS |
 | C13 | Cada equipo tiene su historial: sus estados, con quién y por qué, y en qué unidad estuvo y cuándo se retiró o reemplazó. Es lo que anunció al cliente el correo del 16/11/2026 |
 
@@ -80,7 +80,7 @@ El responsable aprobó las recomendaciones de la auditoría. El plan está escri
 | Q16 | ¿Un equipo devuelto al proveedor puede volver? | Sí, reparado, a Disponible; salvo que otro equipo ya lo haya reemplazado | Fases 2 y 3 |
 | Q17 | En «Revisar» por otro modelo, ¿qué se corrige? | El modelo del equipo, dentro del mismo tipo; la línea conserva el modelo del comprobante | Fase 3 |
 | Q18 | ¿Qué se guarda al cumplir una orden con faltante? | Solo el motivo; el faltante se calcula | Fase 2 |
-| Q19 | ¿Qué permisos nuevos y quién los tiene? | `stock.ingresar_equipamiento` (fase 2) y `stock.crear_sims`, `stock.editar_sims`, `stock.cambiar_estado_sims` (fase 3), para el superadministrador, el administrador de empresa y Operaciones | Fases 2 y 3 |
+| Q19 | ¿Qué permisos nuevos y quién los tiene? | `stock.ingresar_equipamiento` (fase 2), para el superadministrador, el administrador de empresa y Operaciones. Los tres de la SIM de la fase 3 (`stock.crear_sims`, `stock.editar_sims`, `stock.cambiar_estado_sims`) salieron con Q30 y Q31 | Fase 2 |
 | Q20 | ¿La factura cobra la SIM aparte? | No: viene incluida en el precio del GPS | Fase 3 |
 | Q21 | ¿Qué fabricante, con qué API? | **Pendiente de información:** nombre, documentación, credenciales de prueba, límites y si consulta por equipo o por lote. Sin ella se construye todo menos el adaptador | Fase 3 |
 | Q22 | ¿Cómo se lee el QR? | Lector USB o Bluetooth como forma principal; la cámara como apoyo, con una librería cargada solo en esa pantalla, y el sitio la habilita (`camera=(self)`) | Fase 3 |
@@ -89,15 +89,20 @@ El responsable aprobó las recomendaciones de la auditoría. El plan está escri
 | Q25 | Sin la API del fabricante, ¿cómo se completan cientos de equipos? | Con el proveedor `manual`, la pantalla de ingreso toma el IMEI, el serial y el ICCID de cada equipo y lo deja Disponible; con un fabricante, solo el IMEI, y el resto lo completa la API | Fase 3 |
 | Q26 | ¿En qué orden van los frentes? | Menú → GPS → áreas. El monitoreo es la próxima etapa anunciada al cliente; no hay producción, así que el aislamiento no protege todavía datos reales; y «Asignar área» le da su área después a lo que se registre antes | Todas |
 | Q27 | Con una plantilla general, ¿de qué área es la orden? | De quien la emite: su área si está limitado a una; a elegir entre las suyas si tiene varias; un área o «General» si tiene acceso a todas las áreas | Fase 7 |
-| Q28 | ¿Qué va primero? (precisa Q26) | El flujo operativo hasta el ingreso de los IMEIs: la fase 0 reducida, la fase 2 y la fase 3a. La SIM como registro propio, la API del fabricante, la instalación, el menú y las áreas van después, en el orden que diga el responsable | Todas |
+| Q28 | ¿Qué va primero? (precisa Q26) | El flujo operativo hasta el ingreso de los IMEIs: la fase 0 reducida, la fase 2 y la fase 3a. La SIM como registro propio —que Q30 y Q31 retiraron—, la API del fabricante, la instalación, el menú y las áreas van después, en el orden que diga el responsable | Todas |
 | Q29 | ¿El reemplazo de un fallado entra en el primer tramo? | Sí, en la fase 3a; su columna va en V149 para no renumerar las migraciones | Fases 2 y 3a |
 
-**Pendiente del responsable:** la información del fabricante (Q21), para la fase 3b; y tres preguntas del 22/11/2026, que deciden su alcance:
+**Respondidas después, el mismo 22/11/2026:**
+
+| # | Pregunta | Decisión | La usa |
+|---|---|---|---|
+| Q30 | ¿Una SIM se cambia alguna vez sola, en el mismo GPS? | No: «La 1 no pasa». Ya había dicho: «La SIM existe para con el GPS; si el GPS se cambia, se cambia con todo y SIM», que el reemplazo de un fallado de la fase 3a respeta. La SIM es un dato de su GPS toda su vida: no hay historia de sus asignaciones a los GPS ni rutas para asignarla o retirarla. Enmienda C11 y D-285 | Fases 3b, 4 y 5 |
+| Q31 | ¿Un GPS que vuelve al proveedor pide dar de baja su línea con el operador? | No: «En la 2 también se encarga el proveedor, el proveedor me da los GPS + los SIM». El proveedor entrega cada GPS con su SIM y se encarga de su línea; el ERP no da de baja nada con un operador ni lleva el ciclo de vida de la SIM (activa, suspendida, cancelada). Enmienda D-285 | Fase 3b |
+
+**Pendiente del responsable:** la información del fabricante (Q21), para la fase 3b; y una pregunta del 22/11/2026:
 
 | # | Pregunta | Qué cambia según la respuesta | La usa |
 |---|---|---|---|
-| Q30 | ¿Una SIM se cambia alguna vez sola, en el mismo GPS? El responsable dijo: «La SIM existe para con el GPS; si el GPS se cambia, se cambia con todo y SIM», y el reemplazo de un fallado de la fase 3a ya lo respeta | Si nunca se cambia sola, sobran `sim_card_assignments` con su historia y las rutas de asignar y retirar una SIM (`/equipments/{id}/sim-assignment` y `/end`): la SIM sería un dato del GPS, o un registro sin historia de asignaciones | Fase 3b |
-| Q31 | ¿Un GPS que vuelve al proveedor pide dar de baja su línea con el operador? | Si la pide, la devolución al proveedor avisa o registra la baja de la línea, y la SIM suma ese estado | Fase 3b |
 | Q32 | ¿Los equipos que no llegan se pueden dar de baja sin la nota de crédito del proveedor? | Hoy solo la nota «anulación de equipo» o la anulación de la factura anulan uno por ingresar; si se puede, hace falta un camino propio, con su permiso y su motivo, y decir qué pasa con su línea y su costo | Fase 3b o un cambio aparte |
 
 ---
@@ -109,10 +114,10 @@ El responsable aprobó las recomendaciones de la auditoría. El plan está escri
 | **La frontera entre empresas** | RLS, `DatabaseAccessScope`, `AccessScopeJpaTransactionManager` y las funciones de V29 no cambian. Ninguna política de la base mira el área |
 | **Las rutas existentes** | El menú cambia de grupo, no de dirección; ninguna ruta de la API ni del frontend se renombra. Las rutas nuevas se agregan |
 | **Los códigos de permisos, de errores y las claves de mensajes existentes** | Son contratos por nombre con el catálogo, el frontend y las pruebas. Solo se agregan; las únicas claves que salen son las del menú viejo que nadie más usa |
-| **Los datos existentes** | Ninguna migración le da un área a una fila: lo que existe queda general hasta que alguien con acceso a todas las áreas use «Asignar área» (fase 7). Solo tres migraciones mueven datos: V148, que llena el tipo de cada línea y de cada orden desde lo que ya tienen; V150, que abre la historia de cada equipo con su estado de hoy; y V154, que lleva el ICCID y el IMSI de cada equipo a su SIM |
+| **Los datos existentes** | Ninguna migración le da un área a una fila: lo que existe queda general hasta que alguien con acceso a todas las áreas use «Asignar área» (fase 7). Solo dos migraciones mueven datos: V148, que llena el tipo de cada línea y de cada orden desde lo que ya tienen; y V150, que abre la historia de cada equipo con su estado de hoy. El traslado del ICCID y el IMSI de cada equipo a una SIM salió con Q30 y Q31: siguen en el equipo |
 | **El aislamiento fuera de compras** | Vehículos, fondos, inventario de equipos, cargas, catálogos y organización no miran el área (Q10) |
 | **Las reglas de las facturas de vehículos** | D-153, D-160, D-161, D-191, D-193, D-248, las imputaciones por unidad y la regla del concesionario siguen iguales para las facturas de vehículos |
-| **El orden de los candados existente** | Cada candado nuevo va al final de su cadena (empresa → sede → marca → área; la unidad y su instalación antes que el equipo; el equipo antes que su pedido al fabricante y que su SIM) y se prueba |
+| **El orden de los candados existente** | Cada candado nuevo va al final de su cadena (empresa → sede → marca → área; la unidad y su instalación antes que el equipo; el equipo antes que su pedido al fabricante) y se prueba |
 
 ---
 
@@ -140,13 +145,13 @@ El responsable aprobó las recomendaciones de la auditoría. El plan está escri
 | 1 | Menú por procesos | Frontend: `app-shell`, `shared`, `iam` (matriz) y las rutas de los catálogos; diccionario (D-141) | — | 2 a 4 días | Bajo | 0 |
 | 2 | Compra de equipos e historia del equipo | `procurement`, `equipment`, `iam`; frontend `procurement`, `equipment` | V148 a V153 | 14 a 18 días | **Alto** | 0 |
 | 3a | Ingreso de equipos por escaneo, sin fabricante, y reemplazo de un fallado | `equipment`, `procurement`; frontend `equipment`, `app-shell` | — (la columna del reemplazo va en V149) | 5 a 7 días | Medio | 2 |
-| 3b | SIM y API del fabricante | `equipment`, `procurement`, `iam`; frontend `equipment`, `app-shell` | V154 a V156 | 5 a 7 días, y 2 a 4 más para el adaptador | Medio | 3a; Q21 para el adaptador |
-| 4 | Instalación unida al inventario e historial del equipo (D-263, D-264) | `fleet`, `equipment`; frontend `fleet`, `equipment` | V157, V158 | 8 a 11 días | Medio | 3b (la SIM se exige para instalar) |
-| 5 | Limpieza | `equipment`, `procurement`, `fleet` | V159 | Menos de 1 día | Bajo | 3b en `dev` con su CI en verde; 4 integrada |
+| 3b | API del fabricante; la SIM queda como dato del GPS (Q30, Q31) | `equipment`, `procurement`; frontend `equipment` | Una: el completado (V155) | Menos que los 5 a 7 días de la versión 3, que contaban la SIM, y 2 a 4 más para el adaptador | Medio | 3a; Q21 para el adaptador |
+| 4 | Instalación unida al inventario e historial del equipo (D-263, D-264) | `fleet`, `equipment`; frontend `fleet`, `equipment` | V157, V158 | 8 a 11 días | Medio | 3b, por el estado «Por completar» de un GPS heredado sin IMEI; ya no por la SIM, que es el ICCID del equipo (Q30) |
+| 5 | Limpieza | `fleet`; frontend `fleet` | Ninguna | Menos de 1 día | Bajo | 4 integrada |
 | 6 | Áreas: catálogo, asignación y sesión | `shared`, `iam`, `organization`, `documents`; frontend `organization`, `iam` | V160 a V163 | 5 a 7 días | Medio | 0 |
 | 7 | Compras por área y «Asignar área» | `procurement`, `audit`, `reporting`, `iam`; frontend `procurement`, `iam`, `change-log` | V164 a V166 | 12 a 16 días | **Alto** | 6 |
 
-**El primer tramo (Q28)** es la fase 0 reducida, la 2 y la 3a: el flujo operativo hasta el ingreso de los IMEIs, con el reemplazo de un fallado. Lo demás —3b, 4, 5, 1, 6 y 7— va después, en el orden que diga el responsable y con las dependencias de la tabla. Las migraciones conservan su número: si el orden de integración cambia, se renumeran al abrir la rama.
+**El primer tramo (Q28)** es la fase 0 reducida, la 2 y la 3a: el flujo operativo hasta el ingreso de los IMEIs, con el reemplazo de un fallado. Lo demás —3b, 4, 5, 1, 6 y 7— va después, en el orden que diga el responsable y con las dependencias de la tabla. Las migraciones conservan su número: si el orden de integración cambia, se renumeran al abrir la rama. Con lo integrado hasta hoy (la fase 2 usó V148 a V154) y sin la SIM (Q30, Q31), si las fases van en el orden de la tabla, la 3b usa V155; la 4, V156 y V157; la 5, ninguna; la 6, V158 a V161; y la 7, V162 a V164.
 
 ---
 
@@ -288,7 +293,7 @@ El responsable aprobó las recomendaciones de la auditoría. El plan está escri
 
 **Hecho el backend el 22/11/2026, con la parte de la fase 3a que no es pantalla** (rama `feature/phase-2-equipment-purchase`, commits `7519933f` a `2974ab18`, más `521ff5e4` y `c6318f0e`, integrados en `develop` con `6b4c6668`; documentación en `docs/phase-2-gps-purchase`, diccionario 1.81): los estados de compra y la historia del equipo, su ingreso a mano, su devolución y su regreso, y el aviso de antigüedad; la orden y la factura de equipos, con sus equipos por ingresar; su anulación y «Anular y copiar»; la nota «anulación de equipo»; el pago; cumplir con faltante; el reemplazo de un fallado; y las facturas con equipos por ingresar. Lo que quedaba —el costo de un equipo, sus acciones, su cadena de reemplazos y el frontend— se hizo el mismo día (precisiones 12 a 13 y el párrafo siguiente a la lista). D-283 y D-284 quedan construidas, y D-285 en todo lo que no es la SIM ni la API del fabricante. Se precisaron trece cosas que el plan no fijaba o que el código hizo distinto:
 
-1. **Las migraciones cambiaron de número.** V148, el tipo de la orden y de la factura; V149, los estados de compra, la ubicación opcional y `replaced_equipment_id`, como estaba escrita; V150, la historia, como estaba escrita, con dos `CHECK` más —una fila nunca deja y alcanza el mismo estado, y su motivo nunca está en blanco— y `changed_by` con su llave a `users`, como `vehicle_status_history`; V151, `stock.ingresar_equipamiento` (era V153); V152, las líneas de equipo de las órdenes, y V153, las de las facturas, los disparadores del tipo y `ANULACION_EQUIPO` (las dos eran V151); y V154, `purchase_orders.fulfilment_reason` (era V152). La próxima libre es V155: las de la fase 3b pasan a V155–V157 y las de las fases siguientes se corren una, al abrir cada rama (§5).
+1. **Las migraciones cambiaron de número.** V148, el tipo de la orden y de la factura; V149, los estados de compra, la ubicación opcional y `replaced_equipment_id`, como estaba escrita; V150, la historia, como estaba escrita, con dos `CHECK` más —una fila nunca deja y alcanza el mismo estado, y su motivo nunca está en blanco— y `changed_by` con su llave a `users`, como `vehicle_status_history`; V151, `stock.ingresar_equipamiento` (era V153); V152, las líneas de equipo de las órdenes, y V153, las de las facturas, los disparadores del tipo y `ANULACION_EQUIPO` (las dos eran V151); y V154, `purchase_orders.fulfilment_reason` (era V152). La próxima libre es V155: las de las fases siguientes se renumeran al abrir cada rama (§5). Sin la SIM (Q30, Q31), la 3b tiene una sola, el completado.
 2. **El tipo de la línea no se guarda** (regla 4.1: no se guarda lo que se calcula). V148 no crea `purchase_order_items.line_kind` ni `purchase_invoice_items.line_kind`, ni el disparador de compatibilidad `fill_purchase_line_kind()`, así que la fase 5 no tiene que retirarlo: una línea de vehículo nombra su unidad o su modelo, una de equipo su equipo o su modelo de equipamiento, y un concepto ninguno, y los `CHECK` por tipo se escriben sobre esas columnas (`purchase_order_items_what_ck`, `num_nonnulls(model_id, equipment_model_id, concept) = 1`; `purchase_invoice_items_what_ck`). `PurchaseLineKind` lo deriva cada línea (`getKind()`), con `isVehicle()`, `isEquipment()` e `isConcept()`; los 13 usos se decidieron como dice la tabla del backend, y solo `CreditedLines` cuenta lo que no es concepto. V148 suma `kind` a `keep_purchase_invoice_fiscal_data`, y V153, `equipment_id` y `equipment_model_id` a `keep_purchase_invoice_item_fiscal_data`.
 3. **Los disparadores del tipo** son las tres funciones del plan, en dos migraciones: `enforce_purchase_order_item_kind()` en V152, al insertar una línea o cambiar su orden o lo que nombra; y en V153, `enforce_purchase_invoice_item_kind()`, solo al insertar, porque lo que nombra una línea de factura no cambia, y `enforce_purchase_invoice_order_kind()`, al insertar la factura o cambiar su orden, sin `kind`, que es fiscal. Las dos de V153 tienen su línea en `hand-over-database.sql`, como la de V152.
 4. **Las facturas con equipos por ingresar tienen su propia lectura,** `GET /api/v1/purchase-invoices/pending-arrivals` (`PurchaseInvoicePendingArrivalsController`), con `stock.ingresar_equipamiento`, en vez de los filtros `kind=EQUIPOS` y `pendingArrival=true` de `GET /purchase-invoices`: quien ingresa puede no tener `compras.ver`, y la pantalla necesita los identificadores de los equipos por ingresar de cada modelo, que la lista de facturas no trae. Responde, sin página, las vigentes de equipos de las empresas donde actúa el permiso, de la más antigua a la más nueva; `equipment` responde sus equipos por ingresar (`fetchPendingArrivalDevices`, los equipos y no solo sus identificadores), y sus líneas y facturas se leen en una consulta (convenciones §13, fila 26). La lista de facturas no filtra por `kind`, aunque cada fila lo trae.
@@ -332,7 +337,7 @@ El responsable aprobó las recomendaciones de la auditoría. El plan está escri
 - `location_id` deja de ser `NOT NULL`, con `fleet_equipments_location_ck CHECK (location_id IS NOT NULL OR status IN ('PENDING_ARRIVAL', 'ANNULLED', 'INSTALLED'))`. Un equipo instalado está en su unidad: la vinculación de lo ya instalado (fase 4) registra equipos que nunca tuvieron una ubicación, y el retiro le da una (fase 4).
 - `fleet_equipments_id_company_uq UNIQUE (id, company_id)`, destino de las llaves de las líneas de factura, de la historia y del reemplazo.
 - `fleet_equipments.replaced_equipment_id BIGINT`, con la llave compuesta `(replaced_equipment_id, company_id) → fleet_equipments (id, company_id)`, único (un equipo se reemplaza una sola vez) y distinto de sí mismo (Q13). Lo usa la fase 3a; va aquí para que el primer tramo no renumere las migraciones (Q29).
-- Los índices únicos del serial y del IMEI se vuelven a crear excluyendo `DISCARDED` y `ANNULLED`, **con los mismos nombres** (`idx_fleet_equipments_serial_unique`, `idx_fleet_equipments_imei_unique`), porque `EquipmentRepositoryImpl` L35-37 los traduce a errores. El del ICCID no cambia hasta la fase 5. `RETURNED_TO_SUPPLIER` conserva sus identificadores, porque el equipo puede volver (Q16).
+- Los índices únicos del serial y del IMEI se vuelven a crear excluyendo `DISCARDED` y `ANNULLED`, **con los mismos nombres** (`idx_fleet_equipments_serial_unique`, `idx_fleet_equipments_imei_unique`), porque `EquipmentRepositoryImpl` L35-37 los traduce a errores. El del ICCID no cambia: el ICCID se queda en el equipo (Q30, Q31). `RETURNED_TO_SUPPLIER` conserva sus identificadores, porque el equipo puede volver (Q16).
 
 **V150__create_the_equipment_status_history.sql** (`Context: equipment`).
 
@@ -388,7 +393,7 @@ equipment_status_history
   | Operación | Desde | Hasta | Qué valida |
   |---|---|---|---|
   | `purchased(empresa, proveedor, tipo, modelo)` | — | `PENDING_ARRIVAL` | Sin ubicación ni identificadores |
-  | `registerArrival(ubicación, identificadores)` | `PENDING_ARRIVAL` | `AVAILABLE` | EQP-R14 con el dígito verificador del IMEI; en esta fase, el ICCID todavía en el equipo |
+  | `registerArrival(ubicación, identificadores)` | `PENDING_ARRIVAL` | `AVAILABLE` | EQP-R14 con el dígito verificador del IMEI; el ICCID, en el equipo |
   | `returnToSupplier(motivo)` | `AVAILABLE`, `MAINTENANCE` | `RETURNED_TO_SUPPLIER` | El motivo es obligatorio |
   | `comeBackRepaired()` | `RETURNED_TO_SUPPLIER` | `AVAILABLE` | Q16; la fase 3 lo rechaza si otro equipo ya lo reemplazó |
   | `annulPending()` | `PENDING_ARRIVAL` | `ANNULLED` | La pide la anulación de su factura o la nota «anulación de la factura» (Q15) |
@@ -591,70 +596,37 @@ La suite completa y el CI están en verde.
 
 ---
 
-### Fase 3 — Ingreso por escaneo, reemplazo, SIM y API del fabricante (3a y 3b)
+### Fase 3 — Ingreso por escaneo, reemplazo y API del fabricante (3a y 3b)
 
-**Hecha la fase 3a el 22/11/2026, con la fase 2:** el reemplazo de un fallado y las facturas con equipos por ingresar, en una lectura propia y no como filtros de la lista de facturas (fase 2, precisiones 4 y 13); el costo que sigue la cadena del reemplazo (precisión 12); y la pantalla «Ingreso de equipos», con el lector, la cámara y `_headers` (fase 2, el párrafo del frontend, precisiones 3 y 4). Las migraciones de la 3b se renumeran a V155–V157 al abrir su rama (fase 2, precisión 1), y su alcance espera Q21 y las tres preguntas Q30 a Q32 (§2).
+**Hecha la fase 3a el 22/11/2026, con la fase 2:** el reemplazo de un fallado y las facturas con equipos por ingresar, en una lectura propia y no como filtros de la lista de facturas (fase 2, precisiones 4 y 13); el costo que sigue la cadena del reemplazo (precisión 12); y la pantalla «Ingreso de equipos», con el lector, la cámara y `_headers` (fase 2, el párrafo del frontend, precisiones 3 y 4). La 3b tiene una sola migración, el completado, que se numera al abrir su rama (§5), y su adaptador espera Q21.
 
-**Objetivo.** Ingresar los equipos escaneando su QR, modelo por modelo; completar sus datos con la API del fabricante en segundo plano o, sin fabricante, en el mismo escaneo; resolver lo que no cuadra; registrar el reemplazo de un fallado; y llevar la SIM como un registro propio, con su historia junto a cada GPS.
+**La SIM, desde Q30 y Q31 (versión 3.1).** La SIM es un dato de su GPS toda su vida: llega con él, se reemplaza con él y su línea la maneja el proveedor (D-285). Salen de esta fase `sim_cards` y `sim_card_assignments` con sus `EXCLUDE`, el traslado de los ICCID, las rutas `/sim-cards` y `/equipments/{id}/sim-assignment`, los permisos `stock.*_sims`, la pantalla «SIM» con su opción del menú y los códigos `SIMCARD_*` y `EQUIPMENT_SIM_ALREADY_ASSIGNED`. El ICCID y el IMSI siguen en `fleet_equipments`, donde los escribe el ingreso y donde los completa la API del fabricante, con su índice único del ICCID. Se define en la 3b si el número de la línea (MSISDN) y el operador se guardan como datos del GPS.
 
-**Lo que la rige.** C5, C10, C11, C12; Q13, Q16, Q17, Q19 a Q22, Q25, Q28 y Q29; D-42 (lo automático firma como `SYSTEM`); reglas 4.3, 6.3 y 6.4.
+**Objetivo.** Ingresar los equipos escaneando su QR, modelo por modelo; completar sus datos con la API del fabricante en segundo plano o, sin fabricante, en el mismo escaneo; resolver lo que no cuadra; y registrar el reemplazo de un fallado. La SIM es un dato del GPS (Q30, Q31).
+
+**Lo que la rige.** C5, C10, C11, C12; Q13, Q16, Q17, Q19 a Q22, Q25, Q28 a Q31; D-42 (lo automático firma como `SYSTEM`); reglas 4.3, 6.3 y 6.4.
 
 **Se parte en dos (Q28).** La fase 3a cierra el primer tramo del responsable —el flujo operativo hasta el ingreso de los IMEIs— y la 3b llega después, cuando él lo diga:
 
 | Pieza (de esta sección) | 3a, en el primer tramo | 3b, después |
 |---|---|---|
-| Migraciones | Ninguna: los estados de compra, `replaced_equipment_id` (V149) y `stock.ingresar_equipamiento` (V153) llegan con la fase 2 | V154, V155 y V156 |
-| El escaneo | Solo sin fabricante: IMEI, serial y, si la SIM viene, su ICCID, que en 3a se guarda en `fleet_equipments.iccid`, como hoy; el equipo queda Disponible. No hay `arrival-settings`: en 3a siempre se ingresa así | El escaneo con fabricante («Por completar»), `arrival-settings` y el ICCID en la SIM |
+| Migraciones | Ninguna: los estados de compra, `replaced_equipment_id` (V149) y `stock.ingresar_equipamiento` (V151) llegaron con la fase 2 | Una: el completado |
+| El escaneo | Solo sin fabricante: IMEI, serial y, si la SIM viene, su ICCID, que se guarda en `fleet_equipments.iccid`, como hoy; el equipo queda Disponible. No hay `arrival-settings`: en 3a siempre se ingresa así | El escaneo con fabricante («Por completar») y `arrival-settings`; el ICCID que reporta el fabricante, también en el equipo |
 | El escaneo por modelo, la pantalla «Ingreso de equipos», su contador, la cámara (`_headers` y la librería perezosa) y las facturas con equipos por ingresar (`pendingArrival`) | Sí | — |
 | El reemplazo de un fallado (`POST /equipments/{id}/replacement`), el rechazo de «volvió reparado» de un reemplazado (`EQUIPMENT_REPLACED`), la nota sobre la cadena y el costo que sigue la cadena (`fetchPurchaseRoots`) | Sí: el equipo nuevo queda Disponible, con su IMEI, serial e ICCID escaneados | — |
-| La SIM, sus rutas, su pantalla y sus permisos | — | Sí |
+| La SIM, sus rutas, su pantalla y sus permisos | — | No: la SIM es un dato del GPS (Q30, Q31) |
 | El pedido al fabricante, la tarea, el vigilante, la métrica, el planificador, los estados «Por completar» y «Revisar», el código del fabricante y la firma `SYSTEM` (`iam::acl`) | — | Sí |
-| El menú | «Ingreso de equipos» va en el grupo de hoy, junto a Inventario de equipamiento, hasta que la fase 1 lo lleve a Monitoreo | «SIM» |
+| El menú | «Ingreso de equipos» va en el grupo de hoy, junto a Inventario de equipamiento, hasta que la fase 1 lo lleve a Monitoreo | Nada: no hay opción «SIM» |
 
-La fase 4 necesita la 3b, porque la SIM se exige para instalar (C11).
+La fase 4 ya no necesita la 3b por la SIM: «la SIM se exige para instalar» (C11) lee el ICCID del equipo, que ya existe (Q30). La sigue necesitando por el estado «Por completar», adonde vuelve un GPS heredado sin IMEI al retirarlo (fase 4).
 
-**Migraciones.**
+**Migraciones.** Una sola, el completado (V155 si se abre en el orden del §5). La de la SIM (`sim_cards`, `sim_card_assignments` con sus `EXCLUDE` y el traslado de los ICCID) y la de sus permisos salieron con Q30 y Q31: el ICCID y el IMSI siguen en `fleet_equipments` y la aplicación los sigue escribiendo ahí.
 
-**V154__create_equipment_sim_cards_schema.sql** (`Context: equipment`). Abre con alcance `SYSTEM` y `lock_timeout` de 5 segundos.
-
-```
-sim_cards
-  id, public_id (uuidv7), company_id → companies
-  iccid           VARCHAR(20) NOT NULL     -- 19 o 20 dígitos
-  imsi            VARCHAR(15)              -- 15 dígitos
-  msisdn          VARCHAR(20)              -- el número de la línea
-  operator        VARCHAR(60)
-  plan            VARCHAR(100)
-  status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'   -- ACTIVE | SUSPENDED | CANCELLED
-  activation_date DATE
-  created_at, created_by, updated_at, updated_by
-  sim_cards_public_id_uq, sim_cards_iccid_uq (único en todo el sistema), sim_cards_id_company_uq
-  CHECK de formato de iccid e imsi
-
-sim_card_assignments
-  id, public_id, company_id
-  sim_card_id    → sim_cards (id, company_id)
-  equipment_id   → fleet_equipments (id, company_id)
-  period         DATERANGE NOT NULL        -- [inicio, fin)
-  ended_reason   VARCHAR(20)
-  created_at, created_by, updated_at, updated_by
-  EXCLUDE USING gist (sim_card_id WITH =, period WITH &&)
-  EXCLUDE USING gist (equipment_id WITH =, period WITH &&)
-```
-
-- La forma de los períodos es la de V100: inicio incluido y fin excluido. `btree_gist` ya existe (V28).
-- RLS con las políticas de V29 en las dos tablas. La cuenta de la aplicación actualiza solo el período, el motivo y las columnas de registro de una asignación, con permisos por columna como V100 L85. No se exportan, así que no van en `data_versions`.
-- **El traslado de lo que existe**, firmado con el autor de cada equipo (`coalesce(updated_by, created_by)`), sin leer `users`, que es de `iam`:
-  - cada equipo que no está de baja ni anulado y tiene ICCID da una SIM `ACTIVE` de su empresa, con una asignación abierta desde el día de la migración;
-  - un equipo de baja o anulado con un ICCID que nadie más tiene da una SIM `CANCELLED` con una asignación cerrada, `[alta, greatest(último cambio, alta + 1 día))`, para que un equipo creado y cambiado el mismo día no dé un rango vacío;
-  - `fleet_equipments.imsi` es texto libre (`VARCHAR(30)`, V132 L31): un IMSI que no tiene 15 dígitos se traslada vacío y la migración lo nombra en un `RAISE NOTICE`, en vez de romper el `CHECK`;
-  - los ICCID repetidos entre equipos de baja no se trasladan: la migración los nombra en un `RAISE NOTICE` y quedan en las columnas viejas, que no se borran hasta la fase 5 (análisis, C-H10).
-- Desde esta fase la aplicación deja de escribir `fleet_equipments.iccid` e `imsi`.
-
-**V155__add_the_completion_of_the_equipments.sql** (`Context: equipment`).
+**V155__add_the_completion_of_the_equipments.sql** (`Context: equipment`). Abre con alcance `SYSTEM` y `lock_timeout` de 5 segundos.
 
 - El `CHECK` de `status` suma `PENDING_COMPLETION` y `UNDER_REVIEW`.
-- `fleet_equipments.review_reason VARCHAR(20)`, con `CHECK (review_reason IN ('MODEL_MISMATCH', 'UNKNOWN_IMEI', 'SIM_MISMATCH'))`, y presente solo en `UNDER_REVIEW`.
+- `fleet_equipments.review_reason VARCHAR(20)`, con `CHECK (review_reason IN ('MODEL_MISMATCH', 'UNKNOWN_IMEI', 'SIM_MISMATCH'))`, y presente solo en `UNDER_REVIEW`. `SIM_MISMATCH` dice que el ICCID que reporta el fabricante difiere del escaneado, o que ese ICCID ya lo tiene otro equipo.
+- Si el número de la línea (MSISDN) y el operador se guardan en `fleet_equipments` se define al abrir la fase; si se guardan, van en esta migración, como datos del GPS.
 - `equipment_models.manufacturer_model_code VARCHAR(60)`, opcional: cómo nombra el fabricante el modelo (análisis, C-H15).
 - `equipment_completion_requests`:
   - columnas: `id`, `public_id`, `company_id`, `equipment_id` (llave compuesta), `imei`, `status` (`PENDING`, `IN_PROGRESS`, `COMPLETED`, `FAILED`, `CANCELLED`), `attempts`, `next_attempt_at`, `last_error_code`, `created_at`, `updated_at`. Como en los correos, `next_attempt_at` hace de reserva: reclamar un pedido lo corre hacia adelante (`Notification.claim` L182-187), sin otra columna;
@@ -665,13 +637,9 @@ sim_card_assignments
   - de solo inserción: `SELECT` e `INSERT`, y su línea en `hand-over-database.sql`.
 - Las dos tablas tienen RLS de empresa; la tarea corre con alcance `SYSTEM`.
 
-**V156__seed_iam_permissions_of_the_sim_cards.sql** (`Context: iam`).
-
-- `stock.crear_sims` (`crear`), `stock.editar_sims` (`editar`) y `stock.cambiar_estado_sims`, con la categoría de `stock.cambiar_estado_equipamiento`, marcados en `SUPERADMIN`, `ADMIN_EMPRESA` y `OPERACIONES` (Q19). Leer las SIM es `stock.ver`.
-
 **Backend.**
 
-*La firma de lo automático.* `equipment` suma `iam::acl` a sus `allowedDependencies` para leer la cuenta `SYSTEM` (`IamContextFacade.fetchSystemAccountId()`, hoy solo la usa `fleet` en `ExternalIamService` L37). La tarea del fabricante firma con ella lo que escribe —`updated_by` del equipo, `created_by` de una SIM nueva, que no admite nulo— porque fuera de una sesión `CurrentUserAuditorAware` no devuelve a nadie y una actualización conservaría en silencio al autor anterior. `iam` no depende de `equipment`, así que no hay ciclo; `ModularityTests` lo comprueba.
+*La firma de lo automático.* `equipment` suma `iam::acl` a sus `allowedDependencies` para leer la cuenta `SYSTEM` (`IamContextFacade.fetchSystemAccountId()`, hoy solo la usa `fleet` en `ExternalIamService` L37). La tarea del fabricante firma con ella lo que escribe —`updated_by` del equipo y la fila de su historia, que no admite nulo— porque fuera de una sesión `CurrentUserAuditorAware` no devuelve a nadie y una actualización conservaría en silencio al autor anterior. `iam` no depende de `equipment`, así que no hay ciclo; `ModularityTests` lo comprueba.
 
 *El ingreso y lo que sigue, en `equipment`*
 
@@ -686,7 +654,7 @@ sim_card_assignments
 | Saber cómo se ingresa | — | — | `GET /api/v1/equipments/arrival-settings`, `stock.ingresar_equipamiento`: `{completesWithManufacturer}`, para que la pantalla pida o no el serial |
 
 - El ingreso completo a mano de la fase 2 (`/arrival`) sigue.
-- EQP-R14 queda: un tipo telemático exige el serial y el IMEI para estar Disponible; el ICCID pasa a la SIM, que no se exige para estar Disponible (C11).
+- EQP-R14 queda: un tipo telemático exige el serial y el IMEI para estar Disponible; el ICCID sigue en el equipo, y no se exige para estar Disponible, sí para instalarlo (C11).
 - **La máquina de estados, completa:**
   - `annulCredited()` suma `PENDING_COMPLETION` y `UNDER_REVIEW`: una nota por un equipo desconocido para el fabricante tiene que poder anularlo;
   - `comeBackRepaired()` se rechaza si otro equipo apunta a este como reemplazado (`EQUIPMENT_REPLACED`): si no, una línea tendría dos equipos vivos y su costo se contaría dos veces;
@@ -694,26 +662,12 @@ sim_card_assignments
   - cada camino deja su fila en la historia de la fase 2.
 - **El escaneo va por modelo.** Una factura puede traer varios modelos (C3), y el costo del equipo sale de su línea. La pantalla elige el siguiente equipo por ingresar **del modelo que se está escaneando**; con un solo modelo no se pregunta. Si dos personas escanean la misma factura y chocan en el mismo equipo, la segunda recibe `EQUIPMENT_STATUS_TRANSITION_INVALID` y la pantalla pasa al siguiente.
 
-*La SIM, en `equipment`*
+*La SIM, dato del GPS (Q30, Q31)*
 
-- Los agregados `SimCard` y `SimCardAssignment`, este con su propio repositorio, como la historia de la instalación.
-- Las rutas:
-
-  | Método | Ruta | Permiso |
-  |---|---|---|
-  | `GET` | `/api/v1/sim-cards` | `stock.ver` |
-  | `POST` | `/api/v1/sim-cards` | `stock.crear_sims` |
-  | `GET` | `/api/v1/sim-cards/{id}` | `stock.ver` |
-  | `PATCH` | `/api/v1/sim-cards/{id}` | `stock.editar_sims` (`PATCH`, como el equipo, `EquipmentsController` L107) |
-  | `PATCH` | `/api/v1/sim-cards/{id}/status` | `stock.cambiar_estado_sims` |
-  | `GET` | `/api/v1/sim-cards/{id}/assignments` | `stock.ver` |
-  | `POST` | `/api/v1/equipments/{id}/sim-assignment` `{iccid}` o `{simCardId}` | `stock.editar_sims` |
-  | `POST` | `/api/v1/equipments/{id}/sim-assignment/end` `{reason}` | `stock.editar_sims` |
-
-- Una SIM en un solo GPS y un GPS con una sola SIM a la vez; la base lo respalda con los `EXCLUDE`.
-- Una SIM nueva escaneada valida el dígito verificador del ICCID.
-- **El ICCID que todavía llega al equipo.** `POST /equipments`, `PATCH /equipments/{id}` y `/arrival` siguen aceptando `iccid`, para no romper el frontend anterior: el backend busca o crea la SIM de la empresa y la asigna. EQP-R14 deja de exigirlo al crear (`EquipmentCommandServiceImpl` L364-369); la búsqueda por ICCID (`EquipmentJpaRepository` L78), `existsByIccid` (L61-66) y la traducción de la restricción (`EquipmentRepositoryImpl` L35-37) pasan a la SIM. La fase 5 retira el campo.
-- El recurso del equipo suma su SIM vigente (ICCID, número, operador), el estado de su completado, `reviewReason`, a quién reemplazó y quién lo reemplazó.
+- No hay agregados ni rutas de la SIM: ni `SimCard` ni `SimCardAssignment`, ni `/sim-cards`, ni asignar o retirar una SIM de un GPS. Una SIM nunca se cambia sin su GPS, y el reemplazo de un fallado ya trae el GPS nuevo con su SIM (3a).
+- El ICCID y el IMSI siguen en `fleet_equipments`, con el índice único del ICCID y sus códigos de siempre (`EQUIPMENT_ICCID_INVALID`, `EQUIPMENT_ICCID_CONFLICT`). Los escriben el alta y la edición a mano, el ingreso, el reemplazo y la API del fabricante; `POST /equipments`, `PATCH /equipments/{id}` y `/arrival` siguen aceptando `iccid`, y ninguna fase lo retira.
+- El ERP no lleva el ciclo de vida de la SIM —activa, suspendida, cancelada— ni da de baja su línea: la maneja el proveedor (Q31).
+- El recurso del equipo suma el estado de su completado y `reviewReason`; a quién reemplazó y quién lo reemplazó ya lo dice desde la fase 2.
 
 *El pedido al fabricante, en `equipment`*, con el patrón de los correos:
 
@@ -724,7 +678,7 @@ sim_card_assignments
 | El adaptador del fabricante | `RestClient` con timeouts del JDK (5 s para conectar, 10 s para leer); 408, 429 y 5xx se reintentan, otro 4xx se rechaza, 404 es `NotFound`. Espera Q21 |
 | `DeviceRegistryProviderCheck` | Al arrancar, como `EmailProviderCheck`: un proveedor que no es `manual` exige su dirección y sus credenciales. El proveedor se elige con `@ConditionalOnProperty`, como los tres de correo |
 | `DeviceCompletionTask` (`application/internal/scheduledtasks`, proceso `equipment.device-completion`) | `runAlone` → alcance `SYSTEM` → reclama los pedidos debidos con `FOR UPDATE SKIP LOCKED`, corriendo su `next_attempt_at`, en una transacción corta → llama al fabricante **fuera de toda transacción** → anota el intento y aplica el resultado en otra transacción corta, firmado por `SYSTEM` |
-| La aplicación del resultado | Primero vuelve a leer, bajo candado, el equipo y luego el pedido (siempre en ese orden; y el equipo antes que su SIM): si el equipo ya no está por completar o el pedido fue cancelado, el resultado se descarta. `Found`: guarda serial y firmware; si el modelo tiene código del fabricante y no coincide → `UNDER_REVIEW` `MODEL_MISMATCH`; el ICCID busca o crea la SIM de la empresa y la asigna si el equipo no tiene una; si tiene otra, o si ese ICCID ya es de otra empresa (el índice es único en todo el sistema) → `UNDER_REVIEW` `SIM_MISMATCH`; si todo cuadra → `AVAILABLE`. `NotFound` → `UNDER_REVIEW` `UNKNOWN_IMEI` |
+| La aplicación del resultado | Primero vuelve a leer, bajo candado, el equipo y luego el pedido (siempre en ese orden): si el equipo ya no está por completar o el pedido fue cancelado, el resultado se descarta. `Found`: guarda serial y firmware; si el modelo tiene código del fabricante y no coincide → `UNDER_REVIEW` `MODEL_MISMATCH`; guarda en el equipo el ICCID y el IMSI si no tiene ICCID; si el escaneado difiere del que reporta el fabricante, o si ese ICCID ya lo tiene otro equipo, de cualquier empresa (el índice es único en todo el sistema) → `UNDER_REVIEW` `SIM_MISMATCH`; si todo cuadra → `AVAILABLE`. `NotFound` → `UNDER_REVIEW` `UNKNOWN_IMEI` |
 | Reintentos | Una espera que se duplica de 1 minuto a 1 hora, copiada de `RetryPolicy`; agotados, el pedido queda `FAILED` y el equipo por completar, con «el fabricante no respondió» y el completado a mano disponible |
 | `DeviceCompletionFailureWatchTask` (proceso `equipment.device-completion-watch`) | Una línea `ERROR` por revisión cuando los fallos de la última hora llegan al umbral; no toca `/actuator/health` |
 | Métrica | Contador `equipment.device_registry.lookups` con `provider`, `outcome` y `error_code` |
@@ -743,15 +697,9 @@ sim_card_assignments
 
 | Código | Estado | Cuándo |
 |---|---|---|
-| `SIMCARD_NOT_FOUND` | 404 | La SIM no existe o no se lee |
-| `SIMCARD_CONFLICT` | 409 | El ICCID ya existe |
-| `SIMCARD_ICCID_INVALID` | 422 | El ICCID no tiene el formato o no pasa el dígito verificador |
-| `SIMCARD_NOT_ACTIVE` | 422 | Se asigna una SIM suspendida o cancelada |
-| `SIMCARD_ALREADY_ASSIGNED` | 422 | La SIM ya está en otro GPS |
-| `EQUIPMENT_SIM_ALREADY_ASSIGNED` | 422 | El GPS ya tiene una SIM |
-| `EQUIPMENT_REPLACED` | 422 | «Volvió reparado» de un equipo que otro ya reemplazó |
+| `EQUIPMENT_REPLACED` | 422 | «Volvió reparado» de un equipo que otro ya reemplazó (construido con la 3a) |
 
-Se reutilizan `EQUIPMENT_IMEI_INVALID` y `EQUIPMENT_STATUS_TRANSITION_INVALID`. `EQUIPMENT_ICCID_INVALID` se conserva mientras el frontend lo nombre.
+Se reutilizan `EQUIPMENT_IMEI_INVALID`, `EQUIPMENT_ICCID_INVALID`, `EQUIPMENT_ICCID_CONFLICT` y `EQUIPMENT_STATUS_TRANSITION_INVALID`: el ICCID sigue siendo del equipo. Los códigos de la SIM que pensaba la versión 3 —`SIMCARD_NOT_FOUND`, `SIMCARD_CONFLICT`, `SIMCARD_ICCID_INVALID`, `SIMCARD_NOT_ACTIVE`, `SIMCARD_ALREADY_ASSIGNED` y `EQUIPMENT_SIM_ALREADY_ASSIGNED`— no se crean (Q30, Q31).
 
 **Frontend.**
 
@@ -767,36 +715,32 @@ Se reutilizan `EQUIPMENT_IMEI_INVALID` y `EQUIPMENT_STATUS_TRANSITION_INVALID`. 
   - Al terminar, un resumen.
 - **La cámara en el sitio desplegado.** `public/_headers` (L10) envía `Permissions-Policy: camera=()` a todo `/*`, y en una aplicación de una sola página no sirve un encabezado por ruta: pasa a `camera=(self)`. El e2e no lo detecta, porque el servidor de desarrollo no aplica `_headers`; se comprueba en `dev`.
 - **La librería de la cámara**, con su versión exacta, cargada perezosamente. Los presupuestos de `angular.json` (L46-57) solo miden el paquete inicial: se suma un presupuesto de tipo `bundle` para su trozo perezoso, y `npm audit` sigue en cero.
-- **«SIM»** (ruta `/equipment/sim-cards`, con `stock.ver`): la lista en `mm-data-manager` (ICCID, número, operador, estado, GPS actual); la ficha como página, `/equipment/sim-cards/:id`, con la historia de sus asignaciones, como la historia de estados de la unidad; los diálogos de alta, edición y estado. Desde la ficha del equipo: «Asignar SIM» (escaneando el ICCID) y «Retirar SIM».
-- **El inventario y la ficha del equipo:** los estados «Por completar» y «Revisar» (con su causa), sus filtros, y las acciones que dice el backend: completar datos, resolver la revisión, reintentar con el fabricante, registrar el reemplazo, volvió reparado, asignar SIM. La pestaña de la SIM en la ficha.
-- **El menú:** Monitoreo suma «Ingreso de equipos» (`stock.ingresar_equipamiento`) y «SIM» (`stock.ver`). La matriz pone `stock.ingresar_equipamiento` en Monitoreo › Ingreso de equipos y `stock.*_sims` en Monitoreo › SIM.
-- **`DESIGN.md`:** una revisión para la pantalla de escaneo, su lista y la cámara, y otra para la SIM.
+- **Sin pantalla «SIM»** (Q30, Q31): la SIM se ve en la ficha del equipo, su ICCID y su IMSI, como hoy.
+- **El inventario y la ficha del equipo:** los estados «Por completar» y «Revisar» (con su causa), sus filtros, y las acciones que dice el backend: completar datos, resolver la revisión, reintentar con el fabricante, registrar el reemplazo, volvió reparado.
+- **El menú:** Monitoreo suma «Ingreso de equipos» (`stock.ingresar_equipamiento`) cuando la fase 1 lo cree; no hay opción «SIM» ni permisos `stock.*_sims` en la matriz.
+- **`DESIGN.md`:** una revisión para la pantalla de escaneo, su lista y la cámara.
 - Cada ruta nueva va en `environment.ts` y en `environment.development.ts`.
 
 **Pruebas.**
 
 - Backend:
-  - la SIM: dominio, servicio, integración, RLS y auditoría;
-  - la migración V154, con el traslado, los equipos de baja y anulados, los IMSI inválidos, el rango de un solo día y los ICCID repetidos;
-  - la tarea con un `DeviceRegistry` de prueba: encontrado, otro modelo, otra SIM, ICCID de otra empresa, desconocido, reintentable, agotado, y un resultado que llega después de un completado a mano;
+  - la tarea con un `DeviceRegistry` de prueba: encontrado, otro modelo, un ICCID distinto del escaneado, un ICCID que ya tiene otro equipo, de otra empresa, desconocido, reintentable, agotado, y un resultado que llega después de un completado a mano;
   - que corre en una sola instancia y fuera de la transacción del escaneo: las dos tareas nuevas entran en la lista exacta de `DeadlockRetryTests` (L123-126);
   - el vigilante y la métrica; la comprobación de arranque;
   - el escaneo con y sin fabricante (dígito verificador, repetido, estado equivocado, permiso, modelo), el reemplazo y su costo, «volvió reparado» de un reemplazado, la nota sobre la cadena, la revisión dentro del tipo;
   - `ModularityTests` con `iam::acl` en `equipment`;
-  - `EquipmentRowsAreNeverDeletedTests` con las tablas nuevas, `RowLevelSecurityMigrationTests` con las cuatro (y `sim_card_assignments` en `COLUMN_UPDATE_TABLES`, L90), `HandOverDatabaseScriptTests`, `PermissionsMigrationTests`;
+  - `EquipmentRowsAreNeverDeletedTests` con las tablas nuevas, `RowLevelSecurityMigrationTests` con las dos del completado, `HandOverDatabaseScriptTests`;
   - la suite completa, en local.
-- Frontend: las specs de la pantalla de ingreso (la extracción del IMEI, el Enter del lector, el modelo, el contador, el modo sin fabricante, los errores), de `imei.ts`, de la SIM y del inventario; e2e del ingreso (el lector simulado escribiendo y pulsando Enter; la cámara no se prueba en e2e), de la SIM y del inventario; `E/screens.ts` y las imágenes de las pantallas nuevas.
+- Frontend: las specs de la pantalla de ingreso (la extracción del IMEI, el Enter del lector, el modelo, el contador, el modo sin fabricante, los errores), de `imei.ts` y del inventario; e2e del ingreso (el lector simulado escribiendo y pulsando Enter; la cámara no se prueba en e2e) y del inventario; `E/screens.ts` y las imágenes de las pantallas que cambian.
 
 **Documentación.**
 
 - Diccionario:
-  - §11.4: los estados de completado, la revisión, el reemplazo y el escaneo por modelo;
-  - §11.4.1 `sim_cards` y §11.4.2 `sim_card_assignments`;
+  - §11.4: los estados de completado y la revisión, con `SIM_MISMATCH`, y, si se guardan, el número de la línea y el operador del GPS;
   - §2.7: los pedidos al fabricante y sus intentos;
   - §7.5: el código del fabricante;
-  - §5.6: los permisos;
   - D-285 pasa a cerradas.
-- `contextos/equipment.md`: los agregados, las reglas, los puertos, la integración y la dependencia de `iam::acl`.
+- `contextos/equipment.md`: las reglas, el puerto del fabricante, la integración y la firma `SYSTEM`.
 - El README del backend: las variables, el proveedor, el vigilante y cómo encenderlo.
 - `procesos-y-pantallas`: el proceso «Ingreso de equipos» y las pantallas nuevas. Las convenciones de la API: las rutas.
 
@@ -804,29 +748,24 @@ Se reutilizan `EQUIPMENT_IMEI_INVALID` y `EQUIPMENT_STATUS_TRANSITION_INVALID`. 
 
 **Orden de los commits.**
 
-- Backend:
-  1. V154 y la SIM.
-  2. V155, los estados de completado, el reemplazo y la máquina de estados completa.
-  3. `iam::acl` en `equipment`, el escaneo con y sin fabricante y el completado a mano.
-  4. El puerto, el proveedor manual, la tarea, el vigilante, la métrica y el planificador.
-  5. V156 y las rutas de la SIM.
-  6. Las facturas por ingresar en `procurement`.
-- Frontend:
-  1. La pantalla de ingreso y `_headers`.
-  2. La SIM.
-  3. El inventario y la ficha.
-  4. El menú y la matriz.
-  5. Los e2e y las imágenes.
+- Backend (3b; lo de la 3a ya se integró):
+  1. La migración del completado, sus estados y la máquina de estados completa.
+  2. El escaneo con fabricante y el completado a mano.
+  3. El puerto, el proveedor manual, la tarea, el vigilante, la métrica y el planificador.
+- Frontend (3b):
+  1. El escaneo con fabricante en «Ingreso de equipos».
+  2. El inventario y la ficha.
+  3. Los e2e y las imágenes.
 
 **Terminada cuando:**
 - **3a:** en `dev`, se escanea una factura de dos modelos, modelo por modelo, y sus equipos quedan Disponibles con su IMEI y su serial; la cámara abre en un teléfono; un fallado devuelto al proveedor se reemplaza por otro equipo, que toma su costo, y el devuelto ya no puede «volver reparado»; la suite completa y el CI están en verde.
-- **3b:** con un `DeviceRegistry` de prueba, la suite recorre todos los resultados; la SIM tiene su historia; la suite completa y el CI están en verde.
+- **3b:** con un `DeviceRegistry` de prueba, la suite recorre todos los resultados, también el ICCID que no cuadra; la suite completa y el CI están en verde.
 
 ---
 
 ### Fase 4 — Instalación unida al inventario e historial del equipo (D-263, D-264)
 
-**Objetivo.** Instalar es elegir un equipo Disponible del inventario y, si es telemático, con su SIM activa; retirar lo devuelve al estado que dice su motivo; una unidad con equipos instalados no se anula ni sale de la flota; los GPS ya instalados —también los de la carga inicial— quedan enlazados a su equipo; y cada equipo muestra en qué unidades estuvo y cuándo se retiró o reemplazó (C13).
+**Objetivo.** Instalar es elegir un equipo Disponible del inventario y, si es telemático, con su SIM, es decir, con su ICCID (C11); retirar lo devuelve al estado que dice su motivo; una unidad con equipos instalados no se anula ni sale de la flota; los GPS ya instalados —también los de la carga inicial— quedan enlazados a su equipo; y cada equipo muestra en qué unidades estuvo y cuándo se retiró o reemplazó (C13).
 
 **Lo que la rige.** D-263, D-264, D-206, FLT-R152 a FLT-R154, la fase 2 §2.6 del plan de migración; C11, C13; reglas 1.2 y 1.3.
 
@@ -854,7 +793,7 @@ Se reutilizan `EQUIPMENT_IMEI_INVALID` y `EQUIPMENT_STATUS_TRANSITION_INVALID`. 
 - **Instalar** (`VehicleEquipmentInstallations.check` L70-110):
   - el pedido suma `equipmentId`. Es el **primer paso** del cambio incompatible: el backend acepta el equipo y el serial;
   - el equipo tiene que verse, ser de la empresa de la unidad, estar Disponible y ser de un tipo que aplica;
-  - un tipo telemático exige una SIM activa asignada (`EQUIPMENT_SIM_REQUIRED`);
+  - un tipo telemático exige que el equipo tenga su ICCID (`EQUIPMENT_SIM_REQUIRED`): la SIM es un dato del GPS, sin estado ni asignación propios (C11, Q30);
   - después de los candados de la unidad y de la instalación (`lockedWithItsUnit`, `VehicleEquipmentCommandServiceImpl` L238-249), `installDevice` de `equipment` bloquea el equipo y lo pasa a Instalado, con su unidad.
 - **Retirar y reemplazar** (`VehicleEquipmentCommandServiceImpl`): los motivos falla, robo, reemplazo y sin falla. `releaseDevice` lo devuelve a Mantenimiento (falla), De baja (robo) o Disponible (reemplazo, sin falla), en la ubicación actual de la unidad; si la unidad no tiene ubicación, el retiro la pide. Un GPS heredado sin serial o sin IMEI que volvería a Disponible queda «Por completar» (EQP-R14). Reemplazar elige otro equipo.
 - **D-264:**
@@ -886,13 +825,13 @@ Se reutilizan `EQUIPMENT_IMEI_INVALID` y `EQUIPMENT_STATUS_TRANSITION_INVALID`. 
 | Código | Estado | Cuándo |
 |---|---|---|
 | `EQUIPMENT_NOT_AVAILABLE` | 422 | El equipo elegido no está Disponible |
-| `EQUIPMENT_SIM_REQUIRED` | 422 | Un equipo telemático sin SIM activa |
+| `EQUIPMENT_SIM_REQUIRED` | 422 | Un equipo telemático sin ICCID |
 | `EQUIPMENT_INSTALLED` | 422 | Cambiar a mano el estado de un equipo instalado |
 | `VEHICLE_DEVICES_INSTALLED` | 422 | Anular, pasar a Inactivo o cerrar el traspaso de una unidad con equipos instalados; nombra los equipos |
 
 **Frontend.**
 
-- **El diálogo de instalación** (`vehicle-equipment-dialog.ts`, formulario L113-131, envío L257-288): una búsqueda (`mm-search-select`) de los equipos Disponibles de la empresa de la unidad y del tipo elegido, que muestra su SIM. Es el **segundo paso**: el frontend envía el equipo.
+- **El diálogo de instalación** (`vehicle-equipment-dialog.ts`, formulario L113-131, envío L257-288): una búsqueda (`mm-search-select`) de los equipos Disponibles de la empresa de la unidad y del tipo elegido, que muestra su ICCID. Es el **segundo paso**: el frontend envía el equipo.
 - `REMOVAL_REASONS` (`vehicle-equipment.entity.ts` L8) y `EquipmentRemovalReason` (L5) suman `sin_falla`; el retiro pide la ubicación cuando la unidad no tiene una.
 - Los errores nuevos, y `complete-equipment-serial-dialog`, que queda para lo instalado sin serial y ahora también enlaza.
 - **La ficha del equipo** suma la pestaña «Instalaciones», con lo que responde `GET /equipments/{id}/installations`: junto a la pestaña «Historia» de la fase 2, es el historial que anunció el correo del 16/11.
@@ -928,25 +867,17 @@ Se reutilizan `EQUIPMENT_IMEI_INVALID` y `EQUIPMENT_STATUS_TRANSITION_INVALID`. 
 
 **Objetivo.** Retirar lo que quedó para la compatibilidad del ciclo del GPS.
 
-**Antes de empezar:**
-- la fase 3 corre en `dev` (`instance_count: 1`) con su CI en verde;
-- ninguna copia anterior a ella se conecta a esa base, tampoco una local con el `.env` remoto;
-- el responsable resolvió los ICCID repetidos que nombró V154;
-- la fase 4 está integrada, con su frontend (el segundo paso de la instalación).
+**Antes de empezar:** la fase 4 está integrada, con su frontend (el segundo paso de la instalación).
 
-**V159__drop_the_sim_columns_of_the_equipments.sql** (`Context: equipment`, con un paso de `procurement`). Abre con alcance `SYSTEM` y `lock_timeout` de 5 segundos.
-- Retira `fleet_equipments.iccid` e `imsi`, con su índice único (`idx_fleet_equipments_iccid_unique`).
-- Retira el disparador de compatibilidad `fill_purchase_line_kind()` de V148 y su línea en `hand-over-database.sql`. Ese paso es de `procurement`, como V147, que cerró la fase 8 del plan de migración en una sola migración.
+**Migraciones.** Ninguna. La versión 3 retiraba aquí `fleet_equipments.iccid` e `imsi`, con su índice único, y el disparador `fill_purchase_line_kind()`: el ICCID y el IMSI se quedan, porque la SIM es un dato del GPS (Q30, Q31), y el disparador nunca se creó (fase 2, precisión 2). Con ellos salen las condiciones que pedía antes de borrar columnas.
 
-**Backend.**
-- El **tercer paso** de la instalación: sale el camino del serial escrito para los tipos del inventario. `complete-equipment-serial-dialog` y su ruta siguen, solo para lo instalado sin serial, que al completarse se enlaza (fase 4).
-- `POST /equipments`, `PATCH /equipments/{id}` y `/arrival` dejan de aceptar `iccid`: la SIM se asigna por sus rutas (fase 3). Sale el uso de `EQUIPMENT_ICCID_INVALID`, y su mensaje cuando el frontend ya no lo nombre.
+**Backend.** El **tercer paso** de la instalación: sale el camino del serial escrito para los tipos del inventario. `complete-equipment-serial-dialog` y su ruta siguen, solo para lo instalado sin serial, que al completarse se enlaza (fase 4). `POST /equipments`, `PATCH /equipments/{id}` y `/arrival` siguen aceptando `iccid`.
 
-**Frontend.** Sale lo que quedó del ICCID en el formulario del equipo y el serial escrito del diálogo de instalación.
+**Frontend.** Sale el serial escrito del diálogo de instalación; el ICCID se queda en el formulario del equipo.
 
-**Documentación.** El diccionario retira las columnas; precisión en D-285.
+**Documentación.** El tercer paso de la instalación, en D-263.
 
-**Terminada cuando:** el CI está en verde y `dev` arranca sin las columnas.
+**Terminada cuando:** el CI está en verde y la instalación de un tipo del inventario ya no acepta el serial escrito.
 
 ---
 
@@ -1474,9 +1405,9 @@ Se reutilizan `AREA_NOT_FOUND`, `AREA_INACTIVE` y `ACCESS_DENIED`. Ningún códi
 | 0 | Se revierte su commit en el frontend. No toca datos |
 | 1 | Se revierte su commit de integración en el frontend, y la enmienda de D-141. No toca datos |
 | 2 | Gracias al disparador de compatibilidad, el código anterior sigue insertando líneas. Pero en cuanto exista un equipo en un estado nuevo o una orden de equipos, el código anterior no los lee: después de la primera factura de equipos, la fase se corrige hacia adelante. Durante el despliegue no se registra una factura de equipos |
-| 3 | Una vez corrida V154, la SIM manda; revertir el código volvería a escribir el ICCID en el equipo y separaría las dos. Se corrige hacia adelante |
+| 3 | La 3a se revierte con su código: no tiene migración propia. Sin la SIM (Q30, Q31), la 3b no mueve datos: el ICCID nunca deja el equipo. Pero el código anterior no lee un equipo «Por completar» o «Revisar», así que, después del primer escaneo con fabricante, se corrige hacia adelante |
 | 4 | El cambio de la instalación va en tres pasos: el segundo (el frontend) se revierte solo. Los enlaces escritos por la vinculación no se deshacen |
-| 5 | No se revierte: borra columnas y un disparador |
+| 5 | Se revierte su commit: no toca datos |
 | 6 | Revertir el código deja la tabla de áreas y las columnas nuevas sin usar, que no molestan; lo demás se corrige hacia adelante. Una asignación con área creada por la API quedaría sin efecto en compras: por eso la pantalla no la ofrece hasta la fase 7 |
 | 7 | Revertir el código deja las columnas de área en lo nuevo y los disparadores activos, que con el área vacía dejan pasar todo. Se corrige hacia adelante si ya hay documentos con área o se usó «Asignar área» |
 
@@ -1498,15 +1429,15 @@ El flujo operativo hasta el ingreso de los IMEIs, con el reemplazo de un fallado
 
 | Fase | Días de trabajo |
 |---|---|
-| 3b | 5 a 7, y 2 a 4 para el adaptador |
+| 3b | Menos de 5 a 7, que contaban la SIM (Q30, Q31), y 2 a 4 para el adaptador |
 | 4 | 8 a 11 (después de la 3b) |
-| 5 | Menos de 1 (después de la 3b en `dev` y de la 4) |
+| 5 | Menos de 1 (después de la 4) |
 | 1 | 2 a 4 |
 | 6 | 5 a 7 |
 | Las pruebas de caracterización de compras | 1 (antes de la 7) |
 | 7 | 12 a 16 (después de la 6) |
 
-En total, de 53 a 73 días. La fase 6 toca archivos distintos de las del GPS y podría ir en paralelo con dos personas; con una, va en orden. El adaptador del fabricante se agrega cuando llegue Q21.
+En total, de 53 a 73 días, algo menos sin la SIM. La fase 6 toca archivos distintos de las del GPS y podría ir en paralelo con dos personas; con una, va en orden. El adaptador del fabricante se agrega cuando llegue Q21.
 
 ---
 
@@ -1522,7 +1453,6 @@ En total, de 53 a 73 días. La fase 6 toca archivos distintos de las del GPS y p
 | Un equipo hereda el precio o el modelo de otro al escanear | Baja | Medio | El escaneo por modelo |
 | La API del fabricante no llega o es inestable | Media | Medio | El proveedor `manual`, que ingresa con el serial en el escaneo; los reintentos, el vigilante y el completado a mano |
 | Un GPS instalado queda sin equipo y escapa de D-264 | Media | Medio | La vinculación al arrancar, la del serial completado y la de las instalaciones de la carga inicial |
-| Los ICCID repetidos o los IMSI inválidos al trasladar a la SIM | Baja | Bajo | La migración los nombra y no se rompe; las columnas viejas viven hasta la fase 5 |
 | Regenerar 120 imágenes esconde una regresión real | Media | Medio | El e2e en verde de la fase 0; se revisa una por grupo y se mira la diferencia antes de aceptar |
 | Las personas limitadas a un área no pueden emitir órdenes | Baja | Medio | Una plantilla general la usan todas las áreas, y la orden toma el área de quien emite |
 | «Asignar área» no puede separar documentos que una nota o un pago mezcla | Media | Bajo | Se asignan juntos en un solo pedido; si son de áreas distintas, quedan generales y el rechazo lo dice |
@@ -1535,7 +1465,7 @@ En total, de 53 a 73 días. La fase 6 toca archivos distintos de las del GPS y p
 ## 11. Fuera del alcance
 
 - El monitoreo en vivo: el mapa y las alertas de Monitoreo.
-- El costo mensual de la línea de cada SIM, que es una factura de servicio del operador.
+- La línea de cada SIM y su costo: los maneja el proveedor, que entrega el GPS con su SIM (Q31).
 - El ingreso de equipos por Excel, con la plataforma de cargas: posible después, sobre el mismo ingreso.
 - Las áreas fuera de compras (Q10).
 - D-266 completo, salvo la retención por equipos instalados de la fase 4.
@@ -1551,6 +1481,7 @@ En total, de 53 a 73 días. La fase 6 toca archivos distintos de las del GPS y p
 | 1 | 22/11/2026 | Primera versión, desde el análisis situacional del mismo día y las decisiones del responsable |
 | 2 | 22/11/2026 | Recoge la auditoría del mismo día (6 bloqueantes, 22 importantes) y las decisiones Q1 a Q27. Cambia el orden a menú → GPS → áreas; suma la historia y el historial del equipo, la vinculación de la carga inicial, el escaneo por modelo, «Anular y copiar» sin duplicados, la orden de un solo tipo, la plantilla común con la orden del área de quien emite, varias áreas por persona y «Asignar área»; corrige la sesión de las áreas, `isConcept()`, la inserción de 500 líneas, los pagos sin migración y las afirmaciones sin respaldo |
 | 3 | 22/11/2026 | El primer tramo del responsable (Q28, Q29): la fase 0 reducida —las pruebas de caracterización de compras pasan a antes de la fase 7—, la fase 2 y la fase 3a, el ingreso sin fabricante con el reemplazo de un fallado, cuya columna pasa de V155 a V149. La fase 3 se parte en 3a y 3b; ninguna migración cambia de número |
+| 3.1 | 22/11/2026 | Las respuestas Q30 y Q31: la SIM es un dato de su GPS toda su vida, sin registro propio, y su línea la maneja el proveedor (C11 y D-285 enmendadas). La 3b pierde `sim_cards`, `sim_card_assignments`, sus rutas, sus permisos, su pantalla y sus códigos, y queda con una migración, el completado; `SIM_MISMATCH` compara el ICCID del fabricante con el escaneado; la fase 4 exige el ICCID del equipo para instalar; la fase 5 ya no retira el ICCID y queda sin migración. Las migraciones esperadas se recuentan en el §5. Q32 sigue abierta |
 
 **Equivalencias con la versión 1.** La auditoría cita las fases, las migraciones y las decisiones de la versión 1. La versión 3 conserva la numeración de la 2, salvo que la fase 3 se parte en 3a y 3b.
 
