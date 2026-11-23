@@ -285,11 +285,7 @@ Las operaciones que escriben o bloquean exigen la transacción de quien llama (`
 
 ## 7. Preguntas abiertas
 
-Una pregunta al responsable, del 22/11/2026 ([plan del ciclo del GPS](../plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md), §2, Q32; diccionario §14, «Decisiones abiertas»):
-
-| Pregunta | Qué cambia según la respuesta |
-|---|---|
-| ¿Los equipos que no llegan se pueden dar de baja sin la nota de crédito del proveedor? | Hoy solo la nota «anulación de equipo» o la anulación de su factura anulan uno por ingresar (EQP-R15); si se pueden, haría falta un camino propio, con su permiso y su motivo |
+Ninguna. La última del 22/11/2026 ([plan del ciclo del GPS](../plan-de-areas-menu-y-ciclo-del-gps-2026-11-22.md), §2, Q32) la respondió el responsable el mismo día: un equipo que la factura cobra y no llegó solo se da de baja con la nota «anulación de equipo» del proveedor, o con la anulación de su factura, como una unidad (EQP-R15); un envío parcial facturado por lo que llegó no pide nota.
 
 Las otras dos del mismo día las respondió el responsable ese día, y enmiendan D-285:
 

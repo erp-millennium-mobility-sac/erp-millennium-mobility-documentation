@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.83 · **Actualizado:** 22/11/2026
+**Versión:** 1.84 · **Actualizado:** 22/11/2026
 
 Diccionario de datos del ERP Millennium Mobility: la estructura de datos vigente, tabla por tabla, con sus reglas, y las decisiones que la rigen (§14).
 
@@ -3833,7 +3833,7 @@ Cada una dice con quién queda y, cuando lo tiene, su momento.
 - **Si Millennium es agente de retención del IGV:** lo consulta el responsable con contabilidad, con la Consulta RUC (§10.2; D-196, D-246). Hasta que lo confirme, la retención de un pago sigue opcional: la pantalla la propone en el 3 % de lo que se paga, se corrige a mano y el backend no la calcula.
   - Si lo es, calcularla pide más de lo que la columna resuelve: no se retiene a un proveedor que es buen contribuyente o agente de retención, y `suppliers` no guarda esa condición, así que hace falta un dato del proveedor o la consulta de su RUC, además del umbral de S/ 700 de la operación.
   - Si no lo es, la pantalla deja de ofrecer «+ Retención del IGV» y la columna queda para lo ya registrado.
-- **Con el responsable, una pregunta del ciclo del GPS** (plan de áreas, menú y ciclo del GPS, §2; Q32): si los equipos que no llegan se pueden dar de baja sin la nota de crédito del proveedor: hoy solo la nota «anulación de equipo» o la anulación de la factura los anulan (§11.4). Las otras dos del 22/11/2026, Q30 y Q31, las respondió el mismo día: la SIM no se cambia nunca sola y su línea la maneja el proveedor (D-285).
+- **Las preguntas del ciclo del GPS del 22/11/2026** (plan de áreas, menú y ciclo del GPS, §2; Q30 a Q32) las respondió el responsable el mismo día: la SIM no se cambia nunca sola y su línea la maneja el proveedor (D-285); y un equipo que la factura cobra y no llegó solo se da de baja con la nota de crédito del proveedor, como una unidad (Q32, §11.4): un envío parcial facturado por lo que llegó no pide nota, y la orden se cierra con «Cumplir» y su motivo (D-284).
 - **Con el responsable, una palabra de Compras:** si «línea de negocio», en la frase de la serie de una orden («la serie distingue la marca y la línea de negocio», D-140), nombra la marca comercial o el tipo de orden (D-252).
 - **Datos que entrega el negocio:** el catálogo maestro de modelos, con el nombre que elige para cada modelo a partir de la lista de diferencias de los dos catálogos entregados, antes de la carga inicial (§7.3, D-273); y los datos maestros reales —razón social y documento tributario de la empresa, sedes con su código de establecimiento, marcas, proveedores y colaboradores—.
 - **Candidatos, sin fecha:**
