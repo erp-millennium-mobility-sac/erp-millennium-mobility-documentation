@@ -817,6 +817,7 @@ Todo error responde el mismo recurso, también los que ocurren antes del control
 | `COMPANY_COUNTRY_CONFLICT` | `409` | Ya hay una empresa operativa en ese país |
 | `COMPANY_TAX_ID_CONFLICT` | `409` | Otra empresa del país tiene ese documento tributario |
 | `COMPANY_FISCAL_ADDRESS_MISSING` | `422` | `PUT /companies/{id}/fiscal-address` de una empresa sin dirección fiscal: la primera se registra con el `POST` (§3.3) |
+| `COMPANY_FUNCTIONAL_CURRENCY_IN_USE` | `422` | `PUT /companies/{id}` que cambia la moneda funcional de una empresa con facturas, notas de crédito o pagos, también anulados: guardan su tasa hacia la moneda de entonces (ORG-R35) |
 | `BRANCH_NOT_FOUND` | `404` | La sede no existe o está fuera del alcance |
 | `BRANCH_CODE_CONFLICT`, `BRANCH_TAX_ESTABLISHMENT_CODE_CONFLICT` | `409` | La empresa ya tiene una sede con ese código, o con ese código de establecimiento |
 | `BRANCH_ADDRESS_MISSING` | `422` | `PUT /branches/{id}/address` de una sede sin dirección: la primera se registra con el `POST` (§3.3) |
