@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.97 · **Actualizado:** 27/11/2026
+**Versión:** 1.98 · **Actualizado:** 27/11/2026
 
 Diccionario de datos del ERP Millennium Mobility: la estructura de datos vigente, tabla por tabla, con sus reglas, y las decisiones que la rigen (§14).
 
@@ -1867,10 +1867,10 @@ Las cuentas desde las que la empresa paga a sus proveedores. No son siempre la m
 | Variable | Tipo | Nulo | Descripción | Por qué importa |
 |---|---|---|---|---|
 | `company_id` | BIGINT FK → `companies` | No | Dueña de la cuenta | No cambia de empresa |
-| `name` | VARCHAR(60) | No | Nombre corto con que se reconoce: BBVA Dólares | Es lo que se elige al registrar un pago. Único en la empresa |
+| `name` | VARCHAR(60) | No | Nombre corto con que se reconoce: BBVA Dólares | Es lo que se elige al registrar un pago. Único en la empresa sin distinguir mayúsculas: BBVA Soles y bbva soles son el mismo nombre (`company_bank_accounts_company_name_uq`, índice sobre `lower(name)`, V4) |
 | `bank_name` | VARCHAR(100) | No | El banco | Dice a qué extracto mirar |
 | `currency_id` | BIGINT FK → `currencies` | No | Moneda de la cuenta | Fija la moneda de cada pago que sale de ella |
-| `account_number` | VARCHAR(34) | No | Número de la cuenta | Único en la empresa. Solo quien gestiona las cuentas lee el número completo y busca u ordena por él; los demás, y el registro de un pago, ven sus últimos dígitos (D-214) |
+| `account_number` | VARCHAR(34) | No | Número de la cuenta, como se escribió: letras, dígitos, espacios y guiones, con al menos una letra o un dígito (`company_bank_accounts_number_ck`, V4) | Único en la empresa sin espacios, guiones ni mayúsculas: 0011-7788 y 00117788 son el mismo número (`company_bank_accounts_company_number_uq`, índice sobre esa expresión, V4); reescribirlo así no cuenta como cambiarlo, también en una cuenta con pagos. Solo quien gestiona las cuentas lee el número completo y busca u ordena por él; los demás, y el registro de un pago, ven sus últimos dígitos (D-214) |
 | `is_active` | BOOLEAN | No | Si sigue en uso | Desactivarla no borra la fila ni toca los pagos que salieron de ella |
 | `created_at` / `created_by` | TIMESTAMPTZ / FK `users` | No / Sí | Quién la registró y cuándo | — |
 | `updated_at` / `updated_by` | TIMESTAMPTZ / FK `users` | No / Sí | Último cambio | Corregirla exige el `updated_at` que se leyó: uno anterior se rechaza sin guardar (D-137) |
