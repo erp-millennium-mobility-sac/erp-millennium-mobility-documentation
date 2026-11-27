@@ -1,6 +1,6 @@
 # Diccionario de datos — ERP Millennium Mobility
 
-**Versión:** 1.98 · **Actualizado:** 27/11/2026
+**Versión:** 1.99 · **Actualizado:** 27/11/2026
 
 Diccionario de datos del ERP Millennium Mobility: la estructura de datos vigente, tabla por tabla, con sus reglas, y las decisiones que la rigen (§14).
 
@@ -4367,7 +4367,7 @@ Las tomó el responsable al cerrar la auditoría del 25/10/2026 sobre proveedore
 | DP-10 | La ficha de una plantilla de orden de compra se lee y se edita sobre su hoja impresa: lo que la persona lee es lo que recibirá el proveedor (DESIGN.md, revisiones 25 y 32; D-140) |
 | DP-11 | Ceder una unidad a un fondo y cerrar la cesión los hace una asignación de toda la empresa o de la marca de la unidad, nunca la de la sede donde la unidad está: ceder es un acto financiero de la empresa. Es una excepción a D-101. La unidad ofrece ceder a quien tiene `fondos.registrar_cesion` así, `fondos.ver` en su empresa y ninguna cesión abierta o que termine después de hoy, y la cesión abierta ofrece cerrarla a quien cede la unidad (§12.2, D-134) |
 | DP-12 | El código de un fondo se corrige mientras ninguna cesión lo usa, de punta a punta: el fondo dice `codeLocked`, la pantalla bloquea el campo y otro código responde `422 FUND_CODE_LOCKED` (§2.4, §12.1, D-134) |
-| DP-14 | Los filtros de empresa de las listas ofrecen también las empresas inactivas, después de las activas, a quien tiene `configuracion.ver_estructura`; a los demás, solo las activas (D-84) |
+| DP-14 | Los filtros de empresa de las listas ofrecen también las empresas inactivas, después de las activas, donde la sesión tiene `configuracion.ver_estructura`; en las demás, solo las activas (D-84). Quien no lee la estructura recibe las empresas de su sesión, que traen su estado, su país y su moneda funcional, porque `GET /companies` exige ese permiso (27/11/2026) |
 | DP-15 | La exportación de los proveedores no lleva sus contactos (D-137) |
 | DP-16 | Un archivo de una plantilla se guarda bajo una llave de su contenido (SHA-256): el objeto se escribe antes de confirmar la transacción y la fila lo apunta al confirmar, así que un rollback o un reintento solo deja un objeto sin referencia y nunca reemplaza los bytes de una fila confirmada. El PDF enviado (`sent.pdf`), con llave fija y un solo escritor, es la excepción (§2.7, D-134) |
 | DP-17 | Toda lista principal se exporta (D-116): la de órdenes de compra y la de plantillas quedan por exportar |
