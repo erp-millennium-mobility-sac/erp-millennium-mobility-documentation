@@ -462,7 +462,7 @@ Capas y marcas según el [README de esta carpeta](README.md). Las pruebas del ba
 | Vincular y desvincular (D-82) | `linkUserToEmployee`, `linkExistingUserToEmployee`, `unlinkUserFromEmployee` |
 | El alcance de una asignación, con su área (IAM-R58, IAM-R104) | `resolveScope`, en su forma de cuatro argumentos |
 | Nombrar empresas, sedes, marcas, áreas y colaboradores en lote | `fetchCompanyReferencesByIds`, `fetchBranchReferencesByIds`, `fetchCommercialBrandReferencesByIds`, `fetchAreaReferencesByIds`, `fetchEmployeeNamesByUserIds` |
-| Las empresas y sus zonas para la sesión | `fetchActiveCompanyReferences`, `fetchCompanyTimeZonesByIds` |
+| Las empresas de la sesión, con su estado, su país, su moneda funcional y su zona | `fetchActiveCompanyOptions` (rol global), `fetchCompanyOptionsByIds` (las de sus asignaciones), `fetchCompanyTimeZonesByIds` |
 | La empresa de la lista de cuentas, sus cuentas, y la de un rol propio (D-98) | `fetchCompanySummaryByPublicId`, `fetchLinkedEmployeePublicIdsByCompanyId` |
 | La versión para la exportación de las cuentas, que genera `documents` (convenciones §8.1; D-106, D-128) | `fetchDataVersion` |
 
